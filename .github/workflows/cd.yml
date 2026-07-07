@@ -1,0 +1,57 @@
+name: CD
+
+on:
+  push:
+    branches: [staging, main]
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build frontend + imagen backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend (Vite)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Build imagen Docker del backend
+        run: docker build -t winespa-backend:${{ github.sha }} ./backend
+
+  # staging solo necesita comprobar que todo empaqueta bien (job build de arriba).
+  # main además dispara el despliegue real a Oracle Cloud.
+  deploy-main:
+    name: Deploy a Oracle Cloud (main)
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        if: ${{ vars.ORACLE_HOST != '' }}
+        env:
+          ORACLE_HOST: ${{ vars.ORACLE_HOST }}
+          ORACLE_USER: ${{ vars.ORACLE_USER }}
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_deploy
+          echo "$ORACLE_SSH_KEY" > ~/.ssh/id_deploy
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_deploy "$ORACLE_USER@$ORACLE_HOST" '
+            cd /opt/winespa &&
+            git pull origin main &&
+            docker compose up -d --build backend &&
+            docker compose exec -T backend npx prisma migrate deploy
+          '
+      # ponytail: sin servidor Oracle configurado aun (faltan vars/secrets ORACLE_HOST,
+      # ORACLE_USER, ORACLE_SSH_KEY). Hasta entonces el deploy real solo se anuncia.
+      - name: Deploy pendiente de configurar
+        if: ${{ vars.ORACLE_HOST == '' }}
+        run: echo "Configura las variables/secrets ORACLE_HOST, ORACLE_USER y ORACLE_SSH_KEY en el repo para activar el deploy real a Oracle Cloud."
