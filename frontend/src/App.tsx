@@ -330,6 +330,11 @@ export default function App() {
   };
 
   // Autenticación Cliente
+  // Deja solo digitos y limita a 10 (celulares en Colombia), para los inputs de telefono.
+  const handlePhoneInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value.replace(/\D/g, '').slice(0, 10));
+  };
+
   const handleClientAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput || phoneInput.length < 7) {
@@ -1073,7 +1078,7 @@ export default function App() {
                         {bookingStep === 'auth' && (
                           <form onSubmit={handleCheckAuthBooking} className="space-y-3">
                             <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Celular del Cliente</label>
-                            <input type="tel" required placeholder="Ej: 3001234567" value={bookingPhone} onChange={(e) => setBookingPhone(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                            <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Ej: 3001234567" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
                             {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
                             <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
                               {isSubmitting ? 'Verificando...' : 'Continuar'}
@@ -1083,9 +1088,9 @@ export default function App() {
 
                         {bookingStep === 'register' && (
                           <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                            <input type="text" required placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                            <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
                             <div className="grid grid-cols-2 gap-3">
-                              <input type="number" required placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
+                              <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
                               <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
                                 <option value="Femenino">Femenino</option>
                                 <option value="Masculino">Masculino</option>
@@ -1148,7 +1153,7 @@ export default function App() {
 
                     {bookingStep === 'auth' && (
                       <form onSubmit={handleCheckAuthBooking} className="space-y-3">
-                        <input type="tel" required placeholder="Celular" value={bookingPhone} onChange={(e) => setBookingPhone(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
                         {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
                         <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Verificar</button>
                       </form>
@@ -1156,8 +1161,8 @@ export default function App() {
 
                     {bookingStep === 'register' && (
                       <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                        <input type="text" required placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        <input type="number" required placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
                         {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
                         <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
                       </form>
@@ -1234,10 +1239,12 @@ export default function App() {
                   <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Celular</label>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     required
+                    maxLength={10}
                     placeholder="Ej: 3001234567"
                     value={phoneInput}
-                    onChange={(e) => setPhoneInput(e.target.value)}
+                    onChange={handlePhoneInputChange(setPhoneInput)}
                     className="w-full p-2.5 border border-[#EADEC9]/60 rounded-xl text-xs bg-white"
                   />
                 </div>
@@ -1247,12 +1254,12 @@ export default function App() {
                     <p className="text-[10px] text-[#A68F63] font-semibold">Crea tu cuenta de Cliente:</p>
                     <div className="space-y-1">
                       <label className="text-[9px] uppercase font-bold text-[#78716C] block">Nombre Completo</label>
-                      <input type="text" required value={clientNameInput} onChange={(e) => setClientNameInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                      <input type="text" required maxLength={60} value={clientNameInput} onChange={(e) => setClientNameInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Edad</label>
-                        <input type="number" required value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                        <input type="number" required min={0} max={120} value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Género</label>
@@ -1273,11 +1280,11 @@ export default function App() {
               <form onSubmit={handleStaffLogin} className="space-y-4 text-left">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Usuario</label>
-                  <input type="text" required placeholder="Usuario" value={staffUser} onChange={(e) => setStaffUser(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white" />
+                  <input type="text" required maxLength={30} placeholder="Usuario" value={staffUser} onChange={(e) => setStaffUser(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Contraseña</label>
-                  <input type="password" required placeholder="••••••••" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white" />
+                  <input type="password" required maxLength={64} placeholder="••••••••" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white" />
                 </div>
                 <button type="submit" disabled={authSubmitting} className="w-full py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
                   {authSubmitting ? 'Iniciando Sesión...' : 'Entrar'}

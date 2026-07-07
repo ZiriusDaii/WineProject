@@ -18,6 +18,11 @@ export async function loginStaff(
       return;
     }
 
+    if (username.length > 30 || password.length > 64) {
+      res.status(400).json({ error: "Usuario o contraseña demasiado largos" });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { username },
       select: {
