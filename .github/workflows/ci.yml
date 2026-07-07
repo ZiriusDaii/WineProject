@@ -42,7 +42,7 @@ jobs:
       - run: npx tsc --noEmit
       # ponytail: no hay carpeta prisma/migrations aun, se valida el schema con db push;
       # cuando existan migraciones reales cambiar a `prisma migrate deploy`.
-      - run: npx prisma db push --skip-generate
+      - run: npx prisma db push
 
   frontend:
     name: Frontend (lint + tipos)
