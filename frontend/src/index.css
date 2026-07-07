@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  
+  --color-burgundy-950: #23000E;
+  --color-burgundy-900: #3B0019;
+  --color-burgundy-800: #5C0632;
+  --color-burgundy-700: #740E41;
+  --color-burgundy-600: #8E1B54;
+  --color-gold-100: #F7F3EB;
+  --color-gold-200: #EADEC9;
+  --color-gold-300: #D8C7A9;
+  --color-gold-400: #C3AD86;
+  --color-gold-500: #A68F63;
+  --color-gold-600: #8D774C;
+  --color-ivory: #FDFBF7;
+  --color-warm-gray-900: #1C1917;
+  --color-warm-gray-800: #292524;
+  --color-warm-gray-700: #44403C;
+  --color-warm-gray-600: #57534E;
+  --color-warm-gray-500: #78716C;
+  --color-warm-gray-400: #A8A29E;
+  --color-warm-gray-300: #D6D3D1;
+  --color-warm-gray-200: #E7E5E4;
+  --color-warm-gray-100: #F5F5F4;
+  --color-warm-gray-50: #FAFAF9;
+}
+
+/* Base custom styles to guarantee a luxury layout and scroll experience */
+:root {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  background-color: #FDFBF7;
+}
+
+body {
+  margin: 0;
+  background-color: #FDFBF7;
+  color: #44403C;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom premium styles */
+.serif-title {
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+/* Smooth active state simulation for premium feel on touch devices */
+button, a {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+button:active {
+  transform: scale(0.98);
+}
