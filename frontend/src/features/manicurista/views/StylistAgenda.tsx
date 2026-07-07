@@ -4,12 +4,11 @@ import { FallbackAvatar } from '../../../App';
 interface Appointment {
   id: string | number;
   appointmentId?: string | number;
-  clientName?: string;
+  client?: { name?: string };
   clientId?: string | number;
   manicuristId: string | number;
-  serviceIds: (string | number)[];
+  services: Service[];
   date: string;
-  time: string;
   total?: number | string;
   status?: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
@@ -18,7 +17,7 @@ interface Service {
   id: string | number;
   name: string;
   price: string | number;
-  duration?: string | number;
+  durationInMinutes?: string | number;
 }
 
 
@@ -26,9 +25,22 @@ export const StylistAgenda: React.FC = () => {
   // Estado Móvil: 'calendar' | 'profile'
   const [activeMobileTab, setActiveMobileTab] = useState<'calendar' | 'profile'>('calendar');
 
-  // Recuperar ID de manicurista logueada desde la sesión local
-  const [stylistId, setStylistId] = useState<string>('1');
-  const [services, setServices] = useState<Service[]>([]);
+  // Recuperar ID de manicurista logueada desde la sesión local.
+  // Se resuelve de forma sincrónica (lazy initializer) para evitar una carrera:
+  // si se resolviera en un useEffect aparte, un primer fetch con un id placeholder
+  // podia resolver despues del fetch con el id real y pisar los datos correctos.
+  const [stylistId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('winespa_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.role === 'manicurista') return String(parsed.id);
+      }
+    } catch {
+      // Fallback
+    }
+    return '1';
+  });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   // Estados del perfil
@@ -41,8 +53,11 @@ export const StylistAgenda: React.FC = () => {
   // Archivo de avatar seleccionado
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
 
-  // Fecha seleccionada
-  const [selectedDateDay, setSelectedDateDay] = useState<number>(18);
+  // Mes/Año/Día seleccionados (por defecto: hoy)
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  const [selectedDateDay, setSelectedDateDay] = useState<number>(today.getDate());
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -51,37 +66,20 @@ export const StylistAgenda: React.FC = () => {
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | number | null>(null);
 
-  useEffect(() => {
-    // Resolver manicurista de la sesión local
-    const saved = localStorage.getItem('winespa_session');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.role === 'manicurista') {
-          setStylistId(String(parsed.id));
-        }
-      } catch {
-        // Fallback
-      }
-    }
-  }, []);
-
   const fetchAgendaData = async () => {
     try {
       setLoading(true);
 
-      const servicesRes = await fetch('http://localhost:3000/api/services');
-      const servicesData = servicesRes.ok ? await servicesRes.json() : [];
-      setServices(servicesData);
-
-      // Cargar información de la manicurista específica
-      const stylistRes = await fetch(`http://localhost:3000/api/manicurists/${stylistId}`);
-      if (stylistRes.ok) {
-        const activeManicurist = await stylistRes.json();
+      // Cargar información de la manicurista específica (filtrada del listado, no hay endpoint por id)
+      const stylistRes = await fetch('http://localhost:3000/api/manicurists');
+      const activeManicurist = stylistRes.ok
+        ? (await stylistRes.json()).find((m: { id: string | number }) => String(m.id) === stylistId)
+        : null;
+      if (activeManicurist) {
         setProfileName(activeManicurist.name || '');
         setProfileAge(String(activeManicurist.age || 26));
         setProfileGender(activeManicurist.gender || 'Femenino');
-        setProfileAvatar(activeManicurist.avatarUrl || '');
+        setProfileAvatar(activeManicurist.avatarPath ? `http://localhost:3000${activeManicurist.avatarPath}` : '');
         setProfileRole(activeManicurist.role || 'Especialista');
       } else {
         // Fallback
@@ -95,21 +93,16 @@ export const StylistAgenda: React.FC = () => {
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
       let apptsData: Appointment[] = [];
       try {
-        const apptsRes = await fetch(`http://localhost:3000/api/manicurist/appointments?manicuristId=${stylistId}`);
+        const apptsRes = await fetch(`http://localhost:3000/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`);
         if (apptsRes.ok) {
           apptsData = await apptsRes.json();
-        } else {
-          // Filtrado de seguridad en frontend por si el endpoint no filtra
-          const generalApptsRes = await fetch('http://localhost:3000/api/appointments');
-          const data: Appointment[] = generalApptsRes.ok ? await generalApptsRes.json() : [];
-          apptsData = data.filter(a => String(a.manicuristId) === stylistId);
         }
       } catch {
-        // Fallback mock respetando seguridad de personal
+        // Fallback mock respetando seguridad de personal (usa el mes actual para que sea visible por defecto)
+        const mockPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
         apptsData = [
-          { id: '1', appointmentId: 'WS-101', clientName: 'Martha Cecilia Gómez', manicuristId: stylistId, serviceIds: ['1'], date: '2026-06-18', time: '09:00', total: 35000, status: 'CONFIRMED' },
-          { id: '2', appointmentId: 'WS-102', clientName: 'Diana Uribe', manicuristId: stylistId, serviceIds: ['2'], date: '2026-06-18', time: '11:00', total: 45000, status: 'IN_PROGRESS' },
-          { id: '4', appointmentId: 'WS-104', clientName: 'Clara Inés Ochoa', manicuristId: stylistId, serviceIds: ['1', '2'], date: '2026-06-21', time: '14:00', total: 80000, status: 'CONFIRMED' }
+          { id: '1', appointmentId: 'WS-101', client: { name: 'Martha Cecilia Gómez' }, manicuristId: stylistId, services: [{ id: '1', name: 'Manicure Tradicional', price: 15, durationInMinutes: 45 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T09:00:00.000Z`, total: 35000, status: 'CONFIRMED' },
+          { id: '2', appointmentId: 'WS-102', client: { name: 'Diana Uribe' }, manicuristId: stylistId, services: [{ id: '2', name: 'Manicure Semipermanente', price: 25, durationInMinutes: 60 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T11:00:00.000Z`, total: 45000, status: 'IN_PROGRESS' },
         ];
       }
 
@@ -124,7 +117,7 @@ export const StylistAgenda: React.FC = () => {
 
   useEffect(() => {
     fetchAgendaData();
-  }, [stylistId]);
+  }, [stylistId, selectedMonth, selectedYear]);
 
   // Completar Cita
   const handleCompleteAppointment = async (id: string | number) => {
@@ -160,14 +153,15 @@ export const StylistAgenda: React.FC = () => {
       if (selectedAvatarFile) {
         const formData = new FormData();
         formData.append('image', selectedAvatarFile);
-        const uploadRes = await fetch('http://localhost:3000/api/upload', {
+        formData.append('manicuristId', stylistId);
+        const uploadRes = await fetch('http://localhost:3000/api/admin/manicurists/upload-avatar', {
           method: 'POST',
           body: formData
         });
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
-          finalAvatarUrl = uploadData.url;
-          setProfileAvatar(uploadData.url);
+          finalAvatarUrl = `http://localhost:3000${uploadData.avatarPath}`;
+          setProfileAvatar(finalAvatarUrl);
         } else {
           throw new Error('Error al subir la foto de perfil');
         }
@@ -177,7 +171,7 @@ export const StylistAgenda: React.FC = () => {
         name: profileName,
         age: parseInt(profileAge),
         gender: profileGender,
-        avatarUrl: finalAvatarUrl,
+        avatarPath: finalAvatarUrl,
         role: profileRole
       };
 
@@ -204,38 +198,49 @@ export const StylistAgenda: React.FC = () => {
     }
   };
 
-  const getServiceNames = (ids: (string | number)[]) => {
-    return services
-      .filter(s => ids.map(id => String(id)).includes(String(s.id)))
-      .map(s => s.name)
-      .join(' + ') || 'Tratamiento Spa';
+  // El backend ya incluye los servicios completos en cada cita (appt.services), sin necesidad de buscarlos por id.
+  const getServiceNames = (apptServices: Service[]) => {
+    return apptServices.map(s => s.name).join(' + ') || 'Tratamiento Spa';
   };
 
-  const getServiceDuration = (ids: (string | number)[]) => {
-    const totalDuration = services
-      .filter(s => ids.map(id => String(id)).includes(String(s.id)))
-      .reduce((sum, s) => sum + (typeof s.duration === 'number' ? s.duration : parseInt(String(s.duration || '60'))), 0);
+  const getServiceDuration = (apptServices: Service[]) => {
+    const totalDuration = apptServices.reduce(
+      (sum, s) => sum + (typeof s.durationInMinutes === 'number' ? s.durationInMinutes : parseInt(String(s.durationInMinutes || '60'))),
+      0,
+    );
     return `${totalDuration || 60} mins`;
   };
 
-  const daysInJune = 30;
-  
+  const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  const monthLabel = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+
+  // El backend devuelve `date` como ISO string (YYYY-MM-DDTHH:mm:ss.sssZ), sin campo `time` separado.
+  const toDateKey = (isoDate: string) => isoDate.slice(0, 10);
+  const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
+  const buildDatePattern = (day: number) => `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); } else { setSelectedMonth(m => m - 1); }
+    setSelectedDateDay(1);
+  };
+  const goToNextMonth = () => {
+    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); } else { setSelectedMonth(m => m + 1); }
+    setSelectedDateDay(1);
+  };
+
   const hasAppointments = (day: number) => {
-    const datePattern = `2026-06-${day.toString().padStart(2, '0')}`;
-    return appointments.some(appt => appt.date === datePattern);
+    const datePattern = buildDatePattern(day);
+    return appointments.some(appt => toDateKey(appt.date) === datePattern);
   };
 
   const hasInProgressAppointments = (day: number) => {
-    const datePattern = `2026-06-${day.toString().padStart(2, '0')}`;
-    return appointments.some(appt => appt.date === datePattern && appt.status === 'IN_PROGRESS');
+    const datePattern = buildDatePattern(day);
+    return appointments.some(appt => toDateKey(appt.date) === datePattern && appt.status === 'IN_PROGRESS');
   };
 
   const dayAppointments = appointments
-    .filter(appt => {
-      const datePattern = `2026-06-${selectedDateDay.toString().padStart(2, '0')}`;
-      return appt.date === datePattern;
-    })
-    .sort((a, b) => a.time.localeCompare(b.time));
+    .filter(appt => toDateKey(appt.date) === buildDatePattern(selectedDateDay))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   if (loading) {
     return (
@@ -278,17 +283,23 @@ export const StylistAgenda: React.FC = () => {
         {/* CALENDARIO Y TAREAS */}
         <div className={`md:col-span-7 space-y-6 ${activeMobileTab === 'calendar' ? 'block' : 'hidden md:block'}`}>
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs text-left">
-            <h3 className="serif-title text-lg text-[#3B0019] border-b border-[#EADEC9]/25 pb-2 mb-4">Calendario Personal - Junio 2026</h3>
+            <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2 mb-4">
+              <button type="button" onClick={goToPreviousMonth} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40">‹</button>
+              <h3 className="serif-title text-lg text-[#3B0019] capitalize">Calendario Personal - {monthLabel}</h3>
+              <button type="button" onClick={goToNextMonth} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40">›</button>
+            </div>
 
             {/* Grid Calendario Mensual */}
             <div className="grid grid-cols-7 gap-2 text-center text-xs">
               {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => (
                 <span key={d} className="font-bold text-[#A8A29E] py-1">{d}</span>
               ))}
-              
-              <span className="py-3 bg-neutral-50/10"></span>
 
-              {Array.from({ length: daysInJune }).map((_, i) => {
+              {Array.from({ length: new Date(selectedYear, selectedMonth - 1, 1).getDay() }).map((_, i) => (
+                <span key={`blank-${i}`} className="py-3 bg-neutral-50/10"></span>
+              ))}
+
+              {Array.from({ length: daysInSelectedMonth }).map((_, i) => {
                 const day = i + 1;
                 const hasAppts = hasAppointments(day);
                 const hasInProgress = hasInProgressAppointments(day);
@@ -321,7 +332,7 @@ export const StylistAgenda: React.FC = () => {
           {/* Lista de citas */}
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs space-y-4 text-left">
             <div className="flex justify-between border-b border-[#EADEC9]/20 pb-2">
-              <h4 className="serif-title text-base text-[#3B0019] font-medium">Turnos del día {selectedDateDay} de Junio</h4>
+              <h4 className="serif-title text-base text-[#3B0019] font-medium capitalize">Turnos del día {selectedDateDay} de {monthLabel.split(' ')[0]}</h4>
               <span className="text-xs text-[#A68F63] font-semibold">{dayAppointments.length} citas propias</span>
             </div>
 
@@ -335,18 +346,18 @@ export const StylistAgenda: React.FC = () => {
                   <div key={appt.id} className="p-4 rounded-xl bg-[#FDFBF7] border border-[#EADEC9]/30 flex flex-col sm:flex-row justify-between gap-4 items-start shadow-2xs">
                     <div className="flex gap-4 items-start">
                       <div className="text-center pr-3 border-r border-[#EADEC9]/20">
-                        <span className="text-base font-extrabold text-[#8E1B54] block">{appt.time}</span>
-                        <span className="text-[9px] uppercase tracking-wider text-[#A8A29E] font-medium">Junio</span>
+                        <span className="text-base font-extrabold text-[#8E1B54] block">{toTimeLabel(appt.date)}</span>
+                        <span className="text-[9px] uppercase tracking-wider text-[#A8A29E] font-medium capitalize">{monthLabel.split(' ')[0]}</span>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="block text-xs font-bold text-[#44403C]">{appt.clientName || 'Cliente'}</span>
+                          <span className="block text-xs font-bold text-[#44403C]">{appt.client?.name || 'Cliente'}</span>
                           <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                             appt.status === 'IN_PROGRESS' ? 'bg-[#5C0632] text-white animate-pulse' : 'bg-neutral-100 text-neutral-500'
                           }`}>{appt.status}</span>
                         </div>
-                        <p className="text-xs text-[#78716C] leading-normal">{getServiceNames(appt.serviceIds)}</p>
-                        <p className="text-[9px] text-[#A68F63] font-semibold">Sesión: {getServiceDuration(appt.serviceIds)}</p>
+                        <p className="text-xs text-[#78716C] leading-normal">{getServiceNames(appt.services)}</p>
+                        <p className="text-[9px] text-[#A68F63] font-semibold">Sesión: {getServiceDuration(appt.services)}</p>
                       </div>
                     </div>
 
