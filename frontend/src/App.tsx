@@ -165,6 +165,30 @@ export default function App() {
     }
   }, [session]);
 
+  // Refresca la lista de manicuristas (fotos, nombres) cada vez que se entra a
+  // reservar, sin volver a mostrar la pantalla de carga completa: los datos se
+  // cargan una sola vez al montar la app y no se refrescaban solos despues.
+  useEffect(() => {
+    if (view === 'booking') {
+      fetchManicurists().then(fresh => {
+        if (fresh.length > 0) setManicurists(fresh);
+      });
+    }
+  }, [view]);
+
+  const fetchManicurists = async (): Promise<Manicurist[]> => {
+    try {
+      const res = await fetch('http://localhost:3000/api/manicurists');
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data?.manicurists || []);
+      }
+    } catch (e) {
+      console.warn('Fallo al obtener manicuristas:', e);
+    }
+    return [];
+  };
+
   const loadData = async () => {
     const fallbackServices: Service[] = [
       { id: '1', name: 'Manicura Premium WineSpa', price: 35000, duration: '60 mins', description: 'Tratamiento completo de cutícula, exfoliación con sales de uva y esmaltado tradicional o semipermanente.', shortDescription: 'Exfoliación con sales de uva' },
@@ -194,15 +218,7 @@ export default function App() {
         console.warn('Fallo al obtener servicios:', e);
       }
 
-      try {
-        const manicuristsRes = await fetch('http://localhost:3000/api/manicurists');
-        if (manicuristsRes.ok) {
-          const data = await manicuristsRes.json();
-          fetchedManicurists = Array.isArray(data) ? data : (data?.manicurists || []);
-        }
-      } catch (e) {
-        console.warn('Fallo al obtener manicuristas:', e);
-      }
+      fetchedManicurists = await fetchManicurists();
 
       setServices(fetchedServices.length > 0 ? fetchedServices : fallbackServices);
       setManicurists(fetchedManicurists.length > 0 ? fetchedManicurists : fallbackManicurists);
