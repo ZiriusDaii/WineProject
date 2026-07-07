@@ -60,6 +60,9 @@ export const StylistAgenda: React.FC = () => {
   const [selectedDateDay, setSelectedDateDay] = useState<number>(today.getDate());
 
   const [loading, setLoading] = useState(true);
+  // Distingue la carga inicial (pantalla completa) de recargas posteriores
+  // (cambio de mes), que solo deben mostrar un indicador chico sin tapar la UI.
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -112,6 +115,7 @@ export const StylistAgenda: React.FC = () => {
       // Ignorar fallos de conexión y usar mocks de seguridad
     } finally {
       setLoading(false);
+      setHasLoadedOnce(true);
     }
   };
 
@@ -242,7 +246,7 @@ export const StylistAgenda: React.FC = () => {
     .filter(appt => toDateKey(appt.date) === buildDatePattern(selectedDateDay))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  if (loading) {
+  if (loading && !hasLoadedOnce) {
     return (
       <div className="min-h-screen bg-[#FDFBF7] flex justify-center items-center font-sans">
         <span className="serif-title text-2xl font-light tracking-widest text-[#3B0019] animate-pulse">Sincronizando Agenda...</span>
@@ -284,9 +288,14 @@ export const StylistAgenda: React.FC = () => {
         <div className={`md:col-span-7 space-y-6 ${activeMobileTab === 'calendar' ? 'block' : 'hidden md:block'}`}>
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs text-left">
             <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2 mb-4">
-              <button type="button" onClick={goToPreviousMonth} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40">‹</button>
-              <h3 className="serif-title text-lg text-[#3B0019] capitalize">Calendario Personal - {monthLabel}</h3>
-              <button type="button" onClick={goToNextMonth} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40">›</button>
+              <button type="button" onClick={goToPreviousMonth} disabled={loading} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40 disabled:opacity-40">‹</button>
+              <h3 className="serif-title text-lg text-[#3B0019] capitalize flex items-center gap-2">
+                Calendario Personal - {monthLabel}
+                {loading && hasLoadedOnce && (
+                  <div className="w-3.5 h-3.5 border-2 border-[#8E1B54] border-t-transparent rounded-full animate-spin"></div>
+                )}
+              </h3>
+              <button type="button" onClick={goToNextMonth} disabled={loading} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40 disabled:opacity-40">›</button>
             </div>
 
             {/* Grid Calendario Mensual */}
