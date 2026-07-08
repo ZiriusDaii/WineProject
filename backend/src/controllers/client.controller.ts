@@ -68,6 +68,8 @@ export async function getServices(req: Request, res: Response): Promise<void> {
           id: true,
           name: true,
           shortDescription: true,
+          includesDescription: true,
+          category: true,
           price: true,
           durationInMinutes: true,
         },
@@ -93,6 +95,8 @@ export async function getServices(req: Request, res: Response): Promise<void> {
           id: true,
           name: true,
           shortDescription: true,
+          includesDescription: true,
+          category: true,
           price: true,
           durationInMinutes: true,
         },
@@ -303,6 +307,24 @@ export async function createAppointment(
     if (await findOverlappingAppointment(manicuristId!, parsedDate, totalDuration)) {
       res.status(409).json({ error: "La manicurista ya tiene una cita en ese horario" });
       return;
+    }
+
+    const categoryGroups = new Map<string, typeof services>();
+    for (const s of services) {
+      if (s.category) {
+        const group = categoryGroups.get(s.category);
+        if (group) group.push(s);
+        else categoryGroups.set(s.category, [s]);
+      }
+    }
+    for (const [, svcs] of categoryGroups) {
+      if (svcs.length > 1) {
+        const names = svcs.map((s) => `'${s.name}'`).join(" y ");
+        res.status(400).json({
+          error: `No podés agendar ${names} juntos: son de la misma categoría`,
+        });
+        return;
+      }
     }
 
     const appointment = await prisma.appointment.create({
