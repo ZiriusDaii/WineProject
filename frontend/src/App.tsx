@@ -50,6 +50,13 @@ interface Appointment {
 const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
 const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
 
+// ponytail: telefono placeholder compartido hasta que el negocio confirme los numeros reales por sede.
+const SEDES = [
+  { nombre: 'Cc. Parque Fabricato', direccion: 'S1 local 104', telefono: '+57 300 000 0000' },
+  { nombre: 'Cc. Metro Cencosud', direccion: 'Local 1009', telefono: '+57 300 000 0000' },
+  { nombre: 'Cc. Madera Mall', direccion: 'Local 209', telefono: '+57 300 000 0000' },
+];
+
 interface AppointmentResponse {
   id?: string | number;
   appointmentId?: string | number;
@@ -1338,9 +1345,14 @@ export default function App() {
       {view === 'cancellation' && <PoliticaCancelacion onBack={() => setView('landing')} />}
 
       {/* FOOTER */}
-      <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-2 mt-auto">
+      <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-3 mt-auto">
         <span className="serif-title text-base text-[#3B0019] block">WineSpa</span>
-        <p className="text-[10px] text-[#78716C]">Calle de Lujo Nro. 12-34, El Poblado, Medellín • Lunes a Sábado: 9:00 AM - 8:00 PM</p>
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-1.5 text-[10px] text-[#78716C]">
+          {SEDES.map((sede) => (
+            <span key={sede.nombre}>{sede.nombre} • {sede.direccion} • {sede.telefono}</span>
+          ))}
+        </div>
+        <p className="text-[10px] text-[#78716C]">Lunes a Sábado: 9:00 AM - 8:00 PM</p>
         <div className="flex justify-center gap-4 pt-1">
           <button onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
           <button onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
