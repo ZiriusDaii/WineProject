@@ -671,33 +671,35 @@ export default function App() {
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans relative">
       
       {/* NAVBAR */}
-      <nav className="sticky top-0 z-40 bg-[#FDFBF7]/90 backdrop-blur-md border-b border-[#EADEC9]/30 px-6 py-4 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div className="flex flex-col cursor-pointer" onClick={() => setView('landing')}>
-          <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019]">WineSpa</span>
-          <span className="text-[8px] uppercase tracking-[0.22em] text-[#A68F63] -mt-1 font-semibold">Boutique</span>
-        </div>
+      <nav className="sticky top-0 z-40 w-full bg-[#FDFBF7] border-b border-[#EADEC9]/30">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex flex-col cursor-pointer" onClick={() => setView('landing')}>
+            <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019]">WineSpa</span>
+            <span className="text-[8px] uppercase tracking-[0.22em] text-[#A68F63] -mt-1 font-semibold">Boutique</span>
+          </div>
 
-        <div className="hidden md:flex items-center gap-6 text-xs text-[#78716C]">
-          <a href="#services" className="hover:text-[#3B0019]">Servicios</a>
-          {offers.length > 0 && <a href="#promos" className="hover:text-[#3B0019]">Ofertas</a>}
-          {session && session.role === 'cliente' && (
-            <button onClick={() => setView('clientPortal')} className="hover:text-[#3B0019] text-xs font-semibold">Mi Portal</button>
+          <div className="hidden md:flex items-center gap-6 text-xs text-[#78716C]">
+            <a href="#services" className="hover:text-[#3B0019]">Servicios</a>
+            {offers.length > 0 && <a href="#promos" className="hover:text-[#3B0019]">Ofertas</a>}
+            {session && session.role === 'cliente' && (
+              <button onClick={() => setView('clientPortal')} className="hover:text-[#3B0019] text-xs font-semibold">Mi Portal</button>
+            )}
+          </div>
+
+          {session ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-[#3B0019] font-semibold">Hola, {session.name}</span>
+              <button onClick={handleLogout} className="px-3.5 py-1.5 rounded-full border border-[#8E1B54] text-[#8E1B54] text-xs font-semibold hover:bg-[#8E1B54]/5">Cerrar Sesión</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setAuthError(null); setShowClientRegister(false); setLoginMode('client'); setIsLoginOpen(true); }}
+              className="px-4 py-2 rounded-full border border-[#C3AD86] hover:bg-[#EADEC9]/20 text-[#5C0632] text-xs font-semibold transition-all"
+            >
+              Iniciar Sesión
+            </button>
           )}
         </div>
-
-        {session ? (
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#3B0019] font-semibold">Hola, {session.name}</span>
-            <button onClick={handleLogout} className="px-3.5 py-1.5 rounded-full border border-[#8E1B54] text-[#8E1B54] text-xs font-semibold hover:bg-[#8E1B54]/5">Cerrar Sesión</button>
-          </div>
-        ) : (
-          <button
-            onClick={() => { setAuthError(null); setShowClientRegister(false); setLoginMode('client'); setIsLoginOpen(true); }}
-            className="px-4 py-2 rounded-full border border-[#C3AD86] hover:bg-[#EADEC9]/20 text-[#5C0632] text-xs font-semibold transition-all"
-          >
-            Iniciar Sesión
-          </button>
-        )}
       </nav>
 
       {/* RENDER PORTAL DEL CLIENTE */}
@@ -955,7 +957,7 @@ export default function App() {
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
         <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <button onClick={() => setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing')} className="absolute top-4 left-4 z-40 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
+          <button onClick={() => setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing')} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
             ← Volver
           </button>
 
