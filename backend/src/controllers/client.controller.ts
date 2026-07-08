@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 
+const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
+
 export async function getServices(req: Request, res: Response): Promise<void> {
   try {
     const hasPagination = req.query.page || req.query.limit || req.query.search;
@@ -98,6 +100,11 @@ export async function authClient(
       return;
     }
 
+    if (!isValidPhone(phone)) {
+      res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { phone },
       select: {
@@ -152,6 +159,21 @@ export async function createClient(
       res
         .status(400)
         .json({ error: "Los campos 'phone' y 'name' son requeridos" });
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
+      return;
+    }
+
+    if (name.length > 60) {
+      res.status(400).json({ error: "El campo 'name' es demasiado largo" });
+      return;
+    }
+
+    if (age != null && (age < 0 || age > 120)) {
+      res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
       return;
     }
 
