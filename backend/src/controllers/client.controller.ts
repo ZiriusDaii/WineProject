@@ -265,12 +265,95 @@ export async function createAppointment(
   }
 }
 
+export async function updateAppointment(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { status, date, manicuristId } = req.body as {
+      status?: string;
+      date?: string;
+      manicuristId?: string;
+    };
+
+    if (!id) {
+      res.status(400).json({ error: "El parametro 'id' es requerido" });
+      return;
+    }
+
+    if (status && status !== "CANCELLED") {
+      res.status(400).json({ error: "El estado solo puede ser 'CANCELLED'" });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    const data: Record<string, unknown> = {};
+    if (status) data.status = status;
+    if (date) data.date = new Date(date);
+    if (manicuristId) data.manicuristId = manicuristId;
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data,
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        manicurist: { select: { id: true, name: true } },
+        services: true,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando cita:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
 export async function getClientAppointments(
   req: Request,
   res: Response,
 ): Promise<void> {
   try {
     const clientId = (req.params.clientId ?? req.query.clientId) as string | undefined;
+    const date = req.query.date as string | undefined;
+    const manicuristId = req.query.manicuristId as string | undefined;
+
+    if (date || manicuristId) {
+      const where: Record<string, unknown> = {};
+
+      if (date) {
+        const startOfDay = new Date(`${date}T00:00:00.000Z`);
+        const endOfDay = new Date(`${date}T23:59:59.999Z`);
+        where.date = { gte: startOfDay, lte: endOfDay };
+      }
+
+      if (manicuristId) {
+        where.manicuristId = manicuristId;
+      }
+
+      const appointments = await prisma.appointment.findMany({
+        where,
+        select: {
+          id: true,
+          date: true,
+          totalDuration: true,
+          services: true,
+        },
+        orderBy: { date: "asc" },
+      });
+
+      res.json(appointments);
+      return;
+    }
 
     if (!clientId) {
       res.status(400).json({ error: "El identificador 'clientId' es requerido" });

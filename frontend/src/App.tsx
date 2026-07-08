@@ -323,7 +323,7 @@ export default function App() {
       const res = await fetch(`http://localhost:3000/api/appointments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: newDateInput, time: newTimeInput })
+        body: JSON.stringify({ date: new Date(`${newDateInput}T${newTimeInput}:00`).toISOString() })
       });
       if (res.ok) {
         alert('Horario modificado con éxito.');
