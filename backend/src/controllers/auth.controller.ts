@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 
@@ -43,7 +44,7 @@ export async function loginStaff(
       return;
     }
 
-    if (user.password !== password) {
+    if (!user.password || !(await bcrypt.compare(password, user.password))) {
       res.status(401).json({ error: "Credenciales inválidas" });
       return;
     }

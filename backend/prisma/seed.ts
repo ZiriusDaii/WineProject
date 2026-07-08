@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "../prisma/generated/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -62,10 +63,12 @@ async function seedUser(
   username: string,
   password: string,
 ) {
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   const user = await prisma.user.upsert({
     where: { phone },
-    update: { name, role: { set: role }, username, password },
-    create: { phone, name, role, username, password },
+    update: { name, role: { set: role }, username, password: hashedPassword },
+    create: { phone, name, role, username, password: hashedPassword },
   });
 
   console.log(`  User upserted: ${name} - ${username} (${role})`);
