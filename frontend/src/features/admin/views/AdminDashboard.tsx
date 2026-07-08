@@ -8,15 +8,22 @@ interface Stats {
   manicuristPerformance: { name: string; appointmentsCount: number }[];
 }
 
+interface Service {
+  id: string | number;
+  name: string;
+  price: string | number;
+  durationInMinutes?: string | number;
+}
+
 interface Appointment {
   id: string | number;
   appointmentId?: string | number;
   clientName?: string;
+  client?: { name?: string };
   clientId?: string | number;
   manicuristId: string | number;
-  serviceIds: (string | number)[];
+  services: Service[];
   date: string;
-  time: string;
   total?: number | string;
   status?: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
@@ -47,6 +54,9 @@ interface Client {
   gender?: string;
   appointmentHistoryCount?: number;
 }
+
+const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
+const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'metrics' | 'appointments' | 'manicurists' | 'clients' | 'services' | 'news'>('metrics');
@@ -135,9 +145,9 @@ export const AdminDashboard: React.FC = () => {
         }
       } catch {
         apptsData = [
-          { id: '1', appointmentId: 'WS-101', clientId: '1', clientName: 'Martha Cecilia Gómez', manicuristId: '1', serviceIds: ['1'], date: '2026-06-18', time: '10:00', total: 35000, status: 'CONFIRMED' },
-          { id: '2', appointmentId: 'WS-102', clientId: '2', clientName: 'Liliana Restrepo', manicuristId: '2', serviceIds: ['2'], date: '2026-06-18', time: '11:30', total: 45000, status: 'PENDING' },
-          { id: '3', appointmentId: 'WS-103', clientId: '3', clientName: 'Diana Uribe', manicuristId: '1', serviceIds: ['3'], date: '2026-06-18', time: '14:00', total: 75000, status: 'IN_PROGRESS' }
+          { id: '1', appointmentId: 'WS-101', clientId: '1', clientName: 'Martha Cecilia Gómez', manicuristId: '1', services: [{ id: '1', name: 'Manicure Tradicional', price: 35000, durationInMinutes: 45 }], date: '2026-06-18T10:00:00.000Z', total: 35000, status: 'CONFIRMED' },
+          { id: '2', appointmentId: 'WS-102', clientId: '2', clientName: 'Liliana Restrepo', manicuristId: '2', services: [{ id: '2', name: 'Manicure Semipermanente', price: 45000, durationInMinutes: 60 }], date: '2026-06-18T11:30:00.000Z', total: 45000, status: 'PENDING' },
+          { id: '3', appointmentId: 'WS-103', clientId: '3', clientName: 'Diana Uribe', manicuristId: '1', services: [{ id: '3', name: 'Nail Art Premium', price: 75000, durationInMinutes: 90 }], date: '2026-06-18T14:00:00.000Z', total: 75000, status: 'IN_PROGRESS' }
         ];
       }
       setAppointments((apptsData || []).map(a => ({ ...a, status: (a.status || 'PENDING').toUpperCase() as any })));
@@ -253,31 +263,35 @@ export const AdminDashboard: React.FC = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    try {
-      let finalImgUrl = '';
-      if (selectedCarouselFile) {
-        const formData = new FormData();
-        formData.append('image', selectedCarouselFile);
-        const uploadRes = await fetch('http://localhost:3000/api/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          finalImgUrl = uploadData.url;
-        } else {
-          throw new Error('Error al subir el archivo');
-        }
-      }
+    if (!selectedCarouselFile) {
+      setErrorMsg('Selecciona una imagen para el carrusel.');
+      setSubmitting(false);
+      return;
+    }
 
-      const res = await fetch('http://localhost:3000/api/admin/landing-content', {
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedCarouselFile);
+      const uploadRes = await fetch('http://localhost:3000/api/admin/landing/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!uploadRes.ok) {
+        throw new Error('Error al subir el archivo');
+      }
+      const uploadData = await uploadRes.json();
+      const finalImgUrl = uploadData.imageUrl;
+
+      const res = await fetch('http://localhost:3000/api/admin/landing-cms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify([{
+          type: 'CAROUSEL',
+          title: landingNewsTitle,
+          description: landingNewsDesc,
           imageUrl: finalImgUrl,
-          newsTitle: landingNewsTitle,
-          newsDescription: landingNewsDesc
-        })
+          isActive: true
+        }])
       });
 
       if (res.ok) {
@@ -325,11 +339,8 @@ export const AdminDashboard: React.FC = () => {
     return manicurists.find(m => String(m.id) === String(id))?.name || 'Profesional';
   };
 
-  const getServiceNames = (ids: (string | number)[]) => {
-    return servicesCatalog
-      .filter(s => ids.map(id => String(id)).includes(String(s.id)))
-      .map(s => s.name)
-      .join(', ') || 'Manicura';
+  const getServiceNames = (apptServices: Service[]) => {
+    return apptServices.map(s => s.name).join(', ') || 'Manicura';
   };
 
   if (loading) {
@@ -479,10 +490,10 @@ export const AdminDashboard: React.FC = () => {
                       appointments?.length > 0 && getPaginatedItems(getFilteredAppointments()).map((appt: Appointment) => (
                         <tr key={appt.id} className={`hover:bg-[#F7F3EB]/10 transition-colors ${appt.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5 font-semibold text-[#3B0019]' : ''}`}>
                           <td className="p-4 font-mono font-bold">#{appt.appointmentId || appt.id}</td>
-                          <td className="p-4">{appt.clientName || 'Cliente'}</td>
+                          <td className="p-4">{appt.clientName || appt.client?.name || 'Cliente'}</td>
                           <td className="p-4">{getManicuristName(appt.manicuristId)}</td>
-                          <td className="p-4 truncate max-w-xs">{getServiceNames(appt.serviceIds)}</td>
-                          <td className="p-4">{appt.date} • {appt.time}</td>
+                          <td className="p-4 truncate max-w-xs">{getServiceNames(appt.services)}</td>
+                          <td className="p-4">{toDateLabel(appt.date)} • {toTimeLabel(appt.date)}</td>
                           <td className="p-4">
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                               appt.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :

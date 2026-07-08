@@ -244,11 +244,16 @@ export default function App() {
 
       try {
         const landingRes = await fetch('http://localhost:3000/api/landing/content');
-        if (landingRes.ok) {
-          setLandingContent(await landingRes.json());
-        } else {
-          throw new Error();
-        }
+        if (!landingRes.ok) throw new Error();
+        const items: { type: string; title: string; description?: string | null; imageUrl: string; order?: number }[] = await landingRes.json();
+        const carousel = items
+          .filter((i) => i.type === 'CAROUSEL')
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        if (carousel.length === 0) throw new Error();
+        setLandingContent({
+          images: carousel.map((i) => i.imageUrl),
+          news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
+        });
       } catch {
         setLandingContent({
           images: [
