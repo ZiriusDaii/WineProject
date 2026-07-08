@@ -7,7 +7,7 @@ interface Service {
   id: string | number;
   name: string;
   price: string | number;
-  duration?: string | number;
+  durationInMinutes?: string | number;
   description?: string;
   shortDescription?: string;
 }
@@ -56,6 +56,52 @@ const SEDES = [
   { nombre: 'Cc. Metro Cencosud', direccion: 'Local 1009', telefono: '+57 300 000 0000' },
   { nombre: 'Cc. Madera Mall', direccion: 'Local 209', telefono: '+57 300 000 0000' },
 ];
+
+// Horario del local (ficha de Google del negocio). 0=Domingo..6=Sabado. Debe
+// coincidir con BUSINESS_HOURS en backend/src/controllers/client.controller.ts.
+// ponytail: miercoles no estaba visible en la captura que nos pasaron, se asume
+// igual a L/M/J/V (9:00-20:00); confirmar con el negocio y ajustar si hace falta.
+const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
+  0: { open: '09:00', close: '19:00' },
+  1: { open: '09:00', close: '20:00' },
+  2: { open: '09:00', close: '20:00' },
+  3: { open: '09:00', close: '20:00' },
+  4: { open: '09:00', close: '20:00' },
+  5: { open: '09:00', close: '20:00' },
+  6: { open: '09:00', close: '19:00' },
+};
+
+const SLOT_STEP_MINUTES = 30;
+
+const timeToMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':');
+  return Number(h) * 60 + Number(m);
+};
+
+const minutesToTime = (mins: number) => {
+  const h = String(Math.floor(mins / 60)).padStart(2, '0');
+  const m = String(mins % 60).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+// Genera los horarios candidatos para una fecha (YYYY-MM-DD), respetando el
+// horario del local y descartando los que se solapan con `busy` (rangos en
+// minutos desde medianoche, ya filtrados a la manicurista/fecha elegida).
+const getAvailableSlots = (dateStr: string, durationMinutes: number, busy: { start: number; end: number }[]): string[] => {
+  if (!dateStr || !durationMinutes) return [];
+  const dayOfWeek = new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
+  const hours = BUSINESS_HOURS[dayOfWeek];
+  if (!hours) return [];
+  const openMin = timeToMinutes(hours.open);
+  const closeMin = timeToMinutes(hours.close);
+  const slots: string[] = [];
+  for (let start = openMin; start + durationMinutes <= closeMin; start += SLOT_STEP_MINUTES) {
+    const end = start + durationMinutes;
+    const overlaps = busy.some((b) => start < b.end && b.start < end);
+    if (!overlaps) slots.push(minutesToTime(start));
+  }
+  return slots;
+};
 
 interface AppointmentResponse {
   id?: string | number;
@@ -123,10 +169,11 @@ export default function App() {
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Control de Modales Booking
   const [isBookingOpen, setIsBookingOpen] = useState(false); // Móvil
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
@@ -144,6 +191,8 @@ export default function App() {
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | number | null>(null);
   const [newDateInput, setNewDateInput] = useState('');
   const [newTimeInput, setNewTimeInput] = useState('');
+  const [rescheduleSlots, setRescheduleSlots] = useState<string[]>([]);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
 
   // Hydration al montar
@@ -184,6 +233,70 @@ export default function App() {
     }
   }, [view]);
 
+  // Recalcula los horarios disponibles (dentro del horario del local, sin
+  // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
+  // servicios elegidos.
+  useEffect(() => {
+    const totalDuration = services
+      .filter(s => selectedServiceIds.includes(String(s.id)))
+      .reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0);
+
+    if (!bookingDate || !selectedSpecialist || totalDuration === 0) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingSlots(true);
+    fetch(`http://localhost:3000/api/appointments?date=${bookingDate}&manicuristId=${selectedSpecialist}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((occupied: { date: string; totalDuration: number }[]) => {
+        if (cancelled) return;
+        const busy = occupied.map(a => {
+          const start = timeToMinutes(toTimeLabel(a.date));
+          return { start, end: start + a.totalDuration };
+        });
+        const slots = getAvailableSlots(bookingDate, totalDuration, busy);
+        setAvailableSlots(slots);
+        if (bookingTime && !slots.includes(bookingTime)) setBookingTime('');
+      })
+      .catch(() => { if (!cancelled) setAvailableSlots([]); })
+      .finally(() => { if (!cancelled) setLoadingSlots(false); });
+
+    return () => { cancelled = true; };
+  }, [bookingDate, selectedSpecialist, selectedServiceIds, services]);
+
+  // Mismo calculo de horarios disponibles, para reprogramar una cita existente.
+  // Excluye la propia cita (excludeId) para no chocar contra su propio horario actual.
+  useEffect(() => {
+    const editingAppt = clientAppointments.find(a => a.id === editingAppointmentId);
+    const totalDuration = editingAppt?.services.reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0) ?? 0;
+
+    if (!editingAppt || !newDateInput || totalDuration === 0) {
+      setRescheduleSlots([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingRescheduleSlots(true);
+    fetch(`http://localhost:3000/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((occupied: { date: string; totalDuration: number }[]) => {
+        if (cancelled) return;
+        const busy = occupied.map(a => {
+          const start = timeToMinutes(toTimeLabel(a.date));
+          return { start, end: start + a.totalDuration };
+        });
+        const slots = getAvailableSlots(newDateInput, totalDuration, busy);
+        setRescheduleSlots(slots);
+        if (newTimeInput && !slots.includes(newTimeInput)) setNewTimeInput('');
+      })
+      .catch(() => { if (!cancelled) setRescheduleSlots([]); })
+      .finally(() => { if (!cancelled) setLoadingRescheduleSlots(false); });
+
+    return () => { cancelled = true; };
+  }, [editingAppointmentId, newDateInput, clientAppointments]);
+
   const fetchManicurists = async (): Promise<Manicurist[]> => {
     try {
       const res = await fetch('http://localhost:3000/api/manicurists');
@@ -199,9 +312,9 @@ export default function App() {
 
   const loadData = async () => {
     const fallbackServices: Service[] = [
-      { id: '1', name: 'Manicura Premium WineSpa', price: 35000, duration: '60 mins', description: 'Tratamiento completo de cutícula, exfoliación con sales de uva y esmaltado tradicional o semipermanente.', shortDescription: 'Exfoliación con sales de uva' },
-      { id: '2', name: 'Pedicura Ritual de Malbec', price: 45000, duration: '75 mins', description: 'Baño de pies con infusión antioxidante de vino, remoción de asperezas, masaje hidratante y esmaltado.', shortDescription: 'Baño relajante antioxidante' },
-      { id: '3', name: 'Nail Art Customizado', price: 75000, duration: '90 mins', description: 'Diseño mano alzada, pedrería fina y encapsulados personalizados creados por nuestras artistas.', shortDescription: 'Diseño a mano alzada y joyas' }
+      { id: '1', name: 'Manicura Premium WineSpa', price: 35000, durationInMinutes: 60, description: 'Tratamiento completo de cutícula, exfoliación con sales de uva y esmaltado tradicional o semipermanente.', shortDescription: 'Exfoliación con sales de uva' },
+      { id: '2', name: 'Pedicura Ritual de Malbec', price: 45000, durationInMinutes: 75, description: 'Baño de pies con infusión antioxidante de vino, remoción de asperezas, masaje hidratante y esmaltado.', shortDescription: 'Baño relajante antioxidante' },
+      { id: '3', name: 'Nail Art Customizado', price: 75000, durationInMinutes: 90, description: 'Diseño mano alzada, pedrería fina y encapsulados personalizados creados por nuestras artistas.', shortDescription: 'Diseño a mano alzada y joyas' }
     ];
 
     const fallbackManicurists: Manicurist[] = [
@@ -328,7 +441,9 @@ export default function App() {
       const res = await fetch(`http://localhost:3000/api/appointments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: new Date(`${newDateInput}T${newTimeInput}:00`).toISOString() })
+        // Concatenacion directa: `new Date(...).toISOString()` interpretaba el string
+        // como hora local del navegador y corria la hora guardada.
+        body: JSON.stringify({ date: `${newDateInput}T${newTimeInput}:00.000Z` })
       });
       if (res.ok) {
         alert('Horario modificado con éxito.');
@@ -585,8 +700,10 @@ export default function App() {
           clientId,
           manicuristId: selectedSpecialist,
           serviceIds: selectedServiceIds,
-          date: bookingDate,
-          time: bookingTime
+          // Concatenacion directa, no pasar por `new Date(...)`: interpreta el string
+          // como hora local del navegador y lo corre a UTC, desincronizando la hora
+          // guardada de la que el usuario realmente eligio.
+          date: `${bookingDate}T${bookingTime}:00.000Z`,
         })
       });
 
@@ -649,11 +766,6 @@ export default function App() {
     setSelectedServiceIds(prev =>
       prev.includes(idStr) ? prev.filter(x => x !== idStr) : [...prev, idStr]
     );
-  };
-
-  const handleSelectCalendarDay = (day: number) => {
-    setBookingDate(`2026-06-${String(day).padStart(2, '0')}`);
-    setIsCalendarOpen(false);
   };
 
   const activeSpecialistDetails = manicurists.find(m => String(m.id) === String(selectedSpecialist));
@@ -802,19 +914,33 @@ export default function App() {
 
                         {editingAppointmentId === appt.id && (
                           <div className="space-y-2 p-3 bg-[#FDFBF7] rounded-xl border border-[#EADEC9]/60 mt-1">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold block">Nueva Fecha</label>
-                                <input type="date" value={newDateInput} onChange={e => setNewDateInput(e.target.value)} className="w-full p-1 border text-xs rounded bg-white focus:outline-hidden" />
-                              </div>
-                              <div>
-                                <label className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold block">Nueva Hora</label>
-                                <input type="time" value={newTimeInput} onChange={e => setNewTimeInput(e.target.value)} className="w-full p-1 border text-xs rounded bg-white focus:outline-hidden" />
-                              </div>
+                            <div>
+                              <label className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold block">Nueva Fecha</label>
+                              <input type="date" min={new Date().toISOString().slice(0, 10)} value={newDateInput} onChange={e => { setNewDateInput(e.target.value); setNewTimeInput(''); }} className="w-full p-1 border text-xs rounded bg-white focus:outline-hidden" />
                             </div>
+                            {newDateInput && (
+                              loadingRescheduleSlots ? (
+                                <p className="text-[9px] text-[#78716C]">Buscando horarios...</p>
+                              ) : rescheduleSlots.length === 0 ? (
+                                <p className="text-[9px] text-[#78716C]">Sin horarios disponibles ese día.</p>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {rescheduleSlots.map(slot => (
+                                    <button
+                                      key={slot}
+                                      type="button"
+                                      onClick={() => setNewTimeInput(slot)}
+                                      className={`px-2 py-1 rounded text-[10px] border ${newTimeInput === slot ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60'}`}
+                                    >
+                                      {slot}
+                                    </button>
+                                  ))}
+                                </div>
+                              )
+                            )}
                             <div className="flex gap-2 justify-end pt-1">
                               <button onClick={() => setEditingAppointmentId(null)} className="px-2.5 py-1 border rounded text-[10px]">Cancelar</button>
-                              <button onClick={() => handleUpdateSchedule(appt.id)} disabled={isUpdatingSchedule} className="px-2.5 py-1 bg-[#8E1B54] text-white rounded text-[10px] font-bold">
+                              <button onClick={() => handleUpdateSchedule(appt.id)} disabled={isUpdatingSchedule || !newTimeInput} className="px-2.5 py-1 bg-[#8E1B54] text-white rounded text-[10px] font-bold disabled:opacity-50">
                                 {isUpdatingSchedule ? 'Guardando...' : 'Confirmar'}
                               </button>
                             </div>
@@ -965,7 +1091,7 @@ export default function App() {
                   </div>
                   <div className="p-5 space-y-3 flex-1 flex flex-col justify-between text-left">
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold">{s.duration || '60 mins'} de sesión</span>
+                      <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold">{s.durationInMinutes || 60} mins de sesión</span>
                       <h3 className="serif-title text-base text-[#3B0019] font-medium">{s.name}</h3>
                       {s.shortDescription && <p className="text-[10px] italic text-[#A68F63]">{s.shortDescription}</p>}
                       <p className="text-xs text-[#78716C] leading-normal font-light line-clamp-2">{s.description || 'Cuidado integral diseñado para nutrir y estilizar.'}</p>
@@ -1071,13 +1197,34 @@ export default function App() {
 
             <section className="space-y-4">
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Fecha & Hora</h2>
-              <button type="button" onClick={() => { if (selectedSpecialist) setIsCalendarOpen(true); else setSubmitError('Selecciona manicurista primero.'); }} className="px-4 py-2 bg-[#EADEC9]/20 text-[#5C0632] rounded-xl text-xs flex items-center gap-1.5 border border-[#EADEC9]/30">
-                Ver disponibilidad en calendario
-              </button>
-              <div className="grid grid-cols-2 gap-3 max-w-md pt-2">
-                <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="p-2.5 border rounded-xl text-xs bg-white" />
-                <input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} className="p-2.5 border rounded-xl text-xs bg-white" />
-              </div>
+              <input
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                value={bookingDate}
+                onChange={(e) => { setBookingDate(e.target.value); setBookingTime(''); }}
+                disabled={!selectedSpecialist}
+                className="p-2.5 border rounded-xl text-xs bg-white max-w-[200px] disabled:opacity-50"
+              />
+              {!selectedSpecialist ? (
+                <p className="text-[10px] text-[#78716C]">Selecciona una especialista primero.</p>
+              ) : !bookingDate ? null : loadingSlots ? (
+                <p className="text-[10px] text-[#78716C]">Buscando horarios disponibles...</p>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-[10px] text-[#78716C]">No hay horarios disponibles ese día, probá con otra fecha.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-w-md">
+                  {availableSlots.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setBookingTime(slot)}
+                      className={`px-3 py-1.5 rounded-lg text-xs border ${bookingTime === slot ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60 hover:border-[#8E1B54]'}`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* BLOCK CONFIRMACIÓN PC */}
@@ -1220,37 +1367,6 @@ export default function App() {
         </div>
       )}
 
-      {/* CALENDARIO AVAILABILITY MODAL */}
-      {isCalendarOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-[#FDFBF7] w-full max-w-[320px] rounded-3xl p-5 border border-[#EADEC9]/60 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h4 className="serif-title text-sm font-semibold text-[#3B0019]">Fechas Libres</h4>
-              <button type="button" onClick={() => setIsCalendarOpen(false)} className="w-6 h-6 rounded-full bg-neutral-200/50 flex items-center justify-center text-xs">✕</button>
-            </div>
-            <div className="grid grid-cols-7 gap-1.5 text-center text-[10px]">
-              {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => (
-                <span key={idx} className="font-bold text-[#A8A29E] py-1">{day}</span>
-              ))}
-              {Array.from({ length: 30 }).map((_, i) => {
-                const day = i + 1;
-                const isFree = ![3, 7, 10, 14, 18, 22, 25, 29].includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    disabled={!isFree}
-                    onClick={() => handleSelectCalendarDay(day)}
-                    className={`py-1.5 rounded-lg ${isFree ? 'bg-[#EADEC9]/40 text-[#3B0019] font-medium' : 'bg-neutral-100 text-neutral-300'}`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* LOGIN MODAL */}
       {isLoginOpen && (
