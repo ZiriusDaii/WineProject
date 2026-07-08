@@ -31,14 +31,28 @@ model User {
   age       Int?
   gender    String?
   role      Role     @default(CLIENTE)
+  sedeId    String?  @map("sede_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  sede                   Sede?                @relation(fields: [sedeId], references: [id])
   schedules              ManicuristSchedule[]
   clientAppointments     Appointment[]        @relation("ClientAppointments")
   manicuristAppointments Appointment[]        @relation("ManicuristAppointments")
 
   @@map("users")
+}
+
+model Sede {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  manicurists User[]
+
+  @@map("sedes")
 }
 
 model Service {

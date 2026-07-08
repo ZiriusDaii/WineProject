@@ -120,17 +120,31 @@ export async function getServices(req: Request, res: Response): Promise<void> {
 }
 
 export async function getManicurists(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
   try {
+    const sedeId = (req.query.sedeId as string)?.trim() || null;
+
     const manicurists = await prisma.user.findMany({
-      where: { role: "MANICURISTA" },
+      where: { role: "MANICURISTA", ...(sedeId && { sedeId }) },
       select: { id: true, name: true, avatarPath: true, age: true, gender: true },
     });
     res.json(manicurists);
   } catch (error) {
     console.error("Error obteniendo manicuristas:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getSedes(_req: Request, res: Response): Promise<void> {
+  try {
+    const sedes = await prisma.sede.findMany({
+      orderBy: { name: "asc" },
+    });
+    res.json(sedes);
+  } catch (error) {
+    console.error("Error obteniendo sedes:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

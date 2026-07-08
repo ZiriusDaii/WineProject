@@ -3,6 +3,7 @@ import { upload } from "../middlewares/upload.middleware.js";
 import {
   getServices,
   getManicurists,
+  getSedes,
   getOffers,
   authClient,
   createClient,
@@ -38,6 +39,7 @@ import { getLandingContent } from "../controllers/landing.controller.js";
 const router = Router();
 
 router.get("/services", getServices);
+router.get("/sedes", getSedes);
 router.get("/manicurists", getManicurists);
 router.get("/offers", getOffers);
 
