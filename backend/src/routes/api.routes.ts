@@ -7,6 +7,7 @@ import {
   authClient,
   createClient,
   createAppointment,
+  updateAppointment,
   getClientAppointments,
   uploadManicuristAvatar,
   uploadLandingImage,
@@ -72,5 +73,6 @@ router.get("/manicurist/appointments", getManicuristDashboard);
 router.put("/manicurist/profile", updateManicuristProfile);
 
 router.put("/appointments/:id/complete", completeAppointment);
+router.put("/appointments/:id", updateAppointment);
 
 export default router;
