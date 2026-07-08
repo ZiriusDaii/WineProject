@@ -65,7 +65,7 @@ export async function getManicurists(
   try {
     const manicurists = await prisma.user.findMany({
       where: { role: "MANICURISTA" },
-      select: { id: true, name: true, avatarPath: true },
+      select: { id: true, name: true, avatarPath: true, age: true, gender: true },
     });
     res.json(manicurists);
   } catch (error) {

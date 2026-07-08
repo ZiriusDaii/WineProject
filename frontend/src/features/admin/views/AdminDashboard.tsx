@@ -113,7 +113,7 @@ export const AdminDashboard: React.FC = () => {
       setManicurists((manicuristsData || []).map((m: any) => ({
         ...m,
         age: m.age || 26,
-        avatarUrl: m.avatarUrl || '',
+        avatarUrl: m.avatarPath || m.avatarUrl || '',
         role: m.role || 'Especialista en Nail Art',
         shifts: m.shifts || ['Lunes', 'Miércoles', 'Viernes']
       })));
