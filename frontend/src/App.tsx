@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { AdminDashboard } from './features/admin/views/AdminDashboard'
 import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
+import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
 
 interface Service {
   id: string | number;
@@ -75,8 +76,8 @@ export default function App() {
   // PERSISTENCIA DE SESION
   const [session, setSession] = useState<UserSession | null>(null);
 
-  // VISTA ACTIVA: 'landing' | 'booking' | 'clientPortal'
-  const [view, setView] = useState<'landing' | 'booking' | 'clientPortal'>('landing');
+  // VISTA ACTIVA: 'landing' | 'booking' | 'clientPortal' | 'terms' | 'privacy' | 'cancellation'
+  const [view, setView] = useState<'landing' | 'booking' | 'clientPortal' | 'terms' | 'privacy' | 'cancellation'>('landing');
 
   // Datos dinámicos del Backend
   const [services, setServices] = useState<Service[]>([]);
@@ -1332,10 +1333,19 @@ export default function App() {
         </div>
       )}
 
+      {view === 'terms' && <TerminosCondiciones onBack={() => setView('landing')} />}
+      {view === 'privacy' && <PoliticaPrivacidad onBack={() => setView('landing')} />}
+      {view === 'cancellation' && <PoliticaCancelacion onBack={() => setView('landing')} />}
+
       {/* FOOTER */}
       <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-2 mt-auto">
         <span className="serif-title text-base text-[#3B0019] block">WineSpa</span>
         <p className="text-[10px] text-[#78716C]">Calle de Lujo Nro. 12-34, El Poblado, Medellín • Lunes a Sábado: 9:00 AM - 8:00 PM</p>
+        <div className="flex justify-center gap-4 pt-1">
+          <button onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
+          <button onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
+          <button onClick={() => setView('cancellation')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Cancelación</button>
+        </div>
       </footer>
     </div>
   );
