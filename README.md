@@ -109,4 +109,4 @@ Las contraseñas de staff (`User.password`) se guardan **en texto plano**, sin h
 
 ## Estado actual / qué falta
 
-Ver [`NEXT_STEPS.md`](./NEXT_STEPS.md) para el detalle de qué está hecho, qué bug se encontró y no se corrigió, y el orden sugerido de los issues abiertos.
+Ver los [issues abiertos del repo](https://github.com/ZiriusDaii/WineProject/issues) para lo pendiente.
