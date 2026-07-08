@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 
@@ -272,20 +273,22 @@ export async function updateManicuristStatus(
         role?: string;
       };
 
-    if (!phone || !username || !password || !name) {
-      res.status(400).json({
-        error: "Faltan campos requeridos: phone, username, password, name",
-      });
-      return;
-    }
-
     if (id) {
+      if (!phone || !username || !name) {
+        res.status(400).json({
+          error: "Faltan campos requeridos: phone, username, name",
+        });
+        return;
+      }
+
+      const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+
       const updated = await prisma.user.update({
         where: { id },
         data: {
           phone,
           username,
-          password,
+          ...(hashedPassword !== undefined && { password: hashedPassword }),
           name,
           age: age ?? null,
           gender: gender ?? null,
@@ -305,11 +308,20 @@ export async function updateManicuristStatus(
       });
       res.json(updated);
     } else {
+      if (!phone || !username || !password || !name) {
+        res.status(400).json({
+          error: "Faltan campos requeridos: phone, username, password, name",
+        });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const created = await prisma.user.create({
         data: {
           phone,
           username,
-          password,
+          password: hashedPassword,
           name,
           age: age ?? null,
           gender: gender ?? null,
