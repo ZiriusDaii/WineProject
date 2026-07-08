@@ -3,6 +3,61 @@ import { prisma } from "../lib/prisma.js";
 
 const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 
+// Horario del local (ficha de Google del negocio). 0=Domingo..6=Sabado.
+// ponytail: miercoles no estaba visible en la captura que nos pasaron, se asume
+// igual a L/M/J/V (9:00-20:00); confirmar con el negocio y ajustar si hace falta.
+const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
+  0: { open: "09:00", close: "19:00" },
+  1: { open: "09:00", close: "20:00" },
+  2: { open: "09:00", close: "20:00" },
+  3: { open: "09:00", close: "20:00" },
+  4: { open: "09:00", close: "20:00" },
+  5: { open: "09:00", close: "20:00" },
+  6: { open: "09:00", close: "19:00" },
+};
+
+const timeToMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(":");
+  return Number(h) * 60 + Number(m);
+};
+
+// Toda hora en esta app se maneja como el HH:mm literal embebido en el ISO string
+// (mismo criterio que toDateLabel/toTimeLabel en el frontend), sin conversion de
+// zona horaria -- getUTCHours/getUTCMinutes leen ese HH:mm tal cual.
+function isWithinBusinessHours(date: Date, durationMinutes: number): boolean {
+  const hours = BUSINESS_HOURS[date.getUTCDay()]!;
+  const startMin = date.getUTCHours() * 60 + date.getUTCMinutes();
+  return startMin >= timeToMinutes(hours.open) && startMin + durationMinutes <= timeToMinutes(hours.close);
+}
+
+async function findOverlappingAppointment(
+  manicuristId: string,
+  date: Date,
+  durationMinutes: number,
+  excludeAppointmentId?: string,
+): Promise<boolean> {
+  const dayStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const startMin = date.getUTCHours() * 60 + date.getUTCMinutes();
+  const endMin = startMin + durationMinutes;
+
+  const sameDayAppointments = await prisma.appointment.findMany({
+    where: {
+      manicuristId,
+      status: { not: "CANCELLED" },
+      date: { gte: dayStart, lt: dayEnd },
+      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    },
+    select: { date: true, totalDuration: true },
+  });
+
+  return sameDayAppointments.some((appt) => {
+    const apptStartMin = appt.date.getUTCHours() * 60 + appt.date.getUTCMinutes();
+    const apptEndMin = apptStartMin + appt.totalDuration;
+    return startMin < apptEndMin && apptStartMin < endMin;
+  });
+}
+
 export async function getServices(req: Request, res: Response): Promise<void> {
   try {
     const hasPagination = req.query.page || req.query.limit || req.query.search;
@@ -238,12 +293,23 @@ export async function createAppointment(
       0,
     );
     const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
+    const parsedDate = new Date(date!);
+
+    if (!isWithinBusinessHours(parsedDate, totalDuration)) {
+      res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
+      return;
+    }
+
+    if (await findOverlappingAppointment(manicuristId!, parsedDate, totalDuration)) {
+      res.status(409).json({ error: "La manicurista ya tiene una cita en ese horario" });
+      return;
+    }
 
     const appointment = await prisma.appointment.create({
       data: {
         clientId: clientId!,
         manicuristId: manicuristId!,
-        date: new Date(date!),
+        date: parsedDate,
         totalDuration,
         totalPrice,
         status: "PENDING",
@@ -298,8 +364,24 @@ export async function updateAppointment(
 
     const data: Record<string, unknown> = {};
     if (status) data.status = status;
-    if (date) data.date = new Date(date);
     if (manicuristId) data.manicuristId = manicuristId;
+
+    if (date) {
+      const parsedDate = new Date(date);
+
+      if (!isWithinBusinessHours(parsedDate, existing.totalDuration)) {
+        res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
+        return;
+      }
+
+      const targetManicuristId = manicuristId ?? existing.manicuristId;
+      if (await findOverlappingAppointment(targetManicuristId, parsedDate, existing.totalDuration, id)) {
+        res.status(409).json({ error: "La manicurista ya tiene una cita en ese horario" });
+        return;
+      }
+
+      data.date = parsedDate;
+    }
 
     const updated = await prisma.appointment.update({
       where: { id },
@@ -326,9 +408,14 @@ export async function getClientAppointments(
     const clientId = (req.params.clientId ?? req.query.clientId) as string | undefined;
     const date = req.query.date as string | undefined;
     const manicuristId = req.query.manicuristId as string | undefined;
+    const excludeId = req.query.excludeId as string | undefined;
 
     if (date || manicuristId) {
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { status: { not: "CANCELLED" } };
+
+      if (excludeId) {
+        where.id = { not: excludeId };
+      }
 
       if (date) {
         const startOfDay = new Date(`${date}T00:00:00.000Z`);
