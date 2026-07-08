@@ -97,6 +97,8 @@ export const ServiceScalarFieldEnum = {
   id: 'id',
   name: 'name',
   shortDescription: 'shortDescription',
+  includesDescription: 'includesDescription',
+  category: 'category',
   price: 'price',
   durationInMinutes: 'durationInMinutes',
   createdAt: 'createdAt',
