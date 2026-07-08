@@ -38,12 +38,16 @@ interface Appointment {
   clientName?: string;
   clientId?: string | number;
   manicuristId: string | number;
-  serviceIds: (string | number)[];
+  manicurist?: { id: string | number; name: string; avatarPath?: string };
+  services: Service[];
   date: string;
-  time: string;
   total?: number | string;
   status?: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
+
+// El backend manda `date` como ISO string (incluye la hora), sin campo `time` separado.
+const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
+const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
 
 interface AppointmentResponse {
   id?: string | number;
@@ -161,6 +165,30 @@ export default function App() {
     }
   }, [session]);
 
+  // Refresca la lista de manicuristas (fotos, nombres) cada vez que se entra a
+  // reservar, sin volver a mostrar la pantalla de carga completa: los datos se
+  // cargan una sola vez al montar la app y no se refrescaban solos despues.
+  useEffect(() => {
+    if (view === 'booking') {
+      fetchManicurists().then(fresh => {
+        if (fresh.length > 0) setManicurists(fresh);
+      });
+    }
+  }, [view]);
+
+  const fetchManicurists = async (): Promise<Manicurist[]> => {
+    try {
+      const res = await fetch('http://localhost:3000/api/manicurists');
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data?.manicurists || []);
+      }
+    } catch (e) {
+      console.warn('Fallo al obtener manicuristas:', e);
+    }
+    return [];
+  };
+
   const loadData = async () => {
     const fallbackServices: Service[] = [
       { id: '1', name: 'Manicura Premium WineSpa', price: 35000, duration: '60 mins', description: 'Tratamiento completo de cutícula, exfoliación con sales de uva y esmaltado tradicional o semipermanente.', shortDescription: 'Exfoliación con sales de uva' },
@@ -190,15 +218,7 @@ export default function App() {
         console.warn('Fallo al obtener servicios:', e);
       }
 
-      try {
-        const manicuristsRes = await fetch('http://localhost:3000/api/manicurists');
-        if (manicuristsRes.ok) {
-          const data = await manicuristsRes.json();
-          fetchedManicurists = Array.isArray(data) ? data : (data?.manicurists || []);
-        }
-      } catch (e) {
-        console.warn('Fallo al obtener manicuristas:', e);
-      }
+      fetchedManicurists = await fetchManicurists();
 
       setServices(fetchedServices.length > 0 ? fetchedServices : fallbackServices);
       setManicurists(fetchedManicurists.length > 0 ? fetchedManicurists : fallbackManicurists);
@@ -254,14 +274,14 @@ export default function App() {
       } else {
         // Fallback mock
         setClientAppointments([
-          { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', serviceIds: ['1'], date: '2026-06-25', time: '10:00', total: 35000, status: 'CONFIRMED' },
-          { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', serviceIds: ['2'], date: '2026-06-15', time: '16:00', total: 45000, status: 'COMPLETED' }
+          { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', services: [{ id: '1', name: 'Manicure Tradicional', price: 15 }], date: '2026-06-25T10:00:00.000Z', total: 35000, status: 'CONFIRMED' },
+          { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', services: [{ id: '2', name: 'Manicure Semipermanente', price: 25 }], date: '2026-06-15T16:00:00.000Z', total: 45000, status: 'COMPLETED' }
         ]);
       }
     } catch {
       setClientAppointments([
-        { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', serviceIds: ['1'], date: '2026-06-25', time: '10:00', total: 35000, status: 'CONFIRMED' },
-        { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', serviceIds: ['2'], date: '2026-06-15', time: '16:00', total: 45000, status: 'COMPLETED' }
+        { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', services: [{ id: '1', name: 'Manicure Tradicional', price: 15 }], date: '2026-06-25T10:00:00.000Z', total: 35000, status: 'CONFIRMED' },
+        { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', services: [{ id: '2', name: 'Manicure Semipermanente', price: 25 }], date: '2026-06-15T16:00:00.000Z', total: 45000, status: 'COMPLETED' }
       ]);
     }
   };
@@ -311,13 +331,12 @@ export default function App() {
     }
   };
 
-  const renderServiceDetailWithPrices = (ids: (string | number)[]) => {
-    if (!ids || !Array.isArray(ids)) return null;
-    const matched = services.filter(s => ids.map(id => String(id)).includes(String(s.id)));
+  const renderServiceDetailWithPrices = (apptServices: Service[]) => {
+    if (!apptServices || !Array.isArray(apptServices)) return null;
     return (
       <div className="space-y-1 mt-1 text-left border-t border-[#EADEC9]/10 pt-2 pb-2">
         <span className="block text-[8px] uppercase tracking-wider text-[#A68F63] font-bold">Servicios Contratados</span>
-        {matched.map(s => (
+        {apptServices.map(s => (
           <div key={s.id} className="flex justify-between text-[11px] text-[#57534E]">
             <span>• {s.name}</span>
             <span className="font-semibold text-[#8E1B54]">
@@ -603,12 +622,9 @@ export default function App() {
     return manicurists.find(m => String(m.id) === String(id))?.name || 'Especialista';
   };
 
-  const getServiceNames = (ids: (string | number)[]) => {
-    if (!ids || !Array.isArray(ids)) return 'Tratamiento';
-    return services
-      .filter(s => ids.map(id => String(id)).includes(String(s.id)))
-      .map(s => s.name)
-      .join(', ');
+  const getServiceNames = (apptServices: Service[]) => {
+    if (!apptServices || !Array.isArray(apptServices)) return 'Tratamiento';
+    return apptServices.map(s => s.name).join(', ');
   };
 
   const handleServiceToggle = (idStr: string) => {
@@ -726,9 +742,16 @@ export default function App() {
                           <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold">Reserva #{appt.appointmentId || appt.id}</span>
                           <span className="px-2 py-0.5 rounded-full text-[8px] bg-amber-50 text-amber-700 font-bold">{appt.status}</span>
                         </div>
-                        <h4 className="text-xs font-bold text-[#44403C] pt-1">{getServiceNames(appt.serviceIds)}</h4>
-                        <p className="text-xs text-[#78716C] font-light">Especialista: {getManicuristName(appt.manicuristId)}</p>
-                        {renderServiceDetailWithPrices(appt.serviceIds)}
+                        <h4 className="text-xs font-bold text-[#44403C] pt-1">{getServiceNames(appt.services)}</h4>
+                        <div className="flex items-center gap-2 pt-0.5">
+                          {appt.manicurist?.avatarPath ? (
+                            <img src={appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
+                          ) : (
+                            <FallbackAvatar className="w-5 h-5" />
+                          )}
+                          <p className="text-xs text-[#78716C] font-light">Especialista: {appt.manicurist?.name || getManicuristName(appt.manicuristId)}</p>
+                        </div>
+                        {renderServiceDetailWithPrices(appt.services)}
                         {appt.total && (
                           <div className="flex justify-between text-xs font-bold text-[#3B0019] pt-1 border-t border-[#EADEC9]/10">
                             <span>Total Cita:</span>
@@ -740,14 +763,14 @@ export default function App() {
                         <div className="flex justify-between items-center text-xs">
                           <div>
                             <span className="block text-[8px] text-[#A68F63] uppercase font-bold">Fecha y Hora</span>
-                            <span className="font-semibold">{appt.date} • {appt.time}</span>
+                            <span className="font-semibold">{toDateLabel(appt.date)} • {toTimeLabel(appt.date)}</span>
                           </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
                                 setEditingAppointmentId(appt.id);
-                                setNewDateInput(appt.date);
-                                setNewTimeInput(appt.time);
+                                setNewDateInput(toDateLabel(appt.date));
+                                setNewTimeInput(toTimeLabel(appt.date));
                               }}
                               className="px-2.5 py-1 border border-[#C3AD86] text-[#5C0632] hover:bg-[#EADEC9]/10 rounded-lg text-[10px] font-semibold transition-colors"
                             >
@@ -799,8 +822,8 @@ export default function App() {
                     <div key={appt.id} className="bg-white border border-[#EADEC9]/30 p-5 rounded-xl flex flex-col space-y-3 text-left">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-xs font-semibold text-[#44403C]">{getServiceNames(appt.serviceIds)}</h4>
-                          <p className="text-[10px] text-[#78716C]">Con {getManicuristName(appt.manicuristId)} • {appt.date}</p>
+                          <h4 className="text-xs font-semibold text-[#44403C]">{getServiceNames(appt.services)}</h4>
+                          <p className="text-[10px] text-[#78716C]">Con {appt.manicurist?.name || getManicuristName(appt.manicuristId)} • {toDateLabel(appt.date)}</p>
                         </div>
                         <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                           appt.status === 'COMPLETED' ? 'bg-green-50 text-green-700' : 'bg-neutral-50 text-neutral-400'
@@ -808,7 +831,7 @@ export default function App() {
                           {appt.status}
                         </span>
                       </div>
-                      {renderServiceDetailWithPrices(appt.serviceIds)}
+                      {renderServiceDetailWithPrices(appt.services)}
                       {appt.total && (
                         <div className="flex justify-between text-xs font-bold text-[#3B0019] pt-1 border-t border-[#EADEC9]/10">
                           <span>Total Cita:</span>
