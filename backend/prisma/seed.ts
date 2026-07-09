@@ -56,19 +56,38 @@ async function seedService(
   return created;
 }
 
+async function seedSede(name: string, address: string, phone: string) {
+  const existing = await prisma.sede.findFirst({
+    where: { name },
+  });
+
+  if (existing) {
+    console.log(`  Sede ya existe: ${name}`);
+    return existing;
+  }
+
+  const created = await prisma.sede.create({
+    data: { name, address, phone },
+  });
+
+  console.log(`  Sede creada: ${name}`);
+  return created;
+}
+
 async function seedUser(
   phone: string,
   name: string,
   role: "ADMIN" | "MANICURISTA",
   username: string,
   password: string,
+  sedeId?: string | null,
 ) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.upsert({
     where: { phone },
-    update: { name, role: { set: role }, username, password: hashedPassword },
-    create: { phone, name, role, username, password: hashedPassword },
+    update: { name, role: { set: role }, username, password: hashedPassword, ...(sedeId !== undefined && { sedeId }) },
+    create: { phone, name, role, username, password: hashedPassword, ...(sedeId !== undefined && { sedeId }) },
   });
 
   console.log(`  User upserted: ${name} - ${username} (${role})`);
@@ -88,10 +107,15 @@ async function main() {
   await seedService("Pedicure Premium", 30.0, 75, "Experiencia completa de cuidado y relajación para tus pies.", "Incluye remojo en agua tibia aromatizada, limado y forma de uñas, tratamiento de cutículas, exfoliación de pies, masaje relajante con crema hidratante y esmaltado profesional.", "PEDICURE");
   await seedService("Uñas Esculpidas en Gel", 45.0, 120, "Extensiones de uñas personalizadas con gel UV para un look sofisticado.", "Incluye preparación completa de la uña, aplicación de tips o molde, construcción con gel UV, limado y perfilado profesional, diseño personalizado a elección y sellado con top coat de brillo.", "NAIL_ART");
 
+  console.log("\n📍 Sedes:");
+  const sedeFabricato = await seedSede("Cc. Parque Fabricato", "S1 local 104", "+57 300 000 0000");
+  const sedeCencosud = await seedSede("Cc. Metro Cencosud", "Local 1009", "+57 300 000 0000");
+  await seedSede("Cc. Madera Mall", "Local 209", "+57 300 000 0000");
+
   console.log("\n👥 Users:");
   await seedUser("3001234567", "Admin WineSpa", "ADMIN", "admin", "admin123");
-  await seedUser("3007654321", "Ana García", "MANICURISTA", "ana_garcia", "ana123");
-  await seedUser("3019876543", "Carla López", "MANICURISTA", "carla_lopez", "carla123");
+  await seedUser("3007654321", "Ana García", "MANICURISTA", "ana_garcia", "ana123", sedeFabricato.id);
+  await seedUser("3019876543", "Carla López", "MANICURISTA", "carla_lopez", "carla123", sedeCencosud.id);
 
   console.log("\n✅ Seed completado exitosamente.");
 }
