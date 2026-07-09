@@ -104,9 +104,11 @@ export async function createService(
   res: Response,
 ): Promise<void> {
   try {
-    const { name, shortDescription, price, durationInMinutes } = req.body as {
+    const { name, shortDescription, includesDescription, category, price, durationInMinutes } = req.body as {
       name?: string;
       shortDescription?: string;
+      includesDescription?: string | null;
+      category?: string | null;
       price?: number;
       durationInMinutes?: number;
     };
@@ -122,6 +124,8 @@ export async function createService(
       data: {
         name,
         shortDescription: shortDescription ?? null,
+        includesDescription: includesDescription ?? null,
+        category: category ?? null,
         price,
         durationInMinutes,
       },
@@ -290,10 +294,10 @@ export async function updateManicuristStatus(
           username,
           ...(hashedPassword !== undefined && { password: hashedPassword }),
           name,
-          age: age ?? null,
-          gender: gender ?? null,
-          avatarPath: avatarPath ?? null,
-          role: role ? { set: role as "ADMIN" | "MANICURISTA" } : undefined,
+          ...(age !== undefined && { age: age ?? null }),
+          ...(gender !== undefined && { gender: gender ?? null }),
+          ...(avatarPath !== undefined && { avatarPath: avatarPath ?? null }),
+          ...(role !== undefined && { role: { set: role as "ADMIN" | "MANICURISTA" } }),
         },
         select: {
           id: true,
@@ -397,6 +401,156 @@ export async function manageLandingContent(
     res.json(results);
   } catch (error) {
     console.error("Error gestionando landing content:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function updateService(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { name, shortDescription, includesDescription, category, price, durationInMinutes } =
+      req.body as {
+        name?: string;
+        shortDescription?: string | null;
+        includesDescription?: string | null;
+        category?: string | null;
+        price?: number;
+        durationInMinutes?: number;
+      };
+
+    const existing = await prisma.service.findUnique({ where: { id: id! } });
+    if (!existing) {
+      res.status(404).json({ error: "Servicio no encontrado" });
+      return;
+    }
+
+    const updated = await prisma.service.update({
+      where: { id: id! },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(shortDescription !== undefined && { shortDescription }),
+        ...(includesDescription !== undefined && { includesDescription }),
+        ...(category !== undefined && { category }),
+        ...(price !== undefined && { price }),
+        ...(durationInMinutes !== undefined && { durationInMinutes }),
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando servicio:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function deleteService(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+
+    const existing = await prisma.service.findUnique({
+      where: { id: id! },
+      include: { appointments: { select: { id: true } } },
+    });
+
+    if (!existing) {
+      res.status(404).json({ error: "Servicio no encontrado" });
+      return;
+    }
+
+    if (existing.appointments.length > 0) {
+      res.status(409).json({
+        error: "No se puede eliminar el servicio porque tiene citas asociadas",
+      });
+      return;
+    }
+
+    await prisma.service.delete({ where: { id: id! } });
+
+    res.json({ message: "Servicio eliminado exitosamente" });
+  } catch (error) {
+    console.error("Error eliminando servicio:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function updateSpecialOffer(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { title, description, discountPercentage, code, isActive } =
+      req.body as {
+        title?: string;
+        description?: string | null;
+        discountPercentage?: number;
+        code?: string;
+        isActive?: boolean;
+      };
+
+    const existing = await prisma.specialOffer.findUnique({ where: { id: id! } });
+    if (!existing) {
+      res.status(404).json({ error: "Oferta no encontrada" });
+      return;
+    }
+
+    const updated = await prisma.specialOffer.update({
+      where: { id: id! },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(discountPercentage !== undefined && { discountPercentage }),
+        ...(code !== undefined && { code }),
+        ...(isActive !== undefined && { isActive }),
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando oferta:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function deleteSpecialOffer(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+
+    const existing = await prisma.specialOffer.findUnique({ where: { id: id! } });
+    if (!existing) {
+      res.status(404).json({ error: "Oferta no encontrada" });
+      return;
+    }
+
+    await prisma.specialOffer.delete({ where: { id: id! } });
+
+    res.json({ message: "Oferta eliminada exitosamente" });
+  } catch (error) {
+    console.error("Error eliminando oferta:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getAdminOffers(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const offers = await prisma.specialOffer.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(offers);
+  } catch (error) {
+    console.error("Error obteniendo ofertas:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

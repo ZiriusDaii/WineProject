@@ -21,6 +21,11 @@ import {
   getAdminManicurists,
   updateManicuristStatus,
   manageLandingContent,
+  updateService,
+  deleteService,
+  updateSpecialOffer,
+  deleteSpecialOffer,
+  getAdminOffers,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -50,7 +55,12 @@ router.post("/auth/login", loginStaff);
 router.get("/admin/stats", getDashboardStats);
 router.get("/admin/appointments", getAllAppointments);
 router.post("/admin/services", createService);
+router.put("/admin/services/:id", updateService);
+router.delete("/admin/services/:id", deleteService);
 router.post("/admin/offers", createSpecialOffer);
+router.get("/admin/offers", getAdminOffers);
+router.put("/admin/offers/:id", updateSpecialOffer);
+router.delete("/admin/offers/:id", deleteSpecialOffer);
 router.get("/admin/clients", getAdminUsers);
 router.get("/admin/manicurists", getAdminManicurists);
 router.post("/admin/manicurists", updateManicuristStatus);
