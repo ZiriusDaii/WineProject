@@ -55,8 +55,8 @@ interface Appointment {
 }
 
 // El backend manda `date` como ISO string (incluye la hora), sin campo `time` separado.
-const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
-const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
+const toDateLabel = (isoDate: string) => (isoDate || '').slice(0, 10);
+const toTimeLabel = (isoDate: string) => (isoDate || '').slice(11, 16);
 
 const SEDES = [
   { nombre: 'Cc. Parque Fabricato', direccion: 'S1 local 104', telefono: '+57 319 707 2921' },
@@ -420,18 +420,9 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
-      } else {
-        // Fallback mock
-        setClientAppointments([
-          { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', services: [{ id: '1', name: 'Manicure Tradicional', price: 15 }], date: '2026-06-25T10:00:00.000Z', total: 35000, status: 'CONFIRMED' },
-          { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', services: [{ id: '2', name: 'Manicure Semipermanente', price: 25 }], date: '2026-06-15T16:00:00.000Z', total: 45000, status: 'COMPLETED' }
-        ]);
       }
     } catch {
-      setClientAppointments([
-        { id: '101', appointmentId: 'WS-201', clientName: session.name, manicuristId: '1', services: [{ id: '1', name: 'Manicure Tradicional', price: 15 }], date: '2026-06-25T10:00:00.000Z', total: 35000, status: 'CONFIRMED' },
-        { id: '102', appointmentId: 'WS-202', clientName: session.name, manicuristId: '2', services: [{ id: '2', name: 'Manicure Semipermanente', price: 25 }], date: '2026-06-15T16:00:00.000Z', total: 45000, status: 'COMPLETED' }
-      ]);
+      setClientAppointments([]);
     }
   };
 
@@ -621,19 +612,7 @@ export default function App() {
         setStaffUser('');
         setStaffPassword('');
       } else {
-        if (staffUser === 'admin' && staffPassword === 'admin') {
-          const user: UserSession = { id: 'admin-id', name: 'Administrador', role: 'admin' };
-          setSession(user);
-          localStorage.setItem('winespa_session', JSON.stringify(user));
-          setIsLoginOpen(false);
-        } else if (staffUser === 'stylist' && staffPassword === 'stylist') {
-          const user: UserSession = { id: '1', name: 'Sofía Valenzuela', role: 'manicurista', avatarUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=100' };
-          setSession(user);
-          localStorage.setItem('winespa_session', JSON.stringify(user));
-          setIsLoginOpen(false);
-        } else {
-          throw new Error('Credenciales inválidas.');
-        }
+        throw new Error('Credenciales invalidas.');
       }
     } catch (err: any) {
       setAuthError(err.message || 'Credenciales incorrectas.');
@@ -646,6 +625,18 @@ export default function App() {
     setSession(null);
     localStorage.removeItem('winespa_session');
     setView('landing');
+    setSelectedServiceIds([]);
+    setSelectedSpecialist(null);
+    setSelectedSede(null);
+    setBookingDate('');
+    setBookingTime('');
+    setDiscountCode('');
+    setDiscountPercent(null);
+    setDiscountTitle(null);
+    setDiscountError(null);
+    setClientAppointments([]);
+    setBookingStep('selection');
+    setIsBookingOpen(false);
   };
 
   const handleCheckAuthBooking = async (e: React.FormEvent) => {
@@ -730,7 +721,7 @@ export default function App() {
         })
       });
 
-      if (apptRes.status === 201 || apptRes.status === 21 || apptRes.ok) {
+      if (apptRes.status === 201 || apptRes.ok) {
         const apptData = await apptRes.json();
         setCreatedAppointment(apptData);
         setBookingStep('success');

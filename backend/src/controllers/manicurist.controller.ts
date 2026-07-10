@@ -118,6 +118,11 @@ export async function updateManicuristProfile(
       return;
     }
 
+    if (avatarPath !== undefined && avatarPath !== null && !avatarPath.startsWith("/uploads/")) {
+      res.status(400).json({ error: "avatarPath debe ser una ruta relativa dentro de /uploads/" });
+      return;
+    }
+
     const updated = await prisma.user.update({
       where: { id },
       data: {

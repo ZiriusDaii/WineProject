@@ -120,6 +120,15 @@ export async function createService(
       return;
     }
 
+    if (typeof price !== "number" || price < 0 || !Number.isFinite(price)) {
+      res.status(400).json({ error: "El precio debe ser un numero positivo" });
+      return;
+    }
+    if (typeof durationInMinutes !== "number" || durationInMinutes <= 0 || !Number.isFinite(durationInMinutes)) {
+      res.status(400).json({ error: "La duracion debe ser un numero positivo de minutos" });
+      return;
+    }
+
     const service = await prisma.service.create({
       data: {
         name,
@@ -156,6 +165,11 @@ export async function createSpecialOffer(
       res
         .status(400)
         .json({ error: "Faltan campos requeridos: title, discountPercentage, code" });
+      return;
+    }
+
+    if (typeof discountPercentage !== "number" || discountPercentage < 1 || discountPercentage > 100) {
+      res.status(400).json({ error: "El descuento debe ser un numero entre 1 y 100" });
       return;
     }
 
@@ -278,6 +292,12 @@ export async function updateManicuristStatus(
         role?: string;
         sedeId?: string | null;
       };
+
+    const ALLOWED_ROLES = ["ADMIN", "MANICURISTA"];
+    if (role !== undefined && !ALLOWED_ROLES.includes(role)) {
+      res.status(400).json({ error: `Rol invalido. Permitidos: ${ALLOWED_ROLES.join(", ")}` });
+      return;
+    }
 
     if (id) {
       if (!phone || !username || !name) {
