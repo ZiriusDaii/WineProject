@@ -175,6 +175,7 @@ export default function App() {
   const [selectedSede, setSelectedSede] = useState<string | null>(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
+  const [zoomedAvatar, setZoomedAvatar] = useState<string | null>(null);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -918,7 +919,7 @@ export default function App() {
                         <h4 className="text-xs font-bold text-[#44403C] pt-1">{getServiceNames(appt.services)}</h4>
                         <div className="flex items-center gap-2 pt-0.5">
                           {appt.manicurist?.avatarPath ? (
-                            <img src={appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
+                            <img src={appt.manicurist.avatarPath.startsWith('/') ? `http://localhost:3000${appt.manicurist.avatarPath}` : appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
                           ) : (
                             <FallbackAvatar className="w-5 h-5" />
                           )}
@@ -1177,7 +1178,7 @@ export default function App() {
                 <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Especialista Asignada</span>
                 <div className="flex items-center gap-3">
                   {activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl ? (
-                    <img src={activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
+                    <img src={activeSpecialistDetails.avatarPath?.startsWith('/') ? `http://localhost:3000${activeSpecialistDetails.avatarPath}` : (activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl)} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
                   ) : (
                     <FallbackAvatar className="w-12 h-12" />
                   )}
@@ -1252,7 +1253,12 @@ export default function App() {
                   return (
                     <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                       {m.avatarPath || m.avatarUrl ? (
-                        <img src={m.avatarPath || m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9]" />
+                        <img
+                          src={m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                          alt={m.name}
+                          onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
+                          className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
+                        />
                       ) : (
                         <FallbackAvatar className="w-10 h-10 mx-auto" />
                       )}
@@ -1380,6 +1386,14 @@ export default function App() {
               </div>
             </section>
           </main>
+
+          {/* Zoom avatar modal */}
+          {zoomedAvatar && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setZoomedAvatar(null)}>
+              <img src={zoomedAvatar} alt="Especialista" className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
+              <button onClick={() => setZoomedAvatar(null)} className="absolute top-4 right-4 text-white text-2xl font-bold">✕</button>
+            </div>
+          )}
 
           {/* BARRA FLOTANTE MÓVIL */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FDFBF7]/90 border-t border-[#EADEC9]/30 p-4 z-30">
