@@ -23,6 +23,7 @@ import {
   getAdminManicurists,
   updateManicuristStatus,
   manageLandingContent,
+  deleteLandingContent,
   updateService,
   deleteService,
   updateSpecialOffer,
@@ -70,6 +71,7 @@ router.get("/admin/manicurists", getAdminManicurists);
 router.post("/admin/manicurists", updateManicuristStatus);
 router.put("/admin/manicurists/:id", updateManicuristStatus);
 router.post("/admin/landing-cms", manageLandingContent);
+router.delete("/admin/landing-cms/:id", deleteLandingContent);
 
 router.post(
   "/admin/manicurists/upload-avatar",

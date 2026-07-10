@@ -411,6 +411,28 @@ export async function manageLandingContent(
   }
 }
 
+export async function deleteLandingContent(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+
+    const existing = await prisma.landingContent.findUnique({ where: { id: id! } });
+    if (!existing) {
+      res.status(404).json({ error: "Contenido no encontrado" });
+      return;
+    }
+
+    await prisma.landingContent.delete({ where: { id: id! } });
+
+    res.json({ message: "Contenido eliminado exitosamente" });
+  } catch (error) {
+    console.error("Error eliminando landing content:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
 export async function updateService(
   req: Request,
   res: Response,

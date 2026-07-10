@@ -141,6 +141,7 @@ export const AdminDashboard: React.FC = () => {
   const [cmsFile, setCmsFile] = useState<File | null>(null);
   const [cmsTitle, setCmsTitle] = useState('');
   const [cmsDesc, setCmsDesc] = useState('');
+  const [cmsItems, setCmsItems] = useState<any[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -148,6 +149,7 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
 
   const loadData = async () => {
     setLoading(true);
@@ -277,6 +279,19 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // --- CMS ---
+  const fetchCMS = async () => {
+    try {
+      const res = await fetch(`${API}/api/landing/content`);
+      if (res.ok) setCmsItems(await res.json());
+    } catch { /* */ }
+  };
+  const handleDeleteCMS = async (id: string) => {
+    if (!confirm('Eliminar este anuncio?')) return;
+    try {
+      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE' });
+      if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
+    } catch { setErrorMsg('Error.'); }
+  };
   const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
@@ -287,7 +302,7 @@ export const AdminDashboard: React.FC = () => {
       if (!uRes.ok) throw new Error();
       const { imageUrl } = await uRes.json();
       const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
-      if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); } else throw new Error();
+      if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); fetchCMS(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -619,9 +634,31 @@ export const AdminDashboard: React.FC = () => {
 
         {/* CMS */}
         {activeTab === 'news' && (
-          <div className="space-y-6 max-w-lg animate-fade-in text-left">
+          <div className="space-y-6 max-w-2xl animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">CMS / Landing</h2>
+
+            {/* Lista de anuncios existentes */}
+            {cmsItems.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.length})</h3>
+                <div className="space-y-2">
+                  {cmsItems.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
+                      <img src={item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-[#44403C] truncate">{item.title || 'Sin titulo'}</p>
+                        <p className="text-[9px] text-[#78716C] truncate">{item.description || 'Sin descripcion'}</p>
+                        <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive ? '· Activo' : '· Inactivo'}</span>
+                      </div>
+                      <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold shrink-0">Quitar</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSaveCMS} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">Subir nuevo anuncio</h3>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" value={cmsTitle} onChange={e => setCmsTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><textarea value={cmsDesc} onChange={e => setCmsDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-20" /></div>

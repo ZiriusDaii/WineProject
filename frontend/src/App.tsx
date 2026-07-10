@@ -1052,17 +1052,31 @@ export default function App() {
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
         <div className="space-y-16 pb-16 animate-fade-in">
-          {/* Banner de anuncios CMS */}
-          {landingContent && landingContent.news && landingContent.news.length > 0 && (
-            <div className="bg-[#5C0632]/10 border-b border-[#EADEC9]/30">
-              <div className="max-w-7xl mx-auto px-6 py-2 overflow-hidden">
-                <div className="flex gap-8 animate-marquee whitespace-nowrap">
-                  {landingContent.news.map((n, i) => (
-                    <span key={i} className="text-xs text-[#5C0632] font-medium inline-flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
-                      {n.title}: {n.description}
-                    </span>
-                  ))}
+          {/* Banner de anuncios CMS con imagenes */}
+          {landingContent && landingContent.images && landingContent.images.length > 0 && (
+            <div className="relative w-full bg-[#3B0019] overflow-hidden">
+              <div className="max-w-5xl mx-auto">
+                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
+                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  </div>
+                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                    {landingContent.news && landingContent.news[activeSlide] ? (
+                      <>
+                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
+                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
+                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
+                      </>
+                    ) : (
+                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      {landingContent.images.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
