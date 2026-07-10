@@ -108,9 +108,9 @@ async function main() {
   await seedService("Uñas Esculpidas en Gel", 45.0, 120, "Extensiones de uñas personalizadas con gel UV para un look sofisticado.", "Incluye preparación completa de la uña, aplicación de tips o molde, construcción con gel UV, limado y perfilado profesional, diseño personalizado a elección y sellado con top coat de brillo.", "NAIL_ART");
 
   console.log("\n📍 Sedes:");
-  const sedeFabricato = await seedSede("Cc. Parque Fabricato", "S1 local 104", "+57 300 000 0000");
-  const sedeCencosud = await seedSede("Cc. Metro Cencosud", "Local 1009", "+57 300 000 0000");
-  const sedeMadera = await seedSede("Cc. Madera Mall", "Local 209", "+57 300 000 0000");
+  const sedeFabricato = await seedSede("Cc. Parque Fabricato", "S1 local 104", "+57 319 707 2921");
+  const sedeCencosud = await seedSede("Cc. Metro Cencosud", "Local 1009", "+57 314 862 2128");
+  const sedeMadera = await seedSede("Cc. Madera Mall", "Local 209", "+57 310 499 7178");
 
   console.log("\n👥 Users:");
   await seedUser("3001234567", "Admin WineSpa", "ADMIN", "admin", "admin123");

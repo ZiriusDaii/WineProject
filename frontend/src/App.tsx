@@ -58,17 +58,15 @@ interface Appointment {
 const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
 const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
 
-// ponytail: telefono placeholder compartido hasta que el negocio confirme los numeros reales por sede.
 const SEDES = [
-  { nombre: 'Cc. Parque Fabricato', direccion: 'S1 local 104', telefono: '+57 300 000 0000' },
-  { nombre: 'Cc. Metro Cencosud', direccion: 'Local 1009', telefono: '+57 300 000 0000' },
-  { nombre: 'Cc. Madera Mall', direccion: 'Local 209', telefono: '+57 300 000 0000' },
+  { nombre: 'Cc. Parque Fabricato', direccion: 'S1 local 104', telefono: '+57 319 707 2921' },
+  { nombre: 'Cc. Metro Cencosud', direccion: 'Local 1009', telefono: '+57 314 862 2128' },
+  { nombre: 'Cc. Madera Mall', direccion: 'Local 209', telefono: '+57 310 499 7178' },
 ];
 
-// Horario del local (ficha de Google del negocio). 0=Domingo..6=Sabado. Debe
-// coincidir con BUSINESS_HOURS en backend/src/controllers/client.controller.ts.
-// ponytail: miercoles no estaba visible en la captura que nos pasaron, se asume
-// igual a L/M/J/V (9:00-20:00); confirmar con el negocio y ajustar si hace falta.
+// Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
+// 0=Domingo..6=Sabado. Debe coincidir con BUSINESS_HOURS en
+// backend/src/controllers/client.controller.ts.
 const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
   0: { open: '09:00', close: '19:00' },
   1: { open: '09:00', close: '20:00' },
@@ -752,7 +750,9 @@ export default function App() {
 • Fecha: ${bookingDate} a las ${bookingTime}
 • Total: ${typeof total === 'number' ? `$${total.toLocaleString()}` : total}`;
 
-        const whatsappUrl = `https://wa.me/573000000000?text=${encodeURIComponent(message)}`;
+        const sedePhone = sedes.find(s => s.id === selectedSede)?.phone;
+        const whatsappNumber = (sedePhone || '+57 319 707 2921').replace(/\D/g, '');
+        const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
         
         setTimeout(() => {
           window.open(whatsappUrl, '_blank');
@@ -1569,7 +1569,8 @@ export default function App() {
             <span key={sede.nombre}>{sede.nombre} • {sede.direccion} • {sede.telefono}</span>
           ))}
         </div>
-        <p className="text-[10px] text-[#78716C]">Lunes a Sábado: 9:00 AM - 8:00 PM</p>
+        <p className="text-[10px] text-[#78716C]">Lunes a Viernes: 9:00 AM - 8:00 PM • Sábado y Domingo: 9:00 AM - 7:00 PM</p>
+        <a href="https://www.instagram.com/wine.spa" target="_blank" rel="noopener noreferrer" className="inline-block text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">@wine.spa</a>
         <div className="flex justify-center gap-4 pt-1">
           <button onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
           <button onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
