@@ -919,7 +919,7 @@ export default function App() {
                         <h4 className="text-xs font-bold text-[#44403C] pt-1">{getServiceNames(appt.services)}</h4>
                         <div className="flex items-center gap-2 pt-0.5">
                           {appt.manicurist?.avatarPath ? (
-                            <img src={appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
+                            <img src={appt.manicurist.avatarPath.startsWith('/') ? `http://localhost:3000${appt.manicurist.avatarPath}` : appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
                           ) : (
                             <FallbackAvatar className="w-5 h-5" />
                           )}
@@ -1178,7 +1178,7 @@ export default function App() {
                 <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Especialista Asignada</span>
                 <div className="flex items-center gap-3">
                   {activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl ? (
-                    <img src={activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
+                    <img src={activeSpecialistDetails.avatarPath?.startsWith('/') ? `http://localhost:3000${activeSpecialistDetails.avatarPath}` : (activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl)} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
                   ) : (
                     <FallbackAvatar className="w-12 h-12" />
                   )}
@@ -1254,9 +1254,9 @@ export default function App() {
                     <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                       {m.avatarPath || m.avatarUrl ? (
                         <img
-                          src={m.avatarPath || m.avatarUrl}
+                          src={m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
                           alt={m.name}
-                          onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath || m.avatarUrl || null); }}
+                          onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
                           className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
                         />
                       ) : (
