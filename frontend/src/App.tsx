@@ -197,6 +197,13 @@ export default function App() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdAppointment, setCreatedAppointment] = useState<AppointmentResponse | null>(null);
 
+  // Codigo de descuento
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountPercent, setDiscountPercent] = useState<number | null>(null);
+  const [discountTitle, setDiscountTitle] = useState<string | null>(null);
+  const [discountValidating, setDiscountValidating] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
   // Estados para modificación de horario
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | number | null>(null);
   const [newDateInput, setNewDateInput] = useState('');
@@ -758,6 +765,31 @@ export default function App() {
     }
   };
 
+  const handleValidateDiscount = async () => {
+    if (!discountCode.trim()) { setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); return; }
+    setDiscountValidating(true);
+    setDiscountError(null);
+    try {
+      const res = await fetch('http://localhost:3000/api/offers/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCode.trim().toUpperCase() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setDiscountPercent(data.discountPercentage);
+        setDiscountTitle(data.title);
+      } else {
+        setDiscountPercent(null);
+        setDiscountTitle(null);
+        setDiscountError(data.error || 'Codigo invalido');
+      }
+    } catch {
+      setDiscountError('Error al validar.');
+    } finally {
+      setDiscountValidating(false);
+    }
+  };
+
   const calculateManualTotal = () => {
     return services
       .filter(s => selectedServiceIds.includes(String(s.id)))
@@ -768,7 +800,9 @@ export default function App() {
   };
 
   const getFormattedTotal = () => {
-    return `$${calculateManualTotal().toLocaleString('es-CO')}`;
+    const raw = calculateManualTotal();
+    const discounted = discountPercent ? raw * (1 - discountPercent / 100) : raw;
+    return `$${discounted.toLocaleString('es-CO')}`;
   };
 
   const getManicuristName = (id: string | number) => {
@@ -1018,6 +1052,36 @@ export default function App() {
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
         <div className="space-y-16 pb-16 animate-fade-in">
+          {/* Banner de anuncios CMS con imagenes */}
+          {landingContent && landingContent.images && landingContent.images.length > 0 && (
+            <div className="relative w-full bg-[#3B0019] overflow-hidden">
+              <div className="max-w-5xl mx-auto">
+                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
+                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  </div>
+                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                    {landingContent.news && landingContent.news[activeSlide] ? (
+                      <>
+                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
+                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
+                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
+                      </>
+                    ) : (
+                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      {landingContent.images.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-6 space-y-6 text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
@@ -1282,8 +1346,19 @@ export default function App() {
               <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="serif-title text-base text-[#3B0019] font-medium">Resumen del Agendamiento</h3>
-                  <span className="text-xl font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
+                  <div className="text-right">
+                    <span className="text-xl font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
+                    {discountPercent && <span className="block text-[9px] text-green-600">-{discountPercent}% {discountTitle}</span>}
+                  </div>
                 </div>
+
+                {/* Codigo descuento */}
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border border-[#EADEC9] rounded-xl text-xs uppercase" />
+                  <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-4 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
+                </div>
+                {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
+                {discountPercent && <p className="text-[10px] text-green-600">{discountPercent}% de descuento aplicado: {discountTitle}</p>}
 
                 {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                   <p className="text-xs text-[#78716C] text-center py-4 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
@@ -1372,6 +1447,14 @@ export default function App() {
                   <h3 className="serif-title text-lg text-[#3B0019]">Confirmar Reserva</h3>
                   <button type="button" onClick={() => setIsBookingOpen(false)} className="w-7 h-7 bg-neutral-200/50 rounded-full text-xs">✕</button>
                 </div>
+
+                {/* Codigo descuento movil */}
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
+                  <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
+                </div>
+                {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
+                {discountPercent && <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>}
 
                 {session && session.role === 'cliente' ? (
                   <div className="space-y-3 text-xs">

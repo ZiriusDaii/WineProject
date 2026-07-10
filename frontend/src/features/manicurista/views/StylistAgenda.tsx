@@ -186,7 +186,7 @@ export const StylistAgenda: React.FC = () => {
       });
 
       if (!res.ok) {
-        await fetch(`http://localhost:3000/api/manicurists/${stylistId}`, {
+        await fetch(`http://localhost:3000/api/admin/manicurists/${stylistId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

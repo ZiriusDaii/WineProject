@@ -5,6 +5,7 @@ import {
   getManicurists,
   getSedes,
   getOffers,
+  validateOfferCode,
   authClient,
   createClient,
   createAppointment,
@@ -22,11 +23,13 @@ import {
   getAdminManicurists,
   updateManicuristStatus,
   manageLandingContent,
+  deleteLandingContent,
   updateService,
   deleteService,
   updateSpecialOffer,
   deleteSpecialOffer,
   getAdminOffers,
+  updateAppointmentStatus,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -68,6 +71,7 @@ router.get("/admin/manicurists", getAdminManicurists);
 router.post("/admin/manicurists", updateManicuristStatus);
 router.put("/admin/manicurists/:id", updateManicuristStatus);
 router.post("/admin/landing-cms", manageLandingContent);
+router.delete("/admin/landing-cms/:id", deleteLandingContent);
 
 router.post(
   "/admin/manicurists/upload-avatar",
@@ -86,5 +90,7 @@ router.put("/manicurist/profile", updateManicuristProfile);
 
 router.put("/appointments/:id/complete", completeAppointment);
 router.put("/appointments/:id", updateAppointment);
+router.put("/admin/appointments/:id/status", updateAppointmentStatus);
+router.post("/offers/validate", validateOfferCode);
 
 export default router;
