@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { FallbackAvatar } from '../../../App';
 
 const API = 'http://localhost:3000';
+const authHeaders = () => {
+  const token = localStorage.getItem('winespa_token');
+  return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } as Record<string,string> : { 'Content-Type': 'application/json' };
+};
+const authHeadersNoJson = () => {
+  const token = localStorage.getItem('winespa_token');
+  return token ? { 'Authorization': `Bearer ${token}` } as Record<string,string> : {} as Record<string,string>;
+};
 
 interface Stats {
   totalEarnings: number;
@@ -41,6 +49,7 @@ interface ServiceCatalogItem {
   shortDescription?: string;
   includesDescription?: string;
   category?: string;
+  imageUrl?: string;
 }
 
 interface Manicurist {
@@ -115,6 +124,8 @@ export const AdminDashboard: React.FC = () => {
   const [svcShort, setSvcShort] = useState('');
   const [svcIncludes, setSvcIncludes] = useState('');
   const [svcCat, setSvcCat] = useState('');
+  const [svcImageUrl, setSvcImageUrl] = useState('');
+  const [svcImageFile, setSvcImageFile] = useState<File | null>(null);
 
   // Offer form
   const [offId, setOffId] = useState<string | null>(null);
@@ -205,7 +216,7 @@ export const AdminDashboard: React.FC = () => {
   const handleUpdateStatus = async (id: string | number, status: string) => {
     try {
       const res = await fetch(`${API}/api/admin/appointments/${id}/status`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status }),
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: status as any } : a));
@@ -220,10 +231,20 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!svcName || !svcPrice || !svcDuration) return;
     setSubmitting(true);
-    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined };
+
+    let finalImageUrl = svcImageUrl || undefined;
+    if (svcImageFile) {
+      try {
+        const fd = new FormData(); fd.append('image', svcImageFile);
+        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+        if (uRes.ok) { const d = await uRes.json(); finalImageUrl = d.imageUrl; }
+      } catch { /* */ }
+    }
+
+    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
-      const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); loadData(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
@@ -232,8 +253,8 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Eliminar?')) return;
     try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
-  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); };
 
   // --- Offers ---
   const handleSaveOffer = async (e: React.FormEvent) => {
@@ -243,13 +264,13 @@ export const AdminDashboard: React.FC = () => {
     const body: any = { title: offTitle, discountPercentage: parseInt(offDiscount), code: offCode, description: offDesc || undefined };
     try {
       const url = offId ? `${API}/api/admin/offers/${offId}` : `${API}/api/admin/offers`;
-      const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (res.ok) { setSuccessMsg(offId ? 'Actualizada.' : 'Creada.'); resetOff(); loadData(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
   const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
-  const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
+  const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
   const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); };
 
@@ -262,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
     if (manId) { if (manPass) body.password = manPass; } else { if (!manPass) { setErrorMsg('Contraseña requerida para nueva manicurista.'); setSubmitting(false); return; } body.password = manPass; }
     try {
       const url = manId ? `${API}/api/admin/manicurists/${manId}` : `${API}/api/admin/manicurists`;
-      const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
       const saved = await res.json();
       const targetId = saved.id || manId;
@@ -312,7 +333,7 @@ export const AdminDashboard: React.FC = () => {
       const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
       if (!uRes.ok) throw new Error();
       const { imageUrl } = await uRes.json();
-      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
+      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
       if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); fetchCMS(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
@@ -566,6 +587,7 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
                   {svcId && <button type="button" onClick={resetSvc} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}

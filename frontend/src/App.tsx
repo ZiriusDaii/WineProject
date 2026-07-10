@@ -590,10 +590,16 @@ export default function App() {
 
       if (res.ok) {
         const data = await res.json();
-        
-        const apiRole = String(data.role || '').toLowerCase();
+        const userData = data.user || data;
+        const token = data.token;
+
+        if (token) {
+          localStorage.setItem('winespa_token', token);
+        }
+
+        const apiRole = String(userData.role || '').toLowerCase();
         let roleVal: 'admin' | 'manicurista' = 'manicurista';
-        if (apiRole.includes('admin') || apiRole.includes('director')) {
+        if (apiRole.includes('admin') || apiRole.includes('director') || apiRole.includes('owner')) {
           roleVal = 'admin';
         } else if (apiRole.includes('manic') || apiRole.includes('stylist') || apiRole.includes('colab') || apiRole.includes('profesional')) {
           roleVal = 'manicurista';
@@ -602,10 +608,10 @@ export default function App() {
         }
 
         const user: UserSession = {
-          id: String(data.id || data._id || 'staff'),
-          name: data.name || staffUser,
+          id: String(userData.id || userData._id || 'staff'),
+          name: userData.name || staffUser,
           role: roleVal,
-          avatarUrl: data.avatarUrl
+          avatarUrl: userData.avatarUrl
         };
         setSession(user);
         localStorage.setItem('winespa_session', JSON.stringify(user));
@@ -625,6 +631,7 @@ export default function App() {
   const handleLogout = () => {
     setSession(null);
     localStorage.removeItem('winespa_session');
+    localStorage.removeItem('winespa_token');
     setView('landing');
     setSelectedServiceIds([]);
     setSelectedSpecialist(null);

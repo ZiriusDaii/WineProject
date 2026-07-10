@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/upload.middleware.js";
+import { requireAdmin, requireStaff } from "../middlewares/auth.middleware.js";
 import {
   getServices,
   getManicurists,
@@ -41,56 +42,58 @@ import { getLandingContent } from "../controllers/landing.controller.js";
 
 const router = Router();
 
+// Public routes
 router.get("/services", getServices);
 router.get("/sedes", getSedes);
 router.get("/manicurists", getManicurists);
 router.get("/offers", getOffers);
+router.get("/landing/content", getLandingContent);
+router.post("/offers/validate", validateOfferCode);
 
 router.post("/clients/auth", authClient);
 router.post("/clients", createClient);
+router.post("/auth/login", loginStaff);
 
 router.post("/appointments", createAppointment);
 router.get("/appointments", getClientAppointments);
 router.get("/clients/:clientId/appointments", getClientAppointments);
+router.put("/appointments/:id", updateAppointment);
 
-router.get("/landing/content", getLandingContent);
-
-router.post("/auth/login", loginStaff);
-
-router.get("/admin/stats", getDashboardStats);
-router.get("/admin/appointments", getAllAppointments);
-router.post("/admin/services", createService);
-router.put("/admin/services/:id", updateService);
-router.delete("/admin/services/:id", deleteService);
-router.post("/admin/offers", createSpecialOffer);
-router.get("/admin/offers", getAdminOffers);
-router.put("/admin/offers/:id", updateSpecialOffer);
-router.delete("/admin/offers/:id", deleteSpecialOffer);
-router.get("/admin/clients", getAdminUsers);
-router.get("/admin/manicurists", getAdminManicurists);
-router.post("/admin/manicurists", updateManicuristStatus);
-router.put("/admin/manicurists/:id", updateManicuristStatus);
-router.post("/admin/landing-cms", manageLandingContent);
-router.delete("/admin/landing-cms/:id", deleteLandingContent);
+// Admin routes (require auth)
+router.get("/admin/stats", requireAdmin, getDashboardStats);
+router.get("/admin/appointments", requireAdmin, getAllAppointments);
+router.post("/admin/services", requireAdmin, createService);
+router.put("/admin/services/:id", requireAdmin, updateService);
+router.delete("/admin/services/:id", requireAdmin, deleteService);
+router.post("/admin/offers", requireAdmin, createSpecialOffer);
+router.get("/admin/offers", requireAdmin, getAdminOffers);
+router.put("/admin/offers/:id", requireAdmin, updateSpecialOffer);
+router.delete("/admin/offers/:id", requireAdmin, deleteSpecialOffer);
+router.get("/admin/clients", requireAdmin, getAdminUsers);
+router.get("/admin/manicurists", requireAdmin, getAdminManicurists);
+router.post("/admin/manicurists", requireAdmin, updateManicuristStatus);
+router.put("/admin/manicurists/:id", requireAdmin, updateManicuristStatus);
+router.post("/admin/landing-cms", requireAdmin, manageLandingContent);
+router.delete("/admin/landing-cms/:id", requireAdmin, deleteLandingContent);
+router.put("/admin/appointments/:id/status", requireAdmin, updateAppointmentStatus);
 
 router.post(
   "/admin/manicurists/upload-avatar",
+  requireAdmin,
   upload.single("image"),
   uploadManicuristAvatar,
 );
 
 router.post(
   "/admin/landing/upload",
+  requireAdmin,
   upload.single("image"),
   uploadLandingImage,
 );
 
-router.get("/manicurist/appointments", getManicuristDashboard);
-router.put("/manicurist/profile", updateManicuristProfile);
-
-router.put("/appointments/:id/complete", completeAppointment);
-router.put("/appointments/:id", updateAppointment);
-router.put("/admin/appointments/:id/status", updateAppointmentStatus);
-router.post("/offers/validate", validateOfferCode);
+// Manicurist routes (require staff auth)
+router.get("/manicurist/appointments", requireStaff, getManicuristDashboard);
+router.put("/manicurist/profile", requireStaff, updateManicuristProfile);
+router.put("/appointments/:id/complete", requireStaff, completeAppointment);
 
 export default router;
