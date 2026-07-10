@@ -160,19 +160,47 @@ export const AdminDashboard: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [adminLoginUser, setAdminLoginUser] = useState('');
+  const [adminLoginPass, setAdminLoginPass] = useState('');
+
   useEffect(() => { loadData(); }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
 
+  const doLogin = async () => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: adminLoginUser, password: adminLoginPass }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('winespa_token', data.token);
+        setUnauthorized(false);
+        setAdminLoginUser(''); setAdminLoginPass('');
+        loadData();
+      } else { setErrorMsg('Credenciales invalidas.'); }
+    } catch { setErrorMsg('Error de conexion.'); }
+    finally { setSubmitting(false); }
+  };
+
   const loadData = async () => {
     setLoading(true);
+    const h = authHeaders();
     try {
       const [mRes, sRes, cRes, sedesRes, oRes] = await Promise.all([
-        fetch(`${API}/api/admin/manicurists`),
+        fetch(`${API}/api/admin/manicurists`, { headers: h }),
         fetch(`${API}/api/services`),
-        fetch(`${API}/api/admin/clients`).catch(() => null),
-        fetch(`${API}/api/sedes`).catch(() => null),
-        fetch(`${API}/api/admin/offers`).catch(() => null),
+        fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
+        fetch(`${API}/api/sedes`),
+        fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
       ]);
+
+      if (mRes.status === 401 || cRes?.status === 401 || oRes?.status === 401) {
+        setUnauthorized(true); setLoading(false); return;
+      }
       const mData = mRes.ok ? await mRes.json() : [];
       const sData = sRes.ok ? await sRes.json() : [];
       const cPayload = cRes?.ok ? await cRes.json() : null;
@@ -352,6 +380,23 @@ export const AdminDashboard: React.FC = () => {
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
+  if (unauthorized) return (
+    <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
+      <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-8 max-w-sm w-full space-y-5 text-center shadow-lg">
+        <div>
+          <span className="serif-title text-2xl text-[#3B0019]">WineSpa Admin</span>
+          <p className="text-xs text-[#78716C] mt-1">Inicia sesion para acceder al panel</p>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); doLogin(); }} className="space-y-3 text-left">
+          <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required value={adminLoginUser} onChange={e => setAdminLoginUser(e.target.value)} className="w-full p-2.5 border rounded-lg text-xs" /></div>
+          <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena</label><input type="password" required value={adminLoginPass} onChange={e => setAdminLoginPass(e.target.value)} className="w-full p-2.5 border rounded-lg text-xs" /></div>
+          {errorMsg && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{errorMsg}</p>}
+          <button type="submit" disabled={submitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{submitting ? 'Entrando...' : 'Ingresar'}</button>
+        </form>
+        <p className="text-[9px] text-[#A68F63]">Acceso exclusivo para administradores de WineSpa</p>
+      </div>
+    </div>
+  );
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'metrics', label: 'Estadisticas' },
