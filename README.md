@@ -21,9 +21,10 @@ Monorepo con dos proyectos independientes (sin workspaces compartidos): `fronten
 
 ## Cómo correrlo en local
 
-1. Levantar Postgres:
+1. Levantar Postgres (`docker-compose.yml` lee las credenciales de un `.env` en la raíz, no las trae hardcodeadas):
 
    ```bash
+   cp .env.example .env   # elegí una password
    docker compose up -d postgres
    ```
 
@@ -31,7 +32,7 @@ Monorepo con dos proyectos independientes (sin workspaces compartidos): `fronten
 
    ```bash
    cd backend
-   cp .env.example .env   # completá DATABASE_URL con el usuario/password de docker-compose.yml
+   cp .env.example .env   # DATABASE_URL debe usar la misma password que pusiste en el .env de la raíz
    npm install
    npm run db:push        # aplica el schema de Prisma a la base
    npm run dev             # http://localhost:3000
@@ -51,9 +52,13 @@ El frontend llama al backend directo en `http://localhost:3000` (sin proxy ni va
 
 `docker compose up -d` levanta Postgres **y** el backend en un contenedor (`Dockerfile` en `backend/`). El frontend no está dockerizado, se corre aparte con `npm run dev`. Ojo: el contenedor del backend tiene `restart: always`, así que si lo usaste antes puede seguir vivo y competir por el puerto 3000 con tu `npm run dev` local — pará el contenedor (`docker compose stop backend`) antes de correr el backend en local con hot-reload.
 
-## Variables de entorno (backend)
+## Variables de entorno
 
-Ver `backend/.env.example`. Solo dos: `DATABASE_URL` y `PORT`. No hay secretos de sesión/JWT — el login de staff compara la contraseña directo (ver sección Seguridad).
+- Raíz (`.env.example`): credenciales de Postgres que usa `docker-compose.yml` (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`, `PORT`).
+- `backend/.env.example`: `DATABASE_URL` y `PORT` para correr el backend con `npm run dev` fuera de Docker.
+- `CORS_ORIGIN` (opcional, backend): lista de orígenes permitidos separados por coma. Sin definir, acepta cualquier origen (default de dev).
+
+No hay secretos de sesión/JWT — el login de staff compara la contraseña contra un hash bcrypt (ver sección Seguridad).
 
 ## Estructura
 
@@ -61,7 +66,7 @@ Ver `backend/.env.example`. Solo dos: `DATABASE_URL` y `PORT`. No hay secretos d
 backend/
   src/
     controllers/    # lógica de cada endpoint (client, admin, manicurist, auth, landing)
-    routes/          # api.routes.ts es el único router que se importa de verdad (ver nota abajo)
+    routes/api.routes.ts  # unico router, registra todos los endpoints
     middlewares/     # multer (upload de imágenes)
     lib/prisma.ts    # cliente de Prisma
   prisma/schema.prisma
@@ -73,7 +78,7 @@ frontend/
     features/legal/                  # términos, privacidad, cancelación
 ```
 
-**Nota:** `backend/src/routes/auth.routes.ts`, `client.routes.ts`, `admin.routes.ts` y `landing.routes.ts` existen pero no se importan en `index.ts` — todo el ruteo real vive en `api.routes.ts`. Son código muerto pendiente de limpieza.
+**Nota:** `features/cliente/views/ClientDashboard.tsx` y `features/owner/views/BusinessOverview.tsx` existen pero no se importan en ningún lado (el portal del cliente real vive dentro de `App.tsx`). Código muerto, pendiente de limpieza.
 
 ## Scripts
 
@@ -103,9 +108,16 @@ frontend/
 - `main` / `staging` / `develop` son ramas permanentes. `main` recibe merges solo desde `staging`.
 - Todo el trabajo nuevo sale de `develop` en una rama `feature/*` o `bugfix/*`, con su propio PR de vuelta a `develop`. Un PR por issue o arreglo — no se mezclan cambios de distintos issues en la misma rama.
 
-## Seguridad — pendiente conocido
+## Seguridad
 
-Las contraseñas de staff (`User.password`) se guardan **en texto plano**, sin hash. Es un hallazgo real, no corregido todavía (issue #9). No usar datos reales de usuarios en este ambiente hasta que se migre a bcrypt/argon2.
+Hecho: passwords de staff hasheadas con bcrypt, `helmet()`, rate limiting (global y reforzado en `/api/auth` y `/api/clients/auth`), CORS restrictivo vía `CORS_ORIGIN`, límite de tamaño de body, credenciales de Docker fuera del repo, y varios bugs de validación/autorización corregidos (ver historial de PRs de auditoría de seguridad).
+
+Pendiente conocido, no resuelto todavía:
+- **Sin autenticación por sesión/JWT** en los endpoints de admin y manicurista — hoy cualquiera que sepa la URL puede llamarlos directo, el login solo protege la UI. Es el hueco más grande que queda.
+- `http://localhost:3000` está hardcodeado en decenas de `fetch` del frontend en vez de una variable de entorno compartida — no rompe nada en dev, pero hay que resolverlo antes de desplegar a un dominio real.
+- Sin índices de base de datos en columnas que se filtran seguido (`Appointment.date`, `manicuristId`, `status`, `User.role`) — no es un problema con el volumen de datos actual, pero conviene agregarlos antes de producción.
+
+No usar datos reales de clientes en este ambiente hasta que se resuelva la autenticación por sesión.
 
 ## Estado actual / qué falta
 

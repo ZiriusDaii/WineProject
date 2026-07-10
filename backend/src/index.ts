@@ -14,7 +14,10 @@ const PORT = process.env.PORT ?? 3000;
 
 app.set("trust proxy", 1);
 
-app.use(helmet());
+// crossOriginResourcePolicy en "cross-origin": el frontend corre en otro
+// puerto/dominio y carga imagenes de /uploads via <img>, el default
+// same-origin de helmet las bloquea.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? true }));
 app.use(express.json({ limit: "1mb" }));
 
