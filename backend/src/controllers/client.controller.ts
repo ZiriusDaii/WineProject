@@ -556,3 +556,41 @@ export async function uploadLandingImage(
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
+
+export async function validateOfferCode(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { code } = req.body as { code?: string };
+
+    if (!code) {
+      res.status(400).json({ error: "El campo 'code' es requerido" });
+      return;
+    }
+
+    const offer = await prisma.specialOffer.findUnique({
+      where: { code: code.trim().toUpperCase() },
+    });
+
+    if (!offer) {
+      res.status(404).json({ error: "Código no encontrado" });
+      return;
+    }
+
+    if (!offer.isActive) {
+      res.status(400).json({ error: "Esta oferta ya no está vigente" });
+      return;
+    }
+
+    res.json({
+      valid: true,
+      discountPercentage: offer.discountPercentage,
+      title: offer.title,
+      description: offer.description,
+    });
+  } catch (error) {
+    console.error("Error validando código de oferta:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}

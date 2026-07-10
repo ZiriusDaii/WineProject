@@ -560,3 +560,46 @@ export async function getAdminOffers(
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
+
+const VALID_APPOINTMENT_STATUSES = ["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
+
+export async function updateAppointmentStatus(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { status } = req.body as { status?: string };
+
+    if (!id || !status) {
+      res.status(400).json({ error: "Los campos 'id' y 'status' son requeridos" });
+      return;
+    }
+
+    if (!(VALID_APPOINTMENT_STATUSES as readonly string[]).includes(status)) {
+      res.status(400).json({ error: `Estado inválido. Válidos: ${VALID_APPOINTMENT_STATUSES.join(", ")}` });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: { status: status as typeof VALID_APPOINTMENT_STATUSES[number] },
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        manicurist: { select: { id: true, name: true } },
+        services: true,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando estado de cita:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}

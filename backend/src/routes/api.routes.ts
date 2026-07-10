@@ -5,6 +5,7 @@ import {
   getManicurists,
   getSedes,
   getOffers,
+  validateOfferCode,
   authClient,
   createClient,
   createAppointment,
@@ -27,6 +28,7 @@ import {
   updateSpecialOffer,
   deleteSpecialOffer,
   getAdminOffers,
+  updateAppointmentStatus,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -86,5 +88,7 @@ router.put("/manicurist/profile", updateManicuristProfile);
 
 router.put("/appointments/:id/complete", completeAppointment);
 router.put("/appointments/:id", updateAppointment);
+router.put("/admin/appointments/:id/status", updateAppointmentStatus);
+router.post("/offers/validate", validateOfferCode);
 
 export default router;

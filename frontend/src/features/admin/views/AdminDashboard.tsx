@@ -8,9 +8,10 @@ interface Stats {
   totalAppointments: number;
   topManicurist: string;
   manicuristPerformance: { name: string; completedAppointments: number }[];
+  appointmentsByStatus?: { status: string; count: number }[];
 }
 
-interface Service {
+interface ServiceItem {
   id: string | number;
   name: string;
   price: string | number;
@@ -21,13 +22,15 @@ interface Appointment {
   id: string | number;
   appointmentId?: string | number;
   clientName?: string;
-  client?: { name?: string };
+  client?: { name?: string; phone?: string };
   clientId?: string | number;
   manicuristId: string | number;
-  services: Service[];
+  manicurist?: { name?: string };
+  services: ServiceItem[];
   date: string;
-  total?: number | string;
-  status?: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  totalDuration?: number;
+  totalPrice?: string | number;
+  status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
 interface ServiceCatalogItem {
@@ -43,6 +46,8 @@ interface ServiceCatalogItem {
 interface Manicurist {
   id: string | number;
   name: string;
+  phone: string;
+  username: string;
   age?: number;
   avatarUrl?: string;
   avatarPath?: string;
@@ -57,7 +62,7 @@ interface Client {
   phone: string;
   age?: number;
   gender?: string;
-  appointmentHistoryCount?: number;
+  createdAt?: string;
 }
 
 interface Offer {
@@ -67,13 +72,24 @@ interface Offer {
   discountPercentage: number;
   code: string;
   isActive: boolean;
-  createdAt: string;
 }
 
-const toDateLabel = (isoDate: string) => isoDate.slice(0, 10);
-const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
+interface Sede {
+  id: string;
+  name: string;
+}
+
+const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
+const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
 type Tab = 'metrics' | 'appointments' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news';
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendiente', IN_PROGRESS: 'En Curso', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
+};
+
+const CATEGORIES = ['', 'MANICURE', 'PEDICURE', 'NAIL_ART'];
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
@@ -85,32 +101,46 @@ export const AdminDashboard: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [sedes, setSedes] = useState<{ id: string; name: string }[]>([]);
+  const [sedes, setSedes] = useState<Sede[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
   // Service form
-  const [newServiceName, setNewServiceName] = useState('');
-  const [newServicePrice, setNewServicePrice] = useState('');
-  const [newServiceDuration, setNewServiceDuration] = useState('');
-  const [newServiceShortDesc, setNewServiceShortDesc] = useState('');
-  const [newServiceIncludesDesc, setNewServiceIncludesDesc] = useState('');
-  const [newServiceCategory, setNewServiceCategory] = useState('');
-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [svcId, setSvcId] = useState<string | null>(null);
+  const [svcName, setSvcName] = useState('');
+  const [svcPrice, setSvcPrice] = useState('');
+  const [svcDuration, setSvcDuration] = useState('');
+  const [svcShort, setSvcShort] = useState('');
+  const [svcIncludes, setSvcIncludes] = useState('');
+  const [svcCat, setSvcCat] = useState('');
 
   // Offer form
-  const [newOfferTitle, setNewOfferTitle] = useState('');
-  const [newOfferDesc, setNewOfferDesc] = useState('');
-  const [newOfferDiscount, setNewOfferDiscount] = useState('');
-  const [newOfferCode, setNewOfferCode] = useState('');
-  const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
+  const [offId, setOffId] = useState<string | null>(null);
+  const [offTitle, setOffTitle] = useState('');
+  const [offDesc, setOffDesc] = useState('');
+  const [offDiscount, setOffDiscount] = useState('');
+  const [offCode, setOffCode] = useState('');
+
+  // Manicurist form
+  const [manId, setManId] = useState<string | null>(null);
+  const [manPhone, setManPhone] = useState('');
+  const [manUser, setManUser] = useState('');
+  const [manName, setManName] = useState('');
+  const [manPass, setManPass] = useState('');
+  const [manAge, setManAge] = useState('');
+  const [manGender, setManGender] = useState('Femenino');
+  const [manSede, setManSede] = useState('');
+
+  // Client detail modal
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientAppts, setClientAppts] = useState<Appointment[]>([]);
 
   // CMS
-  const [selectedCarouselFile, setSelectedCarouselFile] = useState<File | null>(null);
-  const [landingNewsTitle, setLandingNewsTitle] = useState('');
-  const [landingNewsDesc, setLandingNewsDesc] = useState('');
+  const [cmsFile, setCmsFile] = useState<File | null>(null);
+  const [cmsTitle, setCmsTitle] = useState('');
+  const [cmsDesc, setCmsDesc] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -120,364 +150,234 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const [manicuristsRes, servicesRes, clientsRes, sedesRes, offersRes] = await Promise.all([
+      const [mRes, sRes, cRes, sedesRes, oRes] = await Promise.all([
         fetch(`${API}/api/admin/manicurists`),
         fetch(`${API}/api/services`),
         fetch(`${API}/api/admin/clients`).catch(() => null),
         fetch(`${API}/api/sedes`).catch(() => null),
         fetch(`${API}/api/admin/offers`).catch(() => null),
       ]);
+      const mData = mRes.ok ? await mRes.json() : [];
+      const sData = sRes.ok ? await sRes.json() : [];
+      const cPayload = cRes?.ok ? await cRes.json() : null;
+      const sedesData = sedesRes?.ok ? await sedesRes.json() : [];
+      const oData = oRes?.ok ? await oRes.json() : [];
 
-      const manicuristsData = manicuristsRes.ok ? await manicuristsRes.json() : [];
-      const servicesData = servicesRes.ok ? await servicesRes.json() : [];
-      const clientsPayload = clientsRes && clientsRes.ok ? await clientsRes.json() : null;
-      const sedesData = sedesRes && sedesRes.ok ? await sedesRes.json() : [];
-      const offersData = offersRes && offersRes.ok ? await offersRes.json() : [];
-
-      const clientsData: Client[] = clientsPayload?.data ?? (Array.isArray(clientsPayload) ? clientsPayload : []);
-
-      setManicurists((manicuristsData || []).map((m: any) => ({
-        ...m,
-        age: m.age ?? null,
-        avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || ''),
-        role: m.role || 'Manicurista',
-        sedeId: m.sedeId || null,
-        schedules: m.schedules || [],
-      })));
-
-      setServicesCatalog(servicesData || []);
-      setClients(clientsData);
+      setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
+      setServicesCatalog(sData || []);
+      setClients(cPayload?.data ?? (Array.isArray(cPayload) ? cPayload : []));
       setSedes(sedesData);
-      setOffers(offersData);
+      setOffers(oData);
 
-      // Cargar Citas
-      let apptsData: Appointment[] = [];
+      let appts: Appointment[] = [];
       try {
-        const apptsRes = await fetch(`${API}/api/admin/appointments`);
-        if (apptsRes.ok) {
-          const payload = await apptsRes.json();
-          apptsData = payload?.data ?? (Array.isArray(payload) ? payload : []);
-        }
-      } catch {
-        // fallback vacio
-      }
-      setAppointments((apptsData || []).map(a => ({ ...a, status: (a.status || 'PENDING').toUpperCase() as any })));
+        const aRes = await fetch(`${API}/api/admin/appointments`);
+        if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
+      } catch { /* */ }
+      setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
-      // Métricas
-      let statsData: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [] };
+      let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
       try {
-        const statsRes = await fetch(`${API}/api/admin/stats`);
-        if (statsRes.ok) {
-          const raw = await statsRes.json();
-          const perf = (raw.manicuristPerformance || []).map((p: any) => ({
-            name: p.name,
-            completedAppointments: p.completedAppointments ?? p.appointmentsCount ?? 0,
-          }));
-          const totalAppts = raw.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0;
-          statsData = {
-            totalEarnings: raw.totalEarnings ?? 0,
-            totalAppointments: totalAppts,
-            topManicurist: perf.length > 0 ? perf[0].name : '-',
-            manicuristPerformance: perf,
+        const stRes = await fetch(`${API}/api/admin/stats`);
+        if (stRes.ok) {
+          const r = await stRes.json();
+          sData2 = {
+            totalEarnings: r.totalEarnings ?? 0,
+            totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
+            topManicurist: r.manicuristPerformance?.[0]?.name || '-',
+            manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
+              name: p.name, completedAppointments: p.completedAppointments ?? 0,
+            })),
+            appointmentsByStatus: r.appointmentsByStatus || [],
           };
         }
-      } catch { /* fallback */ }
-      setStats(statsData);
-
-    } catch { /* arrays vacios */ }
+      } catch { /* */ }
+      setStats(sData2);
+    } catch { /* */ }
     finally { setLoading(false); }
   };
 
-  const handleUpdateStatus = async (id: string | number, newStatus: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED') => {
+  const handleUpdateStatus = async (id: string | number, status: string) => {
     try {
-      const response = await fetch(`${API}/api/appointments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+      const res = await fetch(`${API}/api/admin/appointments/${id}/status`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
       });
-      if (response.ok) {
-        setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
+      if (res.ok) {
+        setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: status as any } : a));
+        setSuccessMsg(`Cita ${STATUS_LABELS[status]?.toLowerCase() || status}.`);
+        setTimeout(() => setSuccessMsg(null), 2000);
       }
-    } catch { /* silencioso */ }
+    } catch { /* */ }
   };
 
   // --- Services ---
-  const handleAddService = async (e: React.FormEvent) => {
+  const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newServiceName || !newServicePrice || !newServiceDuration) return;
-    setSubmitting(true); setErrorMsg(null); setSuccessMsg(null);
-
-    const body: any = {
-      name: newServiceName,
-      price: parseFloat(newServicePrice),
-      durationInMinutes: parseInt(newServiceDuration),
-      shortDescription: newServiceShortDesc || undefined,
-      includesDescription: newServiceIncludesDesc || undefined,
-      category: newServiceCategory || undefined,
-    };
-
+    if (!svcName || !svcPrice || !svcDuration) return;
+    setSubmitting(true);
+    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined };
     try {
-      const url = editingServiceId
-        ? `${API}/api/admin/services/${editingServiceId}`
-        : `${API}/api/admin/services`;
-      const res = await fetch(url, {
-        method: editingServiceId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        setSuccessMsg(editingServiceId ? 'Servicio actualizado.' : 'Servicio creado.');
-        resetServiceForm();
-        loadData();
-      } else { throw new Error(); }
-    } catch { setErrorMsg('Error al guardar el servicio.'); }
+      const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
+      const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); loadData(); } else throw new Error();
+    } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-
   const handleDeleteService = async (id: string | number) => {
-    if (!confirm('¿Eliminar este servicio?')) return;
-    try {
-      const res = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE' });
-      if (res.ok) { setSuccessMsg('Servicio eliminado.'); loadData(); }
-      else {
-        const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.error || 'No se pudo eliminar.');
-      }
-    } catch { setErrorMsg('Error al eliminar.'); }
+    if (!confirm('Eliminar?')) return;
+    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
-
-  const startEditService = (s: ServiceCatalogItem) => {
-    setEditingServiceId(String(s.id));
-    setNewServiceName(s.name);
-    setNewServicePrice(String(s.price));
-    setNewServiceDuration(String(s.durationInMinutes || 60));
-    setNewServiceShortDesc(s.shortDescription || '');
-    setNewServiceIncludesDesc(s.includesDescription || '');
-    setNewServiceCategory(s.category || '');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const resetServiceForm = () => {
-    setEditingServiceId(null);
-    setNewServiceName(''); setNewServicePrice(''); setNewServiceDuration('');
-    setNewServiceShortDesc(''); setNewServiceIncludesDesc(''); setNewServiceCategory('');
-  };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); };
 
   // --- Offers ---
   const handleSaveOffer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOfferTitle || !newOfferDiscount || !newOfferCode) return;
-    setSubmitting(true); setErrorMsg(null); setSuccessMsg(null);
-
-    const body: any = {
-      title: newOfferTitle,
-      discountPercentage: parseInt(newOfferDiscount),
-      code: newOfferCode,
-      description: newOfferDesc || undefined,
-    };
-
+    if (!offTitle || !offDiscount || !offCode) return;
+    setSubmitting(true);
+    const body: any = { title: offTitle, discountPercentage: parseInt(offDiscount), code: offCode, description: offDesc || undefined };
     try {
-      const url = editingOfferId
-        ? `${API}/api/admin/offers/${editingOfferId}`
-        : `${API}/api/admin/offers`;
-      const res = await fetch(url, {
-        method: editingOfferId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        setSuccessMsg(editingOfferId ? 'Oferta actualizada.' : 'Oferta creada.');
-        resetOfferForm();
-        loadData();
-      } else { throw new Error(); }
-    } catch { setErrorMsg('Error al guardar la oferta.'); }
+      const url = offId ? `${API}/api/admin/offers/${offId}` : `${API}/api/admin/offers`;
+      const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { setSuccessMsg(offId ? 'Actualizada.' : 'Creada.'); resetOff(); loadData(); } else throw new Error();
+    } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
+  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
+  const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
+  const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); };
 
-  const handleDeleteOffer = async (id: string) => {
-    if (!confirm('¿Eliminar esta oferta?')) return;
+  // --- Manicurists ---
+  const handleSaveManicurist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manPhone || !manUser || !manName) return;
+    setSubmitting(true);
+    const body: any = { phone: manPhone, username: manUser, name: manName, age: manAge ? parseInt(manAge) : null, gender: manGender || null, sedeId: manSede || null };
+    if (manId) { if (manPass) body.password = manPass; } else { if (!manPass) { setErrorMsg('Contraseña requerida para nueva manicurista.'); setSubmitting(false); return; } body.password = manPass; }
     try {
-      const res = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE' });
-      if (res.ok) { setSuccessMsg('Oferta eliminada.'); loadData(); }
-      else { setErrorMsg('No se pudo eliminar.'); }
-    } catch { setErrorMsg('Error al eliminar.'); }
+      const url = manId ? `${API}/api/admin/manicurists/${manId}` : `${API}/api/admin/manicurists`;
+      const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { setSuccessMsg(manId ? 'Actualizada.' : 'Creada.'); resetMan(); loadData(); } else throw new Error();
+    } catch { setErrorMsg('Error.'); }
+    finally { setSubmitting(false); }
   };
+  const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManSede(m.sedeId || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManSede(''); };
 
-  const handleToggleOffer = async (offer: Offer) => {
+  // --- Client detail ---
+  const viewClient = async (c: Client) => {
+    setSelectedClient(c);
     try {
-      const res = await fetch(`${API}/api/admin/offers/${offer.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !offer.isActive }),
-      });
-      if (res.ok) {
-        setOffers(prev => prev.map(o => o.id === offer.id ? { ...o, isActive: !offer.isActive } : o));
-      }
-    } catch { /* silencioso */ }
-  };
-
-  const startEditOffer = (o: Offer) => {
-    setEditingOfferId(o.id);
-    setNewOfferTitle(o.title);
-    setNewOfferDesc(o.description || '');
-    setNewOfferDiscount(String(o.discountPercentage));
-    setNewOfferCode(o.code);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const resetOfferForm = () => {
-    setEditingOfferId(null);
-    setNewOfferTitle(''); setNewOfferDesc(''); setNewOfferDiscount(''); setNewOfferCode('');
+      const res = await fetch(`${API}/api/appointments?clientId=${c.id}`);
+      if (res.ok) setClientAppts(await res.json());
+    } catch { setClientAppts([]); }
   };
 
   // --- CMS ---
-  const handleUpdateLanding = async (e: React.FormEvent) => {
+  const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true); setErrorMsg(null); setSuccessMsg(null);
-    if (!selectedCarouselFile) { setErrorMsg('Selecciona una imagen.'); setSubmitting(false); return; }
+    if (!cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
+    setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('image', selectedCarouselFile);
-      const uploadRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: formData });
-      if (!uploadRes.ok) throw new Error();
-      const uploadData = await uploadRes.json();
-      const res = await fetch(`${API}/api/admin/landing-cms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ type: 'CAROUSEL', title: landingNewsTitle, description: landingNewsDesc, imageUrl: uploadData.imageUrl, isActive: true }]),
-      });
-      if (res.ok) {
-        setSuccessMsg('Landing actualizado.');
-        setSelectedCarouselFile(null); setLandingNewsTitle(''); setLandingNewsDesc('');
-      } else { throw new Error(); }
-    } catch { setErrorMsg('Error al publicar.'); }
+      const fd = new FormData(); fd.append('image', cmsFile);
+      const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
+      if (!uRes.ok) throw new Error();
+      const { imageUrl } = await uRes.json();
+      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
+      if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); } else throw new Error();
+    } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
 
-  // --- Pagination & filtering ---
-  const getPaginatedItems = (items: any[]) => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return items.slice(start, start + itemsPerPage);
-  };
+  // --- Helpers ---
+  const paginate = (items: any[]) => { const s = (currentPage - 1) * itemsPerPage; return items.slice(s, s + itemsPerPage); };
+  const filterApps = () => appointments.filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filterSvcs = () => servicesCatalog.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
+  const getManName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || '—';
+  const getSedeName = (id?: string) => sedes.find(s => s.id === id)?.name || '';
+  const svcNames = (ss: ServiceItem[]) => ss.map(s => s.name).join(', ') || '—';
+  const clear = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
+  const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
 
-  const getFilteredAppointments = () =>
-    (appointments || []).filter(a =>
-      (a.clientName || a.client?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      getManicuristName(a.manicuristId).toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-  const getFilteredServices = () =>
-    (servicesCatalog || []).filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const getFilteredClients = () =>
-    (clients || []).filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery));
-
-  const getFilteredOffers = () =>
-    (offers || []).filter(o => o.title.toLowerCase().includes(searchQuery.toLowerCase()) || o.code.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const getManicuristName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || 'Profesional';
-  const getSedeName = (sedeId?: string) => sedes.find(s => s.id === sedeId)?.name || '';
-  const getServiceNames = (apptServices: Service[]) => apptServices.map(s => s.name).join(', ') || 'Manicura';
-
-  const clearMessages = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FDFBF7] flex justify-center items-center font-sans">
-        <span className="serif-title text-2xl font-light tracking-widest text-[#3B0019] animate-pulse">Sincronizando Consola...</span>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: 'metrics', label: '📊 Estadísticas' },
-    { id: 'appointments', label: '📅 Pizarra de Citas' },
-    { id: 'manicurists', label: '💅 Especialistas (Staff)' },
-    { id: 'clients', label: '👥 Base de Clientes' },
-    { id: 'services', label: '🛍️ Servicios' },
-    { id: 'offers', label: '🏷️ Ofertas / Descuentos' },
-    { id: 'news', label: '📰 Novedades CMS' },
+    { id: 'metrics', label: 'Estadisticas' },
+    { id: 'appointments', label: 'Pizarra de Citas' },
+    { id: 'manicurists', label: 'Especialistas' },
+    { id: 'clients', label: 'Base de Clientes' },
+    { id: 'services', label: 'Servicios' },
+    { id: 'offers', label: 'Descuentos' },
+    { id: 'news', label: 'CMS / Landing' },
   ];
+
+  const pagination = (total: number) => (
+    <div className="flex gap-2 text-xs">
+      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Anterior</button>
+      <span className="px-3 py-1 font-semibold">{currentPage}</span>
+      <button disabled={currentPage * itemsPerPage >= total} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Siguiente</button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col md:flex-row font-sans">
-      {/* HEADER MÓVIL */}
       <header className="md:hidden bg-[#FDFBF7] border-b border-[#EADEC9]/30 px-6 py-4 flex justify-between items-center sticky top-0 z-40 bg-opacity-90 backdrop-blur-md">
-        <div className="flex flex-col text-left">
-          <span className="serif-title text-xl text-[#3B0019] tracking-wider">WineSpa Admin</span>
-          <span className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold">Consola</span>
-        </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-xs font-semibold text-[#8E1B54]">
-          {isMobileMenuOpen ? '✕ Ocultar' : '☰ Módulos'}
-        </button>
+        <span className="serif-title text-xl text-[#3B0019]">WineSpa Admin</span>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
       </header>
 
-      {/* SIDEBAR */}
-      <aside className={`w-full md:w-64 bg-[#5C0632]/5 border-r border-[#EADEC9]/35 p-6 md:sticky md:top-0 md:h-screen shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden md:block'}`}>
-        <div className="hidden md:flex flex-col mb-8 text-left">
-          <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019]">WineSpa Admin</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-semibold mt-0.5">Control Corporativo</span>
+      <aside className={`w-full md:w-56 bg-[#5C0632]/5 border-r border-[#EADEC9]/35 p-5 md:sticky md:top-0 md:h-screen shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden md:block'}`}>
+        <div className="hidden md:block mb-6 text-left">
+          <span className="serif-title text-xl text-[#3B0019]">WineSpa</span>
+          <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-semibold block">Panel Admin</span>
         </div>
-        <nav className="flex flex-col gap-1.5">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setIsMobileMenuOpen(false); clearMessages(); }}
-              className={`px-4 py-3 rounded-xl text-xs font-semibold text-left transition-all ${
-                activeTab === tab.id ? 'bg-[#5C0632] text-white shadow-sm' : 'text-[#78716C] hover:bg-[#EADEC9]/30'
-              }`}
-            >
-              {tab.label}
-            </button>
+        <nav className="flex flex-col gap-1">
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }} className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${activeTab === t.id ? 'bg-[#5C0632] text-white' : 'text-[#78716C] hover:bg-[#EADEC9]/30'}`}>{t.label}</button>
           ))}
         </nav>
       </aside>
 
-      {/* CONTENT */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        {successMsg && <div className="mb-4 p-3 bg-green-50 text-green-700 text-xs rounded-xl border border-green-200">{successMsg}</div>}
-        {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
+      <main className="flex-1 p-4 md:p-10 overflow-y-auto">
+        {successMsg && <div className="mb-3 p-2.5 bg-green-50 text-green-700 text-xs rounded-xl border border-green-200">{successMsg}</div>}
+        {errorMsg && <div className="mb-3 p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
 
         {/* METRICS */}
         {activeTab === 'metrics' && stats && (
           <div className="space-y-8 animate-fade-in text-left">
-            <header className="space-y-1">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Rendimiento del Salón</h2>
-              <p className="text-xs text-[#78716C]">Monitorea las reservas y la facturación acumulada.</p>
-            </header>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold">Ganancias Confirmadas</span>
-                <h3 className="serif-title text-3xl font-light text-[#3B0019]">${stats.totalEarnings.toLocaleString('es-CO')}</h3>
-              </div>
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold">Citas Registradas</span>
-                <h3 className="serif-title text-3xl font-light text-[#3B0019]">{stats.totalAppointments} Citas</h3>
-              </div>
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl space-y-1">
-                <span className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold">Especialista Estrella</span>
-                <h3 className="serif-title text-xl font-normal text-[#8E1B54] truncate">{stats.topManicurist}</h3>
-              </div>
+            <h2 className="serif-title text-3xl text-[#3B0019]">Estadisticas</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Ganancias</span><h3 className="serif-title text-2xl text-[#3B0019]">${stats.totalEarnings.toLocaleString('es-CO')}</h3></div>
+              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Citas Totales</span><h3 className="serif-title text-2xl text-[#3B0019]">{stats.totalAppointments}</h3></div>
+              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Top Especialista</span><h3 className="serif-title text-lg text-[#8E1B54] truncate">{stats.topManicurist}</h3></div>
             </div>
-            {stats.manicuristPerformance.length > 0 && (
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl space-y-4">
-                <h3 className="serif-title text-lg text-[#3B0019] font-medium border-b border-[#EADEC9]/20 pb-2">Rendimiento Laboral</h3>
-                <div className="space-y-4">
-                  {stats.manicuristPerformance.map((p, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs text-[#44403C]">
-                        <span>{p.name}</span>
-                        <span className="font-semibold text-[#8E1B54]">{p.completedAppointments} citas completadas</span>
-                      </div>
-                      <div className="h-2 w-full bg-[#EADEC9]/25 rounded-full overflow-hidden">
-                        <div className="bg-[#8E1B54] h-full" style={{ width: `${Math.min((p.completedAppointments / 15) * 100, 100)}%` }}></div>
-                      </div>
+            {stats.appointmentsByStatus && stats.appointmentsByStatus.length > 0 && (
+              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
+                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Por Estado</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  {stats.appointmentsByStatus.map(s => (
+                    <div key={s.status} className="text-center p-3 bg-[#F7F3EB]/30 rounded-xl">
+                      <span className="block text-2xl font-bold text-[#8E1B54]">{s.count}</span>
+                      <span className="text-[#78716C]">{STATUS_LABELS[s.status] || s.status}</span>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {stats.manicuristPerformance.length > 0 && (
+              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
+                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Rendimiento por Especialista</h3>
+                {stats.manicuristPerformance.map((p, i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex justify-between text-xs"><span>{p.name}</span><span className="font-semibold text-[#8E1B54]">{p.completedAppointments} completadas</span></div>
+                    <div className="h-2 bg-[#EADEC9]/25 rounded-full"><div className="bg-[#8E1B54] h-full rounded-full" style={{ width: `${Math.min((p.completedAppointments / Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1)) * 100, 100)}%` }} /></div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -486,102 +386,88 @@ export const AdminDashboard: React.FC = () => {
         {/* APPOINTMENTS */}
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-in text-left">
-            <header className="space-y-1">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra General de Citas</h2>
-              <p className="text-xs text-[#78716C]">Monitoreo en tiempo real de citas en curso, confirmadas y finalizadas.</p>
-            </header>
+            <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra de Citas</h2>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
-              <input type="text" placeholder="Buscar por cliente o manicurista..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border border-[#EADEC9] rounded-lg text-xs w-full sm:w-72 bg-white" />
-              <div className="flex gap-2 text-xs">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="px-3 py-1 border rounded-lg hover:bg-neutral-50 disabled:opacity-50">Anterior</button>
-                <span className="px-3 py-1 font-semibold">{currentPage}</span>
-                <button disabled={currentPage * itemsPerPage >= getFilteredAppointments().length} onClick={() => setCurrentPage(prev => prev + 1)} className="px-3 py-1 border rounded-lg hover:bg-neutral-50 disabled:opacity-50">Siguiente</button>
-              </div>
+              <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
+              {pagination(filterApps().length)}
             </div>
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#5C0632]/5 border-b border-[#EADEC9]/30 text-[10px] uppercase tracking-wider text-[#8D774C] font-semibold">
-                      <th className="p-4">Cita</th><th className="p-4">Cliente</th><th className="p-4">Especialista</th><th className="p-4">Servicios</th><th className="p-4">Fecha/Hora</th><th className="p-4">Estado</th><th className="p-4">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EADEC9]/20 text-xs text-[#44403C]">
-                    {(!appointments || appointments.length === 0 || getFilteredAppointments().length === 0) ? (
-                      <tr><td colSpan={7} className="p-8 text-center text-[#78716C]">No hay citas agendadas o cargando...</td></tr>
-                    ) : (
-                      getPaginatedItems(getFilteredAppointments()).map((appt: Appointment) => (
-                        <tr key={appt.id} className={`hover:bg-[#F7F3EB]/10 transition-colors ${appt.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5 font-semibold text-[#3B0019]' : ''}`}>
-                          <td className="p-4 font-mono font-bold">#{appt.appointmentId || appt.id}</td>
-                          <td className="p-4">{appt.clientName || appt.client?.name || 'Cliente'}</td>
-                          <td className="p-4">{getManicuristName(appt.manicuristId)}</td>
-                          <td className="p-4 truncate max-w-xs">{getServiceNames(appt.services)}</td>
-                          <td className="p-4">{toDateLabel(appt.date)} • {toTimeLabel(appt.date)}</td>
-                          <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              appt.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                              appt.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                              appt.status === 'IN_PROGRESS' ? 'bg-[#5C0632] text-white animate-pulse' :
-                              appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                            }`}>{appt.status}</span>
-                          </td>
-                          <td className="p-4 flex gap-1.5">
-                            {appt.status !== 'COMPLETED' && appt.status !== 'CANCELLED' && appt.status !== 'IN_PROGRESS' && (
-                              <button onClick={() => handleUpdateStatus(appt.id, 'IN_PROGRESS')} className="p-1 text-[10px] bg-amber-100 text-amber-800 rounded hover:bg-amber-200 font-bold">Iniciar</button>
-                            )}
-                            {appt.status !== 'COMPLETED' && appt.status !== 'CANCELLED' && (
-                              <button onClick={() => handleUpdateStatus(appt.id, 'COMPLETED')} className="p-1 text-[10px] bg-[#8E1B54] text-white rounded hover:bg-[#5C0632] transition-colors font-bold">Completar</button>
-                            )}
-                            {appt.status !== 'CANCELLED' && (
-                              <button onClick={() => handleUpdateStatus(appt.id, 'CANCELLED')} className="p-1 text-[10px] border border-red-200 text-red-700 rounded hover:bg-red-50">Cancelar</button>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Especialista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
+                <tbody className="divide-y divide-[#EADEC9]/20">
+                  {filterApps().length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
+                    paginate(filterApps()).map(a => (
+                      <tr key={a.id} className={a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5' : ''}>
+                        <td className="p-3 font-mono font-bold">#{a.appointmentId || a.id}</td>
+                        <td className="p-3">{a.clientName || a.client?.name || '—'}</td>
+                        <td className="p-3">{a.manicurist?.name || getManName(a.manicuristId)}</td>
+                        <td className="p-3 max-w-[150px] truncate">{svcNames(a.services)}</td>
+                        <td className="p-3 whitespace-nowrap">{toDateLabel(a.date)} {toTimeLabel(a.date)}</td>
+                        <td className="p-3 font-semibold">{priceFmt(a.totalPrice || a.total)}</td>
+                        <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : a.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' : a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}`}>{STATUS_LABELS[a.status || 'PENDING']}</span></td>
+                        <td className="p-3">
+                          <div className="flex gap-1">
+                            {a.status === 'PENDING' && <button onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="px-2 py-1 text-[9px] bg-amber-100 text-amber-800 rounded font-bold">Iniciar</button>}
+                            {a.status === 'IN_PROGRESS' && <button onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="px-2 py-1 text-[9px] bg-[#8E1B54] text-white rounded font-bold">Completar</button>}
+                            {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="px-2 py-1 text-[9px] border border-red-200 text-red-700 rounded">Cancelar</button>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* STAFF */}
+        {/* MANICURISTS */}
         {activeTab === 'manicurists' && (
-          <div className="space-y-6 animate-fade-in text-left">
-            <header className="space-y-1">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Especialistas</h2>
-              <p className="text-xs text-[#78716C]">Personal del salón y sus jornadas asignadas.</p>
-            </header>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {manicurists && manicurists.length > 0 && manicurists.map(m => (
-                <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl flex flex-col justify-between space-y-4 shadow-2xs">
-                  <div className="flex items-center gap-4">
-                    {m.avatarUrl ? (
-                      <img src={m.avatarUrl} alt={m.name} className="w-14 h-14 rounded-full object-cover border border-[#EADEC9]" />
-                    ) : (
-                      <FallbackAvatar className="w-14 h-14" />
-                    )}
-                    <div>
-                      <h4 className="font-semibold text-sm text-[#3B0019]">{m.name}</h4>
-                      <p className="text-xs text-[#78716C]">{m.role} {m.age ? `• ${m.age} años` : ''}</p>
-                      {m.sedeId && <p className="text-[9px] text-[#A68F63] mt-0.5">📍 {getSedeName(m.sedeId)}</p>}
-                    </div>
-                  </div>
-                  {m.schedules && m.schedules.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-[#EADEC9]/10">
-                      <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Jornadas</span>
-                      <div className="flex flex-wrap gap-1">
-                        {m.schedules.map((sch, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[9px] font-semibold">
-                            {sch.shiftTemplate?.name || 'Turno'} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})
-                          </span>
-                        ))}
+          <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
+            <div className="md:col-span-5 space-y-4">
+              <h2 className="serif-title text-2xl text-[#3B0019]">{manId ? 'Editar Especialista' : 'Nueva Especialista'}</h2>
+              <form onSubmit={handleSaveManicurist} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required maxLength={30} value={manUser} onChange={e => setManUser(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                </div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Sede</label><select value={manSede} onChange={e => setManSede(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="">Sin sede</option>{sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{manId ? 'Actualizar' : 'Crear'}</button>
+                  {manId && <button type="button" onClick={resetMan} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
+                </div>
+              </form>
+            </div>
+            <div className="md:col-span-7 space-y-4">
+              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Equipo ({manicurists.length})</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {manicurists.map(m => (
+                  <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3">
+                    <div className="flex items-center gap-3">
+                      {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-sm text-[#3B0019]">{m.name}</h4>
+                        <p className="text-[10px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
+                        {m.sedeId && <p className="text-[9px] text-[#A68F63]">📍 {getSedeName(m.sedeId)}</p>}
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {m.schedules && m.schedules.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2 border-t border-[#EADEC9]/10">
+                        {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[9px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
+                      </div>
+                    )}
+                    <button onClick={() => editMan(m)} className="w-full py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -589,39 +475,53 @@ export const AdminDashboard: React.FC = () => {
         {/* CLIENTS */}
         {activeTab === 'clients' && (
           <div className="space-y-6 animate-fade-in text-left">
-            <header className="space-y-1">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Base de Clientes</h2>
-              <p className="text-xs text-[#78716C]">Historiales de visitas y teléfonos.</p>
-            </header>
+            <h2 className="serif-title text-3xl text-[#3B0019]">Base de Clientes</h2>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
-              <input type="text" placeholder="Buscar por nombre o celular..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border border-[#EADEC9] rounded-lg text-xs w-full sm:w-72 bg-white" />
-              <div className="flex gap-2 text-xs">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="px-3 py-1 border rounded-lg hover:bg-neutral-50 disabled:opacity-50">Anterior</button>
-                <span className="px-3 py-1 font-semibold">{currentPage}</span>
-                <button disabled={currentPage * itemsPerPage >= getFilteredClients().length} onClick={() => setCurrentPage(prev => prev + 1)} className="px-3 py-1 border rounded-lg hover:bg-neutral-50 disabled:opacity-50">Siguiente</button>
-              </div>
+              <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
+              {pagination(filterClients().length)}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {getFilteredClients().length === 0 ? (
-                <p className="col-span-3 text-center text-xs text-[#78716C] py-8">Ningún cliente coincide con la búsqueda.</p>
-              ) : (
-                getPaginatedItems(getFilteredClients()).map((c: Client) => (
-                  <div key={c.id} className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-sm text-[#44403C]">{c.name}</h4>
-                      <p className="text-xs font-mono text-[#8E1B54]">{c.phone}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filterClients().length === 0 ? <p className="col-span-full text-center text-xs text-[#78716C] py-8">Sin clientes.</p> :
+                paginate(filterClients()).map(c => (
+                  <div key={c.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-2">
+                    <h4 className="font-semibold text-sm text-[#44403C]">{c.name}</h4>
+                    <p className="text-xs font-mono text-[#8E1B54]">{c.phone}</p>
+                    <div className="flex justify-between text-[10px] text-[#78716C] pt-2 border-t border-[#EADEC9]/20">
+                      <span>{c.age ? `${c.age} anos` : '—'} · {c.gender || '—'}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-[10px] text-[#78716C] border-t border-[#EADEC9]/20 pt-2">
-                      <div><span>Edad</span><span className="block font-semibold text-[#44403C]">{c.age || 'N/A'} años</span></div>
-                      <div><span>Género</span><span className="block font-semibold text-[#44403C]">{c.gender || 'Femenino'}</span></div>
-                    </div>
-                    <div className="bg-[#F7F3EB]/40 p-2 rounded-xl text-[10px] text-center text-[#8D774C] font-semibold border border-[#EADEC9]/25">
-                      Historial: {c.appointmentHistoryCount || 0} visitas agendadas
-                    </div>
+                    <button onClick={() => viewClient(c)} className="w-full py-1.5 bg-[#5C0632]/5 text-[#5C0632] rounded-lg text-[10px] font-bold hover:bg-[#8E1B54] hover:text-white">Ver Perfil</button>
                   </div>
                 ))
-              )}
+              }
             </div>
+            {/* Client detail modal */}
+            {selectedClient && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedClient(null)}>
+                <div className="bg-white w-full max-w-lg rounded-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto relative" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setSelectedClient(null)} className="absolute top-3 right-3 text-sm text-[#78716C]">✕</button>
+                  <h3 className="serif-title text-xl text-[#3B0019]">{selectedClient.name}</h3>
+                  <p className="text-xs font-mono text-[#8E1B54]">{selectedClient.phone}</p>
+                  <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} anos · {selectedClient.gender || '—'}</p>
+                  <div className="border-t pt-3 space-y-2">
+                    <h4 className="text-xs font-bold text-[#3B0019] uppercase">Historial de Citas ({clientAppts.length})</h4>
+                    {clientAppts.length === 0 ? <p className="text-xs text-[#78716C]">Sin citas registradas.</p> :
+                      clientAppts.map(a => (
+                        <div key={a.id} className="flex justify-between items-center text-xs p-2 bg-[#F7F3EB]/20 rounded-lg">
+                          <div>
+                            <span className="font-semibold">{toDateLabel(a.date)} {toTimeLabel(a.date)}</span>
+                            <span className="text-[#78716C] ml-2">{svcNames(a.services)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{priceFmt(a.totalPrice || a.total)}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{STATUS_LABELS[a.status || 'PENDING']}</span>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -629,78 +529,45 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'services' && (
           <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
             <div className="md:col-span-5 space-y-4">
-              <h2 className="serif-title text-2xl text-[#3B0019]">{editingServiceId ? 'Editar Ritual' : 'Agregar Ritual'}</h2>
-              <form onSubmit={handleAddService} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 space-y-4 shadow-xs">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Nombre</label>
-                  <input type="text" required placeholder="Ej: Manicura Soft Gel" value={newServiceName} onChange={(e) => setNewServiceName(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Descripción Corta</label>
-                  <input type="text" placeholder="Ej: Esmaltado de larga duración" value={newServiceShortDesc} onChange={(e) => setNewServiceShortDesc(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Descripción Detallada (Incluye)</label>
-                  <textarea placeholder="Qué incluye el servicio..." value={newServiceIncludesDesc} onChange={(e) => setNewServiceIncludesDesc(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs h-16 resize-none" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Categoría</label>
-                  <select value={newServiceCategory} onChange={(e) => setNewServiceCategory(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs bg-white">
-                    <option value="">Sin categoría</option>
-                    <option value="MANICURE">Manicure</option>
-                    <option value="PEDICURE">Pedicure</option>
-                    <option value="NAIL_ART">Nail Art</option>
-                  </select>
-                </div>
+              <h2 className="serif-title text-2xl text-[#3B0019]">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
+              <form onSubmit={handleSaveService} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Incluye</label><textarea value={svcIncludes} onChange={e => setSvcIncludes(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-16" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Precio ($)</label>
-                    <input type="number" required placeholder="Ej: 35000" value={newServicePrice} onChange={(e) => setNewServicePrice(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Duración (min)</label>
-                    <input type="number" required placeholder="Ej: 60" value={newServiceDuration} onChange={(e) => setNewServiceDuration(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                  </div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label><select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">{CATEGORIES.map(c => <option key={c} value={c}>{c || 'Sin categoria'}</option>)}</select></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="flex-1 py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{submitting ? 'Guardando...' : editingServiceId ? 'Actualizar' : 'Crear Ritual'}</button>
-                  {editingServiceId && (
-                    <button type="button" onClick={resetServiceForm} className="px-4 py-3 border border-[#EADEC9] text-xs rounded-xl">Cancelar</button>
-                  )}
+                  <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
+                  {svcId && <button type="button" onClick={resetSvc} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
                 </div>
               </form>
             </div>
             <div className="md:col-span-7 space-y-4">
-              <h3 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-2">Catálogo</h3>
-              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
-                <input type="text" placeholder="Filtrar rituales..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border border-[#EADEC9] rounded-lg text-xs w-full sm:w-60 bg-white" />
-                <div className="flex gap-2 text-xs">
-                  <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Anterior</button>
-                  <button disabled={currentPage * itemsPerPage >= getFilteredServices().length} onClick={() => setCurrentPage(prev => prev + 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Siguiente</button>
-                </div>
+              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Catalogo ({servicesCatalog.length})</h3>
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border p-4 rounded-xl">
+                <input type="text" placeholder="Filtrar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-48" />
+                {pagination(filterSvcs().length)}
               </div>
-              <div className="space-y-3">
-                {getFilteredServices().length === 0 ? (
-                  <p className="text-xs text-[#78716C] text-center py-8">Ningún ritual coincide.</p>
-                ) : (
-                  getPaginatedItems(getFilteredServices()).map((s: ServiceCatalogItem) => (
-                    <div key={s.id} className="p-4 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-[#44403C]">{s.name}</h4>
-                        {s.shortDescription && <p className="text-[10px] text-[#A68F63] italic mt-0.5">{s.shortDescription}</p>}
-                        <div className="flex gap-2 mt-1.5">
-                          <span className="text-[9px] text-[#A68F63] bg-[#F7F3EB] px-2 py-0.5 rounded">{s.durationInMinutes || '?'} mins</span>
-                          {s.category && <span className="text-[9px] text-[#A68F63] bg-[#F7F3EB] px-2 py-0.5 rounded">{s.category}</span>}
-                        </div>
+              <div className="space-y-2">
+                {filterSvcs().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin servicios.</p> :
+                  paginate(filterSvcs()).map(s => (
+                    <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
+                      <div>
+                        <span className="font-bold text-[#44403C]">{s.name}</span>
+                        {s.category && <span className="ml-2 text-[9px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
+                        <span className="ml-2 text-[#78716C]">{s.durationInMinutes || '?'} min</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-[#8E1B54]">${typeof s.price === 'number' ? s.price.toLocaleString('es-CO') : s.price}</span>
-                        <button onClick={() => startEditService(s)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#8E1B54]">{priceFmt(s.price)}</span>
+                        <button onClick={() => editSvc(s)} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
+                        <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
                       </div>
                     </div>
                   ))
-                )}
+                }
               </div>
             </div>
           </div>
@@ -710,56 +577,41 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'offers' && (
           <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
             <div className="md:col-span-5 space-y-4">
-              <h2 className="serif-title text-2xl text-[#3B0019]">{editingOfferId ? 'Editar Oferta' : 'Nueva Oferta'}</h2>
-              <form onSubmit={handleSaveOffer} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 space-y-4 shadow-xs">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Título</label>
-                  <input type="text" required placeholder="Ej: Descuento de Verano" value={newOfferTitle} onChange={(e) => setNewOfferTitle(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Descripción</label>
-                  <input type="text" placeholder="Ej: 30% off en manicure" value={newOfferDesc} onChange={(e) => setNewOfferDesc(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                </div>
+              <h2 className="serif-title text-2xl text-[#3B0019]">{offId ? 'Editar Descuento' : 'Nuevo Descuento'}</h2>
+              <form onSubmit={handleSaveOffer} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" required value={offTitle} onChange={e => setOffTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><input type="text" value={offDesc} onChange={e => setOffDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Descuento (%)</label>
-                    <input type="number" required min="1" max="100" placeholder="25" value={newOfferDiscount} onChange={(e) => setNewOfferDiscount(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Código</label>
-                    <input type="text" required placeholder="VERANO25" value={newOfferCode} onChange={(e) => setNewOfferCode(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs uppercase" />
-                  </div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descuento %</label><input type="number" required min={1} max={100} value={offDiscount} onChange={e => setOffDiscount(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Codigo</label><input type="text" required value={offCode} onChange={e => setOffCode(e.target.value.toUpperCase())} className="w-full p-2 border rounded-lg text-xs uppercase" /></div>
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="flex-1 py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{submitting ? 'Guardando...' : editingOfferId ? 'Actualizar' : 'Crear Oferta'}</button>
-                  {editingOfferId && (
-                    <button type="button" onClick={resetOfferForm} className="px-4 py-3 border border-[#EADEC9] text-xs rounded-xl">Cancelar</button>
-                  )}
+                  <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{offId ? 'Actualizar' : 'Crear'}</button>
+                  {offId && <button type="button" onClick={resetOff} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
                 </div>
               </form>
             </div>
             <div className="md:col-span-7 space-y-4">
-              <h3 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-2">Ofertas ({offers.length})</h3>
-              <input type="text" placeholder="Filtrar por título o código..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border border-[#EADEC9] rounded-lg text-xs w-full bg-white" />
-              <div className="space-y-3">
-                {getFilteredOffers().length === 0 ? (
-                  <p className="text-xs text-[#78716C] text-center py-8">Sin ofertas aún.</p>
-                ) : (
-                  getPaginatedItems(getFilteredOffers()).map((o: Offer) => (
-                    <div key={o.id} className={`p-4 rounded-xl border text-xs flex justify-between items-center ${o.isActive ? 'bg-white border-[#EADEC9]/30' : 'bg-neutral-50 border-neutral-200 opacity-70'}`}>
+              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Descuentos ({offers.length})</h3>
+              <input type="text" placeholder="Filtrar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full" />
+              <div className="space-y-2">
+                {filterOffers().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin descuentos.</p> :
+                  paginate(filterOffers()).map(o => (
+                    <div key={o.id} className={`p-3 rounded-xl border text-xs flex justify-between items-center ${o.isActive ? 'bg-white border-[#EADEC9]/30' : 'bg-neutral-50 opacity-70'}`}>
                       <div>
-                        <h4 className="font-bold text-[#44403C]">{o.title} <span className="text-[9px] text-[#A68F63]">({o.code})</span></h4>
-                        <p className="text-[10px] text-[#78716C]">{o.discountPercentage}% desc. {o.description ? `— ${o.description}` : ''}</p>
-                        <span className={`text-[9px] font-semibold ${o.isActive ? 'text-green-600' : 'text-red-400'}`}>{o.isActive ? 'Activa' : 'Inactiva'}</span>
+                        <span className="font-bold text-[#44403C]">{o.title}</span>
+                        <span className="ml-2 text-[9px] text-[#A68F63]">({o.code})</span>
+                        <span className="ml-2 text-[#78716C]">{o.discountPercentage}%</span>
+                        <span className={`ml-2 text-[9px] font-semibold ${o.isActive ? 'text-green-600' : 'text-red-400'}`}>{o.isActive ? 'Activo' : 'Inactivo'}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleToggleOffer(o)} className={`text-[10px] font-semibold px-2 py-1 rounded ${o.isActive ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>{o.isActive ? 'Desactivar' : 'Activar'}</button>
-                        <button onClick={() => startEditOffer(o)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteOffer(o.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
+                      <div className="flex gap-1">
+                        <button onClick={() => handleToggleOffer(o)} className={`px-2 py-1 text-[9px] rounded font-semibold ${o.isActive ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>{o.isActive ? 'Desactivar' : 'Activar'}</button>
+                        <button onClick={() => editOff(o)} className="px-2 py-1 text-[9px] text-[#A68F63] font-semibold">Editar</button>
+                        <button onClick={() => handleDeleteOffer(o.id)} className="px-2 py-1 text-[9px] text-red-400 font-semibold">Eliminar</button>
                       </div>
                     </div>
                   ))
-                )}
+                }
               </div>
             </div>
           </div>
@@ -768,24 +620,12 @@ export const AdminDashboard: React.FC = () => {
         {/* CMS */}
         {activeTab === 'news' && (
           <div className="space-y-6 max-w-lg animate-fade-in text-left">
-            <header className="space-y-1">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Publicación CMS</h2>
-              <p className="text-xs text-[#78716C]">Modifica el carrusel subiendo imágenes reales y configurando novedades.</p>
-            </header>
-            <form onSubmit={handleUpdateLanding} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 space-y-4 shadow-xs">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Subir Imagen para Carrusel</label>
-                <input type="file" accept="image/*" onChange={(e) => setSelectedCarouselFile(e.target.files ? e.target.files[0] : null)} className="w-full p-2 border border-[#EADEC9]/60 rounded-xl text-xs bg-white" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Título Novedad</label>
-                <input type="text" placeholder="Inauguración de cabina" value={landingNewsTitle} onChange={(e) => setLandingNewsTitle(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Contenido / Descripción</label>
-                <textarea placeholder="Detalles de la novedad..." value={landingNewsDesc} onChange={(e) => setLandingNewsDesc(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs h-24 resize-none" />
-              </div>
-              <button type="submit" disabled={submitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{submitting ? 'Guardando...' : 'Publicar Cambios'}</button>
+            <h2 className="serif-title text-3xl text-[#3B0019]">CMS / Landing</h2>
+            <form onSubmit={handleSaveCMS} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" value={cmsTitle} onChange={e => setCmsTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><textarea value={cmsDesc} onChange={e => setCmsDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-20" /></div>
+              <button type="submit" disabled={submitting} className="w-full py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Publicar</button>
             </form>
           </div>
         )}
