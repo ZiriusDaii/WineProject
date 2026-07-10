@@ -127,18 +127,14 @@ export const StylistAgenda: React.FC = () => {
   const handleCompleteAppointment = async (id: string | number) => {
     setStatusUpdatingId(id);
     try {
-      const res = await fetch(`http://localhost:3000/api/appointments/${id}`, {
+      const res = await fetch(`http://localhost:3000/api/appointments/${id}/complete`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'COMPLETED' })
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
-      } else {
-        setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
       }
     } catch {
-      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
+      // no hacer nada, no actualizar estado falsamente
     } finally {
       setStatusUpdatingId(null);
     }

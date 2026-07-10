@@ -401,21 +401,21 @@ export async function updateAppointment(
     if (status) data.status = status;
     if (manicuristId) data.manicuristId = manicuristId;
 
-    if (date) {
-      const parsedDate = new Date(date);
+    if (date || manicuristId) {
+      const targetDate = date ? new Date(date) : existing.date;
+      const targetManicuristId = manicuristId ?? existing.manicuristId;
 
-      if (!isWithinBusinessHours(parsedDate, existing.totalDuration)) {
+      if (!isWithinBusinessHours(targetDate, existing.totalDuration)) {
         res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
         return;
       }
 
-      const targetManicuristId = manicuristId ?? existing.manicuristId;
-      if (await findOverlappingAppointment(targetManicuristId, parsedDate, existing.totalDuration, id)) {
+      if (await findOverlappingAppointment(targetManicuristId, targetDate, existing.totalDuration, id)) {
         res.status(409).json({ error: "La manicurista ya tiene una cita en ese horario" });
         return;
       }
 
-      data.date = parsedDate;
+      if (date) data.date = targetDate;
     }
 
     const updated = await prisma.appointment.update({
