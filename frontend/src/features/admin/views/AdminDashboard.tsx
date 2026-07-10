@@ -49,6 +49,7 @@ interface Manicurist {
   phone: string;
   username: string;
   age?: number;
+  gender?: string;
   avatarUrl?: string;
   avatarPath?: string;
   role?: string;
@@ -89,7 +90,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const CATEGORIES = ['', 'MANICURE', 'PEDICURE', 'NAIL_ART'];
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
@@ -418,7 +418,7 @@ export const AdminDashboard: React.FC = () => {
                         <td className="p-3">{a.manicurist?.name || getManName(a.manicuristId)}</td>
                         <td className="p-3 max-w-[150px] truncate">{svcNames(a.services)}</td>
                         <td className="p-3 whitespace-nowrap">{toDateLabel(a.date)} {toTimeLabel(a.date)}</td>
-                        <td className="p-3 font-semibold">{priceFmt(a.totalPrice || a.total)}</td>
+                        <td className="p-3 font-semibold">{priceFmt(a.totalPrice)}</td>
                         <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : a.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' : a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}`}>{STATUS_LABELS[a.status || 'PENDING']}</span></td>
                         <td className="p-3">
                           <div className="flex gap-1">
@@ -527,7 +527,7 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-[#78716C] ml-2">{svcNames(a.services)}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{priceFmt(a.totalPrice || a.total)}</span>
+                            <span className="font-semibold">{priceFmt(a.totalPrice)}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{STATUS_LABELS[a.status || 'PENDING']}</span>
                           </div>
                         </div>
