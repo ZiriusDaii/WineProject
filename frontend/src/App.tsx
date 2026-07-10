@@ -1051,8 +1051,38 @@ export default function App() {
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
         <div className="space-y-16 pb-16 animate-fade-in">
+          {/* Banner CMS como hero visual */}
+          {landingContent && landingContent.images && landingContent.images.length > 0 && (
+            <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
+              <div className="max-w-5xl mx-auto">
+                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
+                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  </div>
+                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                    {landingContent.news && landingContent.news[activeSlide] ? (
+                      <>
+                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
+                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
+                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
+                      </>
+                    ) : (
+                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      {landingContent.images.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            <div className="md:col-span-6 space-y-6 text-left">
+            <div className="md:col-span-7 space-y-6 text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
                 <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
                 <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>

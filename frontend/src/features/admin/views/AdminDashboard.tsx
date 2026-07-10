@@ -154,6 +154,7 @@ export const AdminDashboard: React.FC = () => {
   const [cmsTitle, setCmsTitle] = useState('');
   const [cmsDesc, setCmsDesc] = useState('');
   const [cmsItems, setCmsItems] = useState<any[]>([]);
+  const [editingCmsId, setEditingCmsId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -215,14 +216,14 @@ export const AdminDashboard: React.FC = () => {
 
       let appts: Appointment[] = [];
       try {
-        const aRes = await fetch(`${API}/api/admin/appointments`);
+        const aRes = await fetch(`${API}/api/admin/appointments`, { headers: h });
         if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
       } catch { /* */ }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
       let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
       try {
-        const stRes = await fetch(`${API}/api/admin/stats`);
+        const stRes = await fetch(`${API}/api/admin/stats`, { headers: h });
         if (stRes.ok) {
           const r = await stRes.json();
           sData2 = {
@@ -352,17 +353,38 @@ export const AdminDashboard: React.FC = () => {
       if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
     } catch { setErrorMsg('Error.'); }
   };
+  const editCms = (item: any) => {
+    setEditingCmsId(item.id);
+    setCmsTitle(item.title || '');
+    setCmsDesc(item.description || '');
+    setCmsFile(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const resetCms = () => {
+    setEditingCmsId(null);
+    setCmsFile(null);
+    setCmsTitle('');
+    setCmsDesc('');
+  };
   const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
+    if (!editingCmsId && !cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
+    if (!cmsTitle) { setErrorMsg('El titulo es requerido.'); return; }
     setSubmitting(true);
     try {
-      const fd = new FormData(); fd.append('image', cmsFile);
-      const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
-      if (!uRes.ok) throw new Error();
-      const { imageUrl } = await uRes.json();
-      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
-      if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); fetchCMS(); } else throw new Error();
+      let imageUrl = '';
+      if (cmsFile) {
+        const fd = new FormData(); fd.append('image', cmsFile);
+        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
+        if (!uRes.ok) throw new Error();
+        const data = await uRes.json();
+        imageUrl = data.imageUrl;
+      }
+      const payload: any = { type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, isActive: true };
+      if (imageUrl) payload.imageUrl = imageUrl;
+      if (editingCmsId) payload.id = editingCmsId;
+      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+      if (r.ok) { setSuccessMsg(editingCmsId ? 'Actualizado.' : 'Publicado.'); resetCms(); fetchCMS(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -729,7 +751,10 @@ export const AdminDashboard: React.FC = () => {
                         <p className="text-[9px] text-[#78716C] truncate">{item.description || 'Sin descripcion'}</p>
                         <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive ? '· Activo' : '· Inactivo'}</span>
                       </div>
-                      <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold shrink-0">Quitar</button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => editCms(item)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
+                        <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Quitar</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -737,11 +762,14 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveCMS} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <h3 className="text-xs font-bold text-[#3B0019] uppercase">Subir nuevo anuncio</h3>
-              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{editingCmsId ? 'Editar anuncio' : 'Subir nuevo anuncio'}</h3>
+              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {editingCmsId && '(dejar vacio = no cambiar)'}</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" value={cmsTitle} onChange={e => setCmsTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><textarea value={cmsDesc} onChange={e => setCmsDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-20" /></div>
-              <button type="submit" disabled={submitting} className="w-full py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Publicar</button>
+              <div className="flex gap-2">
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{editingCmsId ? 'Actualizar' : 'Publicar'}</button>
+                {editingCmsId && <button type="button" onClick={resetCms} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
+              </div>
             </form>
           </div>
         )}
