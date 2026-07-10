@@ -280,7 +280,7 @@ export const AdminDashboard: React.FC = () => {
   };
   const handleDeleteService = async (id: string | number) => {
     if (!confirm('Eliminar?')) return;
-    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
+    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
   const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); };
@@ -298,7 +298,7 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
+  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
   const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
   const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); };
@@ -320,7 +320,7 @@ export const AdminDashboard: React.FC = () => {
         const fd = new FormData();
         fd.append('image', manAvatarFile);
         fd.append('manicuristId', String(targetId));
-        await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', body: fd });
+        await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
       }
       setSuccessMsg(manId ? 'Actualizada.' : 'Creada.');
       resetMan(); loadData();
@@ -349,7 +349,7 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteCMS = async (id: string) => {
     if (!confirm('Eliminar este anuncio?')) return;
     try {
-      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE' });
+      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE', headers: authHeaders() });
       if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
     } catch { setErrorMsg('Error.'); }
   };
@@ -375,7 +375,7 @@ export const AdminDashboard: React.FC = () => {
       let imageUrl = '';
       if (cmsFile) {
         const fd = new FormData(); fd.append('image', cmsFile);
-        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
+        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
         if (!uRes.ok) throw new Error();
         const data = await uRes.json();
         imageUrl = data.imageUrl;
