@@ -3,9 +3,8 @@ import { prisma } from "../lib/prisma.js";
 
 const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 
-// Horario del local (ficha de Google del negocio). 0=Domingo..6=Sabado.
-// ponytail: miercoles no estaba visible en la captura que nos pasaron, se asume
-// igual a L/M/J/V (9:00-20:00); confirmar con el negocio y ajustar si hace falta.
+// Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
+// 0=Domingo..6=Sabado.
 const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
   0: { open: "09:00", close: "19:00" },
   1: { open: "09:00", close: "20:00" },
