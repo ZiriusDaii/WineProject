@@ -1088,41 +1088,34 @@ export default function App() {
             </div>
           </section>
 
-          {/* Carrusel */}
+          {/* Banner de anuncios CMS con imagenes */}
           {landingContent && landingContent.images && landingContent.images.length > 0 && (
-            <section id="promos" className="max-w-5xl mx-auto px-6 space-y-6">
-              <div className="text-center space-y-1">
-                <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Galería & Novedades</span>
-                <h2 className="serif-title text-2xl text-[#3B0019] font-light">Momentos WineSpa</h2>
-              </div>
-
-              <div className="relative bg-white border border-[#EADEC9]/30 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center shadow-xs">
-                <div className="w-full md:w-1/2 aspect-video md:aspect-square rounded-xl overflow-hidden relative">
-                  <img src={landingContent.images[activeSlide]} alt="Gallery Slide" className="w-full h-full object-cover" />
-                </div>
-
-                <div className="w-full md:w-1/2 space-y-4 flex flex-col justify-center text-left">
-                  {landingContent.news && landingContent.news[activeSlide] ? (
-                    <>
-                      <span className="text-[9px] uppercase tracking-widest text-[#8E1B54] font-bold">Novedades</span>
-                      <h3 className="serif-title text-xl text-[#3B0019] font-medium leading-snug">{landingContent.news[activeSlide].title}</h3>
-                      <p className="text-xs text-[#78716C] leading-relaxed font-light">{landingContent.news[activeSlide].description}</p>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="serif-title text-xl text-[#3B0019] font-medium">Espacios diseñados para tu relax</h3>
-                      <p className="text-xs text-[#78716C] font-light">Disfruta de la mejor atención por especialistas en un ambiente boutique.</p>
-                    </>
-                  )}
-
-                  <div className="flex gap-2 pt-2">
-                    {landingContent.images.map((_, idx) => (
-                      <button key={idx} onClick={() => setActiveSlide(idx)} className={`w-2.5 h-2.5 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-neutral-200'}`} />
-                    ))}
+            <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
+              <div className="max-w-5xl mx-auto">
+                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
+                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  </div>
+                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                    {landingContent.news && landingContent.news[activeSlide] ? (
+                      <>
+                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
+                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
+                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
+                      </>
+                    ) : (
+                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      {landingContent.images.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </section>
+            </div>
           )}
 
           {/* Catálogo de Servicios */}
