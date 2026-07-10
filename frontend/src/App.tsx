@@ -19,6 +19,14 @@ interface Manicurist {
   age?: number;
   avatarUrl?: string;
   avatarPath?: string;
+  sedeId?: string;
+}
+
+interface Sede {
+  id: string;
+  name: string;
+  address: string;
+  phone?: string;
 }
 
 interface Offer {
@@ -165,6 +173,8 @@ export default function App() {
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Estados del Formulario de Booking
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [selectedSede, setSelectedSede] = useState<string | null>(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [bookingDate, setBookingDate] = useState('');
@@ -227,11 +237,11 @@ export default function App() {
   // cargan una sola vez al montar la app y no se refrescaban solos despues.
   useEffect(() => {
     if (view === 'booking') {
-      fetchManicurists().then(fresh => {
+      fetchManicurists(selectedSede).then(fresh => {
         if (fresh.length > 0) setManicurists(fresh);
       });
     }
-  }, [view]);
+  }, [view, selectedSede]);
 
   // Recalcula los horarios disponibles (dentro del horario del local, sin
   // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
@@ -297,9 +307,12 @@ export default function App() {
     return () => { cancelled = true; };
   }, [editingAppointmentId, newDateInput, clientAppointments]);
 
-  const fetchManicurists = async (): Promise<Manicurist[]> => {
+  const fetchManicurists = async (sedeId?: string | null): Promise<Manicurist[]> => {
     try {
-      const res = await fetch('http://localhost:3000/api/manicurists');
+      const url = sedeId
+        ? `http://localhost:3000/api/manicurists?sedeId=${encodeURIComponent(sedeId)}`
+        : 'http://localhost:3000/api/manicurists';
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         return Array.isArray(data) ? data : (data?.manicurists || []);
@@ -343,6 +356,11 @@ export default function App() {
 
       setServices(fetchedServices.length > 0 ? fetchedServices : fallbackServices);
       setManicurists(fetchedManicurists.length > 0 ? fetchedManicurists : fallbackManicurists);
+
+      try {
+        const sedesRes = await fetch('http://localhost:3000/api/sedes');
+        if (sedesRes.ok) setSedes(await sedesRes.json());
+      } catch { /* sin fallback, el selector simplemente no aparece */ }
 
       try {
         const offersRes = await fetch('http://localhost:3000/api/offers');
@@ -1156,6 +1174,38 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-7 p-6 md:p-12 space-y-10 pt-16">
+            <section className="space-y-4">
+              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">0. Elige tu Sede</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {sedes.map(sede => {
+                  const isSelected = selectedSede === sede.id;
+                  return (
+                    <div
+                      key={sede.id}
+                      onClick={() => {
+                        if (selectedSede === sede.id) {
+                          setSelectedSede(null);
+                          setSelectedSpecialist(null);
+                        } else {
+                          setSelectedSede(sede.id);
+                          setSelectedSpecialist(null);
+                        }
+                      }}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white hover:border-[#8E1B54]/40'}`}
+                    >
+                      <span className="block text-xs font-bold text-[#44403C]">{sede.name}</span>
+                      <span className="block text-[9px] text-[#A68F63] mt-1">{sede.address}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedSede && (
+                <p className="text-[9px] text-[#78716C]">
+                  Mostrando especialistas de esta sede. Seleccionala de nuevo para ver todas.
+                </p>
+              )}
+            </section>
+
             <section className="space-y-4">
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

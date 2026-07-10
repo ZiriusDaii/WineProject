@@ -110,12 +110,20 @@ async function main() {
   console.log("\n📍 Sedes:");
   const sedeFabricato = await seedSede("Cc. Parque Fabricato", "S1 local 104", "+57 300 000 0000");
   const sedeCencosud = await seedSede("Cc. Metro Cencosud", "Local 1009", "+57 300 000 0000");
-  await seedSede("Cc. Madera Mall", "Local 209", "+57 300 000 0000");
+  const sedeMadera = await seedSede("Cc. Madera Mall", "Local 209", "+57 300 000 0000");
 
   console.log("\n👥 Users:");
   await seedUser("3001234567", "Admin WineSpa", "ADMIN", "admin", "admin123");
   await seedUser("3007654321", "Ana García", "MANICURISTA", "ana_garcia", "ana123", sedeFabricato.id);
   await seedUser("3019876543", "Carla López", "MANICURISTA", "carla_lopez", "carla123", sedeCencosud.id);
+
+  console.log("\n👥 Manicuristas de testing:");
+  await seedUser("3001110001", "Valentina Ruiz", "MANICURISTA", "valentina_ruiz", "test123", sedeFabricato.id);
+  await seedUser("3001110002", "Daniela Mora", "MANICURISTA", "daniela_mora", "test123", sedeFabricato.id);
+  await seedUser("3001110003", "Mariana Ochoa", "MANICURISTA", "mariana_ochoa", "test123", sedeCencosud.id);
+  await seedUser("3001110004", "Camila Herrera", "MANICURISTA", "camila_herrera", "test123", sedeCencosud.id);
+  await seedUser("3001110005", "Laura Jiménez", "MANICURISTA", "laura_jimenez", "test123", sedeMadera.id);
+  await seedUser("3001110006", "Sofía Restrepo", "MANICURISTA", "sofia_restrepo", "test123", sedeMadera.id);
 
   console.log("\n✅ Seed completado exitosamente.");
 }
