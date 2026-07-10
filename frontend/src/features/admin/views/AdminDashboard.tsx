@@ -132,6 +132,7 @@ export const AdminDashboard: React.FC = () => {
   const [manAge, setManAge] = useState('');
   const [manGender, setManGender] = useState('Femenino');
   const [manSede, setManSede] = useState('');
+  const [manAvatarFile, setManAvatarFile] = useState<File | null>(null);
 
   // Client detail modal
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -262,12 +263,22 @@ export const AdminDashboard: React.FC = () => {
     try {
       const url = manId ? `${API}/api/admin/manicurists/${manId}` : `${API}/api/admin/manicurists`;
       const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (res.ok) { setSuccessMsg(manId ? 'Actualizada.' : 'Creada.'); resetMan(); loadData(); } else throw new Error();
+      if (!res.ok) throw new Error();
+      const saved = await res.json();
+      const targetId = saved.id || manId;
+      if (manAvatarFile && targetId) {
+        const fd = new FormData();
+        fd.append('image', manAvatarFile);
+        fd.append('manicuristId', String(targetId));
+        await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', body: fd });
+      }
+      setSuccessMsg(manId ? 'Actualizada.' : 'Creada.');
+      resetMan(); loadData();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManSede(m.sedeId || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManSede(''); };
+  const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManSede(m.sedeId || ''); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManSede(''); setManAvatarFile(null); };
 
   // --- Client detail ---
   const viewClient = async (c: Client) => {
@@ -455,6 +466,7 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
                 </div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Foto {manId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setManAvatarFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{manId ? 'Actualizar' : 'Crear'}</button>
                   {manId && <button type="button" onClick={resetMan} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
