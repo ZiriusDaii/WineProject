@@ -13,6 +13,55 @@ Este plan reemplaza `PLAN_ISSUE_40.md` v1 tras feedback del compa (Samuel) sobre
 
 ---
 
+## Flujo de trabajo: DeepSeek ejecuta, Claude audita, Santi da el check final
+
+**Quién hace qué:**
+- **DeepSeek** implementa las tareas 1-9 de este plan, cada una en su rama sugerida.
+- **Claude** (yo) actúa como organizador y auditor: reviso cada entrega contra el plan y el issue original, hago rebase/typecheck/pruebas en vivo, reporto bugs reales encontrados.
+- **Santi** da el check final antes de que cualquier cosa llegue a `develop`.
+
+**Regla dura: no se crean PRs ni se mergea nada hasta que Santi dé el visto bueno de todo el plan completo.** Esto es explícito por el historial de bugs de merge del proyecto — la idea es cortar de raíz el patrón de ~50 merges sueltos causando fallas. Las ramas se quedan pusheadas a origin, revisadas y listas, pero sin PR abierto hasta la señal de Santi.
+
+**Protocolo de entrega por tarea (obligatorio para DeepSeek):**
+
+Al terminar cada tarea numerada (1-9), antes de pasar a la siguiente, DeepSeek debe entregar a Claude un reporte con este formato:
+
+```
+## Tarea N — <nombre>
+Rama: <nombre de la rama, ya pusheada a origin>
+Commits: <rango o lista corta>
+
+### Qué se implementó
+- <lista concreta, sub-tarea por sub-tarea del plan (N.1, N.2, ...), marcando cuáles se hicieron tal cual y cuáles se desviaron del plan y por qué>
+
+### Archivos tocados
+- <ruta> — <qué cambió, una línea>
+
+### Cómo se probó
+- <comandos corridos: tsc, build, curl/fetch de endpoints nuevos, o pasos manuales seguidos en el navegador>
+- <resultado observado, no solo "funciona">
+
+### Desviaciones del plan / decisiones tomadas
+- <cualquier punto donde se hizo algo distinto a lo escrito en PLAN_ISSUE_40.md, y por qué>
+
+### Dudas o bloqueos
+- <si algo del plan quedó ambiguo o dependía de una decisión de producto>
+```
+
+Sin este reporte, Claude no audita la tarea — no alcanza con decir "ya quedó". El reporte es lo que reemplaza la descripción de PR que normalmente se leería en la revisión.
+
+**Qué hace Claude con cada reporte:**
+1. Revisa el diff real de la rama (no solo confía en el reporte).
+2. Corre `tsc --noEmit` / `tsc -b` en backend y frontend.
+3. Prueba en vivo lo que se pueda (endpoints via curl; UI si hay navegador disponible en el entorno).
+4. Marca los checkboxes del plan que quedaron resueltos.
+5. Devuelve una lista corta de hallazgos (bugs reales, no nitpicks) a DeepSeek si hay algo que corregir antes de dar por cerrada la tarea.
+6. **No abre PR ni mergea** — deja la rama lista y reporta el estado a Santi.
+
+Recién cuando las tareas 1-9 estén todas auditadas y Santi dé el check general, se abren los PRs (uno por tarea o agrupados, a decidir en ese momento) y se mergea.
+
+---
+
 ## 1. Agendamiento mobile por pasos
 
 **Problema:** En mobile el flujo de reserva muestra todos los pasos juntos (servicios, especialista, fecha/hora). Debe ser wizard paso a paso.
@@ -125,9 +174,9 @@ Este plan reemplaza `PLAN_ISSUE_40.md` v1 tras feedback del compa (Samuel) sobre
 
 **Problema:** El formulario de crear/editar manicurista ocupa media pantalla siempre (debe ir detrás de un botón). El tab dice "Especialistas" y debe decir "Manicuristas". Falta paginación y buscador. Además, las categorías de servicios hoy son un array fijo en el código (`CATEGORIES` en `AdminDashboard.tsx:101`), sin gestión desde el admin ni validación de duplicados.
 
-**Nota:** el campo `sedeId`/selector de sede que aparecía en este formulario **se deja tal cual por ahora** — no se toca en esta tarea, sedes queda fuera de este plan.
+**Nota:** el campo de sede ya no existe en este formulario (tarea 10, completada) — no hay nada que hacer al respecto acá.
 
-**Archivos:** `frontend/src/features/admin/views/AdminDashboard.tsx` (tab config ~línea 425-426, formulario manicurista ~línea 539-575, `CATEGORIES` línea 101, formulario servicio ~línea 653)
+**Archivos:** `frontend/src/features/admin/views/AdminDashboard.tsx` (tab config, formulario manicurista, `CATEGORIES`, formulario servicio — los números de línea de v1/v2 quedaron desactualizados tras el merge de la tarea 10, revisar el archivo actual en vez de guiarse por ellos)
 
 **Tareas — manicuristas:**
 - [ ] 6.1 Cambiar etiqueta del tab de "Especialistas" a "Manicuristas"
@@ -135,7 +184,7 @@ Este plan reemplaza `PLAN_ISSUE_40.md` v1 tras feedback del compa (Samuel) sobre
 - [ ] 6.3 Al editar una existente, el formulario se abre y se llena con sus datos
 - [ ] 6.4 Agregar buscador por nombre/usuario en la lista
 - [ ] 6.5 Paginación de 5 items por página con controles
-- [ ] 6.6 Mostrar avatar, nombre, usuario, edad, botón editar (sede se mantiene tal cual, sin cambios)
+- [ ] 6.6 Mostrar avatar, nombre, usuario, edad, botón editar
 
 **Tareas — categorías de servicios (nuevo, backend + frontend):**
 - [ ] 6.7 Backend: crear tabla/modelo mínimo `ServiceCategory` (id, name) en `schema.prisma`, o alternativa más simple: endpoint que devuelva/gestione la lista de categorías distintas ya en uso — decidir en implementación cuál requiere menos migración
@@ -213,7 +262,9 @@ Este plan reemplaza `PLAN_ISSUE_40.md` v1 tras feedback del compa (Samuel) sobre
 
 ---
 
-## 10. ELIMINAR SEDES — limpieza total, en rama independiente 🚨
+## 10. ELIMINAR SEDES — limpieza total, en rama independiente 🚨 — ✅ COMPLETADA Y MERGEADA
+
+**Estado: hecho.** Mergeado a `develop` vía PR #41 (2026-07-11). Respaldo del código anterior en la rama `archive/sedes`. Las tareas 1-9 de abajo ya parten de un `develop` sin ningún rastro de sedes — no hay que coordinar nada con esta tarea, está resuelta.
 
 **Trata como su propio PR, separado de las tareas 1-9.** No bloquea ni depende de ellas (puede correr en paralelo o antes, es indistinto ya que toca zonas de código distintas salvo el formulario de manicuristas de la tarea 6 — coordinar para no pisarse si corren a la vez).
 
@@ -285,7 +336,9 @@ Este plan reemplaza `PLAN_ISSUE_40.md` v1 tras feedback del compa (Samuel) sobre
 | 7 | Descuentos duración | Idealmente después de #2 (reutiliza DatePicker) |
 | 8 | Landing catálogo servicios | Idealmente después de #6 (reutiliza categorías) |
 | 9 | Verificación CMS/imágenes/admin | Al final, después de 1-8 |
-| 10 | Eliminar sedes (rama propia) | Independiente — coordinar con #6 si corre en paralelo |
+| 10 | Eliminar sedes | ✅ Hecha (PR #41 mergeado) |
+
+**Recordatorio:** ninguna de las tareas 1-9 abre PR ni mergea al terminar — quedan como rama pusheada, reportada a Claude con el formato de la sección "Flujo de trabajo", y esperando el check final de Santi.
 
 ---
 
