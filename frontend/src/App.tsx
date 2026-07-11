@@ -172,6 +172,11 @@ export default function App() {
 
   // Wizard mobile: paso actual (1=servicios, 2=manicurista, 3=fecha/hora)
   const [bookingWizardStep, setBookingWizardStep] = useState(1);
+  const [svcSearch, setSvcSearch] = useState('');
+  const [manSearch, setManSearch] = useState('');
+  const [svcPage, setSvcPage] = useState(1);
+  const [manPage, setManPage] = useState(1);
+  const PER_PAGE = 5;
 
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
@@ -1352,21 +1357,48 @@ export default function App() {
             {/* ===== PASO 1 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Array.isArray(services) && services.map(s => {
-                  const serviceIdStr = String(s.id);
-                  const isSelected = selectedServiceIds.includes(serviceIdStr);
-                  return (
-                    <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
-                        <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                      </div>
-                      {s.shortDescription && <p className="text-[9px] text-[#A68F63] italic pt-1">{s.shortDescription}</p>}
+              <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+              {(() => {
+                const filtered = services
+                  .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
+                  .sort((a, b) => {
+                    if ((a as any).trending && !(b as any).trending) return -1;
+                    if (!(a as any).trending && (b as any).trending) return 1;
+                    return (a.name || '').localeCompare(b.name || '');
+                  });
+                const total = filtered.length;
+                const start = (svcPage - 1) * PER_PAGE;
+                const page = filtered.slice(start, start + PER_PAGE);
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {page.map(s => {
+                        const serviceIdStr = String(s.id);
+                        const isSelected = selectedServiceIds.includes(serviceIdStr);
+                        return (
+                          <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-1.5">
+                                {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                                <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
+                              </div>
+                              <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                            </div>
+                            {s.shortDescription && <p className="text-[9px] text-[#A68F63] italic pt-1">{s.shortDescription}</p>}
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                    {total > PER_PAGE && (
+                      <div className="flex items-center justify-center gap-3 text-xs pt-2">
+                        <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+                        <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
+                        <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-end">
                 <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
@@ -1378,27 +1410,47 @@ export default function App() {
             {/* ===== PASO 2 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 2 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige a tu Manicurista</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {Array.isArray(manicurists) && manicurists.map(m => {
-                  const manicuristIdStr = String(m.id);
-                  const isSelected = selectedSpecialist === manicuristIdStr;
-                  return (
-                    <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                      {m.avatarPath || m.avatarUrl ? (
-                        <img
-                          src={m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
-                          alt={m.name}
-                          onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
-                          className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
-                        />
-                      ) : (
-                        <FallbackAvatar className="w-10 h-10 mx-auto" />
-                      )}
-                      <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
+              <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+              {(() => {
+                const filtered = manicurists
+                  .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
+                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                const total = filtered.length;
+                const start = (manPage - 1) * PER_PAGE;
+                const page = filtered.slice(start, start + PER_PAGE);
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {page.map(m => {
+                        const manicuristIdStr = String(m.id);
+                        const isSelected = selectedSpecialist === manicuristIdStr;
+                        return (
+                          <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+                            {m.avatarPath || m.avatarUrl ? (
+                              <img
+                                src={m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                                alt={m.name}
+                                onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
+                                className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
+                              />
+                            ) : (
+                              <FallbackAvatar className="w-10 h-10 mx-auto" />
+                            )}
+                            <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                    {total > PER_PAGE && (
+                      <div className="flex items-center justify-center gap-3 text-xs pt-2">
+                        <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+                        <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
+                        <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
                 <button onClick={() => setBookingWizardStep(1)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">

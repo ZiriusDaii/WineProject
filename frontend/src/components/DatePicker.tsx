@@ -61,7 +61,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
 
   return (
-    <div className={`bg-white border border-[#EADEC9]/60 rounded-2xl p-4 shadow-sm ${className}`}>
+    <div className={`bg-white border border-[#EADEC9]/60 rounded-2xl p-4 shadow-sm mx-auto ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button
