@@ -104,7 +104,7 @@ export async function createService(
   res: Response,
 ): Promise<void> {
   try {
-    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes } = req.body as {
+    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending } = req.body as {
       name?: string;
       shortDescription?: string;
       includesDescription?: string | null;
@@ -112,6 +112,7 @@ export async function createService(
       imageUrl?: string | null;
       price?: number;
       durationInMinutes?: number;
+      trending?: boolean;
     };
 
     if (!name || price == null || durationInMinutes == null) {
@@ -130,6 +131,14 @@ export async function createService(
       return;
     }
 
+    const dup = await prisma.service.findFirst({
+      where: { name, category: category || null },
+    });
+    if (dup) {
+      res.status(409).json({ error: "Ya existe un servicio con el mismo nombre en esa categoria" });
+      return;
+    }
+
     const service = await prisma.service.create({
       data: {
         name,
@@ -139,6 +148,7 @@ export async function createService(
         imageUrl: imageUrl ?? null,
         price,
         durationInMinutes,
+        trending: trending ?? false,
       },
     });
 
@@ -461,7 +471,7 @@ export async function updateService(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes } =
+    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending } =
       req.body as {
         name?: string;
         shortDescription?: string | null;
@@ -470,12 +480,25 @@ export async function updateService(
         imageUrl?: string | null;
         price?: number;
         durationInMinutes?: number;
+        trending?: boolean;
       };
 
     const existing = await prisma.service.findUnique({ where: { id: id! } });
     if (!existing) {
       res.status(404).json({ error: "Servicio no encontrado" });
       return;
+    }
+
+    if (name || category !== undefined) {
+      const checkName = name || existing.name;
+      const checkCat = category !== undefined ? (category || null) : existing.category;
+      const dup = await prisma.service.findFirst({
+        where: { name: checkName, category: checkCat, id: { not: id! } },
+      });
+      if (dup) {
+        res.status(409).json({ error: "Ya existe un servicio con el mismo nombre en esa categoria" });
+        return;
+      }
     }
 
     const updated = await prisma.service.update({
@@ -488,6 +511,7 @@ export async function updateService(
         ...(imageUrl !== undefined && { imageUrl }),
         ...(price !== undefined && { price }),
         ...(durationInMinutes !== undefined && { durationInMinutes }),
+        ...(trending !== undefined && { trending }),
       },
     });
 
@@ -652,6 +676,98 @@ export async function updateAppointmentStatus(
     res.json(updated);
   } catch (error) {
     console.error("Error actualizando estado de cita:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+// ── Admin: Categorias de Servicios ──
+
+export async function getServiceCategories(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const categories = await prisma.serviceCategory.findMany({
+      orderBy: { name: "asc" },
+    });
+    res.json(categories);
+  } catch (error) {
+    console.error("Error obteniendo categorias:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function createServiceCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { name } = req.body as { name?: string };
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: "El campo name es requerido" });
+      return;
+    }
+    const existing = await prisma.serviceCategory.findUnique({
+      where: { name: name.trim() },
+    });
+    if (existing) {
+      res.status(409).json({ error: "Ya existe una categoria con ese nombre" });
+      return;
+    }
+    const cat = await prisma.serviceCategory.create({
+      data: { name: name.trim() },
+    });
+    res.status(201).json(cat);
+  } catch (error) {
+    console.error("Error creando categoria:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function updateServiceCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { name } = req.body as { name?: string };
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: "El campo name es requerido" });
+      return;
+    }
+    const dup = await prisma.serviceCategory.findFirst({
+      where: { name: name.trim(), id: { not: id! } },
+    });
+    if (dup) {
+      res.status(409).json({ error: "Ya existe una categoria con ese nombre" });
+      return;
+    }
+    const updated = await prisma.serviceCategory.update({
+      where: { id: id! },
+      data: { name: name.trim() },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando categoria:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function deleteServiceCategory(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const cat = await prisma.serviceCategory.findUnique({ where: { id: id! } });
+    if (!cat) {
+      res.status(404).json({ error: "Categoria no encontrada" });
+      return;
+    }
+    await prisma.serviceCategory.delete({ where: { id: id! } });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error eliminando categoria:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

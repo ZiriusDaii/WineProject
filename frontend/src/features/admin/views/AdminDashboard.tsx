@@ -51,6 +51,7 @@ interface ServiceCatalogItem {
   includesDescription?: string;
   category?: string;
   imageUrl?: string;
+  trending?: boolean;
 }
 
 interface Manicurist {
@@ -96,7 +97,12 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pendiente', IN_PROGRESS: 'En Curso', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
 };
 
-const CATEGORIES = ['', 'MANICURE', 'PEDICURE', 'NAIL_ART'];
+const perPage = 5;
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
@@ -108,6 +114,11 @@ export const AdminDashboard: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catName, setCatName] = useState('');
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [showManForm, setShowManForm] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,6 +135,7 @@ export const AdminDashboard: React.FC = () => {
   const [svcCat, setSvcCat] = useState('');
   const [svcImageUrl, setSvcImageUrl] = useState('');
   const [svcImageFile, setSvcImageFile] = useState<File | null>(null);
+  const [svcTrending, setSvcTrending] = useState(false);
 
   // Offer form
   const [offId, setOffId] = useState<string | null>(null);
@@ -211,6 +223,11 @@ export const AdminDashboard: React.FC = () => {
       setClients(cPayload?.data ?? (Array.isArray(cPayload) ? cPayload : []));
       setOffers(oData);
 
+      try {
+        const catRes = await fetch(`${API}/api/admin/categories`, { headers: h });
+        if (catRes.ok) setCategories(await catRes.json());
+      } catch { /* */ }
+
       let appts: Appointment[] = [];
       try {
         const aRes = await fetch(`${API}/api/admin/appointments`, { headers: h });
@@ -267,7 +284,7 @@ export const AdminDashboard: React.FC = () => {
       } catch { /* */ }
     }
 
-    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
+    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, trending: svcTrending, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
       const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
@@ -279,8 +296,8 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Eliminar?')) return;
     try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
-  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
 
   // --- Offers ---
   const handleSaveOffer = async (e: React.FormEvent) => {
@@ -299,6 +316,38 @@ export const AdminDashboard: React.FC = () => {
   const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
   const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); setOffValidFrom(o.validFrom ? o.validFrom.slice(0, 10) : ''); setOffValidUntil(o.validUntil ? o.validUntil.slice(0, 10) : ''); setOffNewUsersOnly(o.newUsersOnly || false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); setOffValidFrom(''); setOffValidUntil(''); setOffNewUsersOnly(false); };
+
+  // --- Categories ---
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName.trim()) return;
+    setSubmitting(true);
+    try {
+      const url = editingCatId ? `${API}/api/admin/categories/${editingCatId}` : `${API}/api/admin/categories`;
+      const res = await fetch(url, {
+        method: editingCatId ? 'PATCH' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name: catName.trim() }),
+      });
+      if (res.ok) {
+        setSuccessMsg(editingCatId ? 'Categoria actualizada.' : 'Categoria creada.');
+        setCatName(''); setEditingCatId(null);
+        loadData();
+      } else {
+        const err = await res.json().catch(() => null);
+        setErrorMsg(err?.error || 'Error.');
+      }
+    } catch { setErrorMsg('Error.'); }
+    finally { setSubmitting(false); }
+  };
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('Eliminar esta categoria? Los servicios en ella quedaran sin categoria.')) return;
+    try {
+      const r = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders() });
+      if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.');
+    } catch { setErrorMsg('Error.'); }
+  };
+  const editCat = (c: Category) => { setEditingCatId(c.id); setCatName(c.name); setShowCategoriesPanel(true); };
 
   // --- Manicurists ---
   const handleSaveManicurist = async (e: React.FormEvent) => {
@@ -389,7 +438,6 @@ export const AdminDashboard: React.FC = () => {
   // --- Helpers ---
   const paginate = (items: any[]) => { const s = (currentPage - 1) * itemsPerPage; return items.slice(s, s + itemsPerPage); };
   const filterApps = () => appointments.filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filterSvcs = () => servicesCatalog.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const getManName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || '—';
@@ -420,7 +468,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'metrics', label: 'Estadisticas' },
     { id: 'appointments', label: 'Pizarra de Citas' },
     { id: 'calendar', label: 'Calendario' },
-    { id: 'manicurists', label: 'Especialistas' },
+    { id: 'manicurists', label: 'Manicuristas' },
     { id: 'clients', label: 'Base de Clientes' },
     { id: 'services', label: 'Servicios' },
     { id: 'offers', label: 'Descuentos' },
@@ -614,49 +662,77 @@ export const AdminDashboard: React.FC = () => {
 
         {/* MANICURISTS */}
         {activeTab === 'manicurists' && (
-          <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
-            <div className="md:col-span-5 space-y-4">
-              <h2 className="serif-title text-2xl text-[#3B0019]">{manId ? 'Editar Especialista' : 'Nueva Especialista'}</h2>
-              <form onSubmit={handleSaveManicurist} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required maxLength={30} value={manUser} onChange={e => setManUser(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                </div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
-                </div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Foto {manId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setManAvatarFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{manId ? 'Actualizar' : 'Crear'}</button>
-                  {manId && <button type="button" onClick={resetMan} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
-                </div>
-              </form>
+          <div className="space-y-6 animate-fade-in text-left">
+            <div className="flex items-center justify-between">
+              <h2 className="serif-title text-3xl text-[#3B0019]">Manicuristas</h2>
+              <button
+                onClick={() => { setShowManForm(!showManForm); if (!showManForm) resetMan(); }}
+                className="px-4 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
+              >
+                {showManForm ? 'Cancelar' : '+ Nueva Manicurista'}
+              </button>
             </div>
-            <div className="md:col-span-7 space-y-4">
-              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Equipo ({manicurists.length})</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {manicurists.map(m => (
-                  <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-3">
-                      {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-sm text-[#3B0019]">{m.name}</h4>
-                        <p className="text-[10px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
-                      </div>
-                    </div>
-                    {m.schedules && m.schedules.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-2 border-t border-[#EADEC9]/10">
-                        {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[9px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
-                      </div>
-                    )}
-                    <button onClick={() => editMan(m)} className="w-full py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+
+            {showManForm && (
+              <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">{manId ? 'Editar Manicurista' : 'Nueva Manicurista'}</h3>
+                <form onSubmit={handleSaveManicurist} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required maxLength={30} value={manUser} onChange={e => setManUser(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   </div>
-                ))}
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
+                  </div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Foto {manId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setManAvatarFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{manId ? 'Actualizar' : 'Crear'}</button>
+                    {manId && <button type="button" onClick={() => { resetMan(); setShowManForm(false); }} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
+                  </div>
+                </form>
               </div>
+            )}
+
+            <div className="flex items-center gap-3 bg-white border border-[#EADEC9]/30 p-3 rounded-xl">
+              <input type="text" placeholder="Buscar manicurista..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs flex-1" />
+              <span className="text-[10px] text-[#A68F63]">{manicurists.length} en equipo</span>
             </div>
+
+            {(() => {
+              const filtered = manicurists
+                .filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.username || '').toLowerCase().includes(searchQuery.toLowerCase()))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+              if (filtered.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin coincidencias.</p>;
+              const start = (currentPage - 1) * perPage;
+              const page = filtered.slice(start, start + perPage);
+              return (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {page.map(m => (
+                      <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3">
+                        <div className="flex items-center gap-3">
+                          {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm text-[#3B0019] truncate">{m.name}</h4>
+                            <p className="text-[10px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
+                          </div>
+                        </div>
+                        {m.schedules && m.schedules.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-2 border-t border-[#EADEC9]/10">
+                            {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[9px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
+                          </div>
+                        )}
+                        <button onClick={() => { editMan(m); setShowManForm(true); }} className="w-full py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+                      </div>
+                    ))}
+                  </div>
+                  {pagination(filtered.length)}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -715,49 +791,116 @@ export const AdminDashboard: React.FC = () => {
 
         {/* SERVICES */}
         {activeTab === 'services' && (
-          <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
-            <div className="md:col-span-5 space-y-4">
-              <h2 className="serif-title text-2xl text-[#3B0019]">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
-              <form onSubmit={handleSaveService} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+          <div className="space-y-6 animate-fade-in text-left">
+            <div className="flex items-center justify-between">
+              <h2 className="serif-title text-3xl text-[#3B0019]">Servicios</h2>
+              <div className="flex gap-2">
+                <button onClick={() => setShowCategoriesPanel(!showCategoriesPanel)} className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">
+                  {showCategoriesPanel ? 'Ocultar Categorias' : 'Categorias'}
+                </button>
+              </div>
+            </div>
+
+            {/* Categories Panel */}
+            {showCategoriesPanel && (
+              <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 animate-fade-in">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Gestionar Categorias</h3>
+                <form onSubmit={handleSaveCategory} className="flex gap-2">
+                  <input type="text" placeholder="Nombre de categoria" value={catName} onChange={e => setCatName(e.target.value)} className="flex-1 p-2 border rounded-lg text-xs" />
+                  <button type="submit" disabled={submitting} className="px-4 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                    {editingCatId ? 'Renombrar' : 'Agregar'}
+                  </button>
+                  {editingCatId && <button type="button" onClick={() => { setEditingCatId(null); setCatName(''); }} className="px-3 py-2 border rounded-xl text-xs">Cancelar</button>}
+                </form>
+                <div className="space-y-1">
+                  {categories.map(c => (
+                    <div key={c.id} className="flex justify-between items-center text-xs py-1.5 px-2 rounded-lg bg-[#F7F3EB]/50">
+                      <span className="font-medium text-[#44403C]">{c.name}</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => editCat(c)} className="text-[#A68F63] font-semibold">Renombrar</button>
+                        <button onClick={() => handleDeleteCategory(c.id)} className="text-red-400 font-semibold">Eliminar</button>
+                      </div>
+                    </div>
+                  ))}
+                  {categories.length === 0 && <p className="text-[10px] text-[#78716C] py-2">Sin categorias creadas.</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Service Form */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs">
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+              <form onSubmit={handleSaveService} className="space-y-3">
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Incluye</label><textarea value={svcIncludes} onChange={e => setSvcIncludes(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-16" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label><select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">{CATEGORIES.map(c => <option key={c} value={c}>{c || 'Sin categoria'}</option>)}</select></div>
+                  <div>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label>
+                    <select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
+                      <option value="">Sin categoria</option>
+                      {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                  </div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
+                  <input type="checkbox" checked={svcTrending} onChange={e => setSvcTrending(e.target.checked)} className="rounded" />
+                  Servicio en tendencia (aparece primero en el catalogo)
+                </label>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
                   {svcId && <button type="button" onClick={resetSvc} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
                 </div>
               </form>
             </div>
-            <div className="md:col-span-7 space-y-4">
-              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Catalogo ({servicesCatalog.length})</h3>
-              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border p-4 rounded-xl">
-                <input type="text" placeholder="Filtrar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-48" />
-                {pagination(filterSvcs().length)}
+
+            {/* Service List */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-white border border-[#EADEC9]/30 p-3 rounded-xl">
+                <input type="text" placeholder="Buscar servicio..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs flex-1" />
+                <span className="text-[10px] text-[#A68F63]">{servicesCatalog.length} servicios</span>
               </div>
-              <div className="space-y-2">
-                {filterSvcs().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin servicios.</p> :
-                  paginate(filterSvcs()).map(s => (
-                    <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
-                      <div>
-                        <span className="font-bold text-[#44403C]">{s.name}</span>
-                        {s.category && <span className="ml-2 text-[9px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
-                        <span className="ml-2 text-[#78716C]">{s.durationInMinutes || '?'} min</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#8E1B54]">{priceFmt(s.price)}</span>
-                        <button onClick={() => editSvc(s)} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
-                      </div>
+              {(() => {
+                const sorted = [...servicesCatalog]
+                  .sort((a, b) => {
+                    if (a.trending && !b.trending) return -1;
+                    if (!a.trending && b.trending) return 1;
+                    return (a.name || '').localeCompare(b.name || '');
+                  })
+                  .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()));
+                if (sorted.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin servicios.</p>;
+                const start = (currentPage - 1) * perPage;
+                const page = sorted.slice(start, start + perPage);
+                return (
+                  <>
+                    <div className="space-y-2">
+                      {page.map(s => (
+                        <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {s.trending && <span className="text-[8px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                              <span className="font-bold text-[#44403C] truncate">{s.name}</span>
+                            </div>
+                            <div className="flex gap-2 mt-0.5">
+                              {s.category && <span className="text-[9px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
+                              <span className="text-[9px] text-[#78716C]">{s.durationInMinutes || '?'} min</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-bold text-[#8E1B54]">{priceFmt(s.price)}</span>
+                            <button onClick={() => editSvc(s)} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
+                            <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))
-                }
-              </div>
+                    {pagination(sorted.length)}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

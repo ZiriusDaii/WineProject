@@ -30,6 +30,10 @@ import {
   deleteSpecialOffer,
   getAdminOffers,
   updateAppointmentStatus,
+  getServiceCategories,
+  createServiceCategory,
+  updateServiceCategory,
+  deleteServiceCategory,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -63,6 +67,10 @@ router.get("/admin/appointments", requireAdmin, getAllAppointments);
 router.post("/admin/services", requireAdmin, createService);
 router.put("/admin/services/:id", requireAdmin, updateService);
 router.delete("/admin/services/:id", requireAdmin, deleteService);
+router.get("/admin/categories", requireAdmin, getServiceCategories);
+router.post("/admin/categories", requireAdmin, createServiceCategory);
+router.patch("/admin/categories/:id", requireAdmin, updateServiceCategory);
+router.delete("/admin/categories/:id", requireAdmin, deleteServiceCategory);
 router.post("/admin/offers", requireAdmin, createSpecialOffer);
 router.get("/admin/offers", requireAdmin, getAdminOffers);
 router.put("/admin/offers/:id", requireAdmin, updateSpecialOffer);
