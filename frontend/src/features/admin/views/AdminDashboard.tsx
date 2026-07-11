@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FallbackAvatar } from '../../../App';
+import { DatePicker } from '../../../components/DatePicker';
 
 const API = 'http://localhost:3000';
 const authHeaders = () => {
@@ -86,7 +87,7 @@ interface Offer {
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
 const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
-type Tab = 'metrics' | 'appointments' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news';
+type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pendiente', IN_PROGRESS: 'En Curso', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
@@ -107,6 +108,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
   const itemsPerPage = 5;
 
   // Service form
@@ -411,6 +413,7 @@ export const AdminDashboard: React.FC = () => {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'metrics', label: 'Estadisticas' },
     { id: 'appointments', label: 'Pizarra de Citas' },
+    { id: 'calendar', label: 'Calendario' },
     { id: 'manicurists', label: 'Especialistas' },
     { id: 'clients', label: 'Base de Clientes' },
     { id: 'services', label: 'Servicios' },
@@ -519,6 +522,55 @@ export const AdminDashboard: React.FC = () => {
                   }
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* CALENDAR */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6 animate-fade-in text-left max-w-3xl">
+            <h2 className="serif-title text-2xl text-[#3B0019]">Vista de Calendario</h2>
+            <div className="md:grid md:grid-cols-12 md:gap-8">
+              <div className="md:col-span-5">
+                <DatePicker
+                  selectedDate={calendarDate}
+                  onSelectDate={setCalendarDate}
+                />
+              </div>
+              <div className="md:col-span-7 space-y-3">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase border-b border-[#EADEC9]/30 pb-2">
+                  Citas del {calendarDate}
+                </h3>
+                {appointments.filter(a => (a.date || '').slice(0, 10) === calendarDate).length === 0 ? (
+                  <p className="text-xs text-[#78716C] py-6 text-center">Sin citas para este día.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {appointments
+                      .filter(a => (a.date || '').slice(0, 10) === calendarDate)
+                      .sort((a, b) => ((a.date || '') > (b.date || '') ? 1 : -1))
+                      .map(a => (
+                        <div key={a.id} className="p-3 bg-white border border-[#EADEC9]/40 rounded-xl text-xs flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${
+                            a.status === 'COMPLETED' ? 'bg-green-500' :
+                            a.status === 'IN_PROGRESS' ? 'bg-blue-500' :
+                            a.status === 'CANCELLED' ? 'bg-red-400' : 'bg-amber-400'
+                          }`} />
+                          <span className="font-bold text-[#44403C] w-12">{(a.date || '').slice(11, 16)}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[#3B0019] font-semibold">{a.clientName || 'Cliente'}</span>
+                            <span className="ml-2 text-[#A68F63]">{a.manicurist?.name || '—'}</span>
+                            <p className="text-[9px] text-[#78716C] truncate">{a.services?.map(s => s.name).join(', ') || '—'}</p>
+                          </div>
+                          <span className={`text-[9px] font-semibold ${
+                            a.status === 'COMPLETED' ? 'text-green-600' :
+                            a.status === 'IN_PROGRESS' ? 'text-blue-600' :
+                            a.status === 'CANCELLED' ? 'text-red-400' : 'text-amber-500'
+                          }`}>{STATUS_LABELS[a.status || 'PENDING'] || 'Pendiente'}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
