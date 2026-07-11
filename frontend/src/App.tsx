@@ -1164,7 +1164,7 @@ export default function App() {
             ← Volver
           </button>
 
-          <aside className="md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 p-6 md:p-8 flex flex-col md:sticky md:top-0 md:h-screen pt-16">
+          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-16">
             <div className="space-y-4 mb-6">
               <span className="serif-title text-2xl text-[#3B0019]">WineSpa Booking</span>
               <p className="text-xs text-[#78716C] font-light max-w-xs">
@@ -1327,9 +1327,18 @@ export default function App() {
                         ? 'bg-[#5C0632] text-white shadow-md'
                         : s < bookingWizardStep
                         ? 'bg-[#8E1B54] text-white cursor-pointer'
-                        : 'bg-[#EADEC9]/40 text-[#A68F63]'
+                        : (s === 2 && selectedServiceIds.length > 0) || (s === 3 && selectedServiceIds.length > 0 && selectedSpecialist)
+                        ? 'bg-[#EADEC9]/60 text-[#8E1B54] hover:bg-[#8E1B54] hover:text-white cursor-pointer'
+                        : 'bg-[#EADEC9]/40 text-[#A68F63] cursor-default'
                     }`}
-                    onClick={() => { if (s < bookingWizardStep) setBookingWizardStep(s); }}
+                    onClick={() => {
+                      if (s < bookingWizardStep) { setBookingWizardStep(s); return; }
+                      if (s === bookingWizardStep) return;
+                      // s > bookingWizardStep: forward only if prerequisites met
+                      if (s === 2 && selectedServiceIds.length === 0) return;
+                      if (s === 3 && (!selectedSpecialist || selectedServiceIds.length === 0)) return;
+                      setBookingWizardStep(s);
+                    }}
                   >
                     {s}
                   </div>
