@@ -243,6 +243,11 @@ export default function App() {
   useEffect(() => {
     if (view === 'booking') {
       setBookingWizardStep(1);
+      setBookingStep('selection');
+      setSvcSearch('');
+      setManSearch('');
+      setSvcPage(1);
+      setManPage(1);
       fetchManicurists().then(fresh => {
         if (fresh.length > 0) setManicurists(fresh);
       });
