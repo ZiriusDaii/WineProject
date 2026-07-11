@@ -1150,17 +1150,17 @@ export default function App() {
             ← Volver
           </button>
 
-          <aside className="md:col-span-5 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 p-6 md:p-12 flex flex-col justify-between space-y-8 md:sticky md:top-0 md:h-screen pt-16">
-            <div className="space-y-4">
+          <aside className="md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 p-6 md:p-8 flex flex-col md:sticky md:top-0 md:h-screen pt-16">
+            <div className="space-y-4 mb-6">
               <span className="serif-title text-2xl text-[#3B0019]">WineSpa Booking</span>
-              <p className="text-xs text-[#78716C] font-light max-w-sm">
+              <p className="text-xs text-[#78716C] font-light max-w-xs">
                 Configura tu cita boutique. Selecciona tus tratamientos favoritos de la carta, tu manicurista preferida y tus turnos estimados.
               </p>
             </div>
 
             {activeSpecialistDetails && (
-              <div className="p-4 bg-white border border-[#8E1B54]/25 rounded-2xl space-y-3 shadow-xs text-left">
-                <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Especialista Asignada</span>
+              <div className="p-4 bg-white border border-[#8E1B54]/25 rounded-2xl space-y-3 shadow-xs text-left mb-6">
+                <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Manicurista Seleccionada</span>
                 <div className="flex items-center gap-3">
                   {activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl ? (
                     <img src={activeSpecialistDetails.avatarPath?.startsWith('/') ? `http://localhost:3000${activeSpecialistDetails.avatarPath}` : (activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl)} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
@@ -1175,9 +1175,134 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* Servicios seleccionados */}
+            {selectedServiceIds.length > 0 && (
+              <div className="mb-6 space-y-2">
+                <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Rituales Seleccionados</span>
+                <div className="space-y-1.5">
+                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
+                    <div key={s.id} className="flex justify-between items-center text-[11px]">
+                      <span className="text-[#44403C] truncate max-w-[60%]">{s.name}</span>
+                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Fecha y hora seleccionadas */}
+            {bookingDate && bookingTime && (
+              <div className="mb-6 space-y-1 text-left">
+                <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Cita Programada</span>
+                <p className="text-[11px] text-[#3B0019] font-medium">{bookingDate} a las {bookingTime}</p>
+              </div>
+            )}
+
+            {/* Resumen del Agendamiento */}
+            <div className="mt-auto border-t border-[#EADEC9]/30 pt-6 space-y-5">
+              <div className="flex justify-between items-center">
+                <h3 className="serif-title text-sm text-[#3B0019] font-medium">Total</h3>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
+                  {discountPercent && (
+                    <span className="block text-[9px] text-green-600">-{discountPercent}% {discountTitle}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Codigo descuento */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Codigo de descuento"
+                  value={discountCode}
+                  onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }}
+                  className="flex-1 p-2.5 border border-[#EADEC9] rounded-xl text-xs uppercase bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleValidateDiscount}
+                  disabled={discountValidating || !discountCode.trim()}
+                  className="px-4 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50"
+                >
+                  {discountValidating ? '...' : 'Aplicar'}
+                </button>
+              </div>
+              {discountError && <p className="text-[10px] text-red-600 bg-red-50 p-1.5 rounded-lg">{discountError}</p>}
+              {discountPercent && (
+                <p className="text-[10px] text-green-600 bg-green-50 p-1.5 rounded-lg">
+                  {discountPercent}% de descuento aplicado: {discountTitle}
+                </p>
+              )}
+
+              {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
+                <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
+                  Completa servicios, especialista y fecha para continuar.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {session && session.role === 'cliente' ? (
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-[#78716C]">Sesión activa: <strong>{session.name}</strong> ({session.phone})</p>
+                      <button
+                        onClick={() => createAppointment(session.id, session.name)}
+                        disabled={isSubmitting}
+                        className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
+                      >
+                        {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {bookingStep === 'selection' && (
+                        <button onClick={() => setBookingStep('auth')} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                          Continuar e Identificarse
+                        </button>
+                      )}
+
+                      {bookingStep === 'auth' && (
+                        <form onSubmit={handleCheckAuthBooking} className="space-y-3">
+                          <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Celular del Cliente</label>
+                          <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Ej: 3001234567" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                            {isSubmitting ? 'Verificando...' : 'Continuar'}
+                          </button>
+                        </form>
+                      )}
+
+                      {bookingStep === 'register' && (
+                        <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
+                          <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
+                            <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
+                              <option value="Femenino">Femenino</option>
+                              <option value="Masculino">Masculino</option>
+                            </select>
+                          </div>
+                          {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                            {isSubmitting ? 'Procesando...' : 'Registrarse & Confirmar'}
+                          </button>
+                        </form>
+                      )}
+
+                      {bookingStep === 'success' && (
+                        <div className="text-center py-4 text-xs space-y-1 text-[#3B0019]">
+                          <p className="font-bold text-base">Cita Agendada</p>
+                          <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </aside>
 
-          <main className="md:col-span-7 p-6 md:p-12 space-y-10 pt-16">
+          <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16">
             <section className="space-y-4">
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1254,90 +1379,6 @@ export default function App() {
               )}
             </section>
 
-            {/* BLOCK CONFIRMACIÓN PC */}
-            <section className="hidden md:block border-t border-[#EADEC9]/30 pt-8 mt-12 text-left">
-              <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="serif-title text-base text-[#3B0019] font-medium">Resumen del Agendamiento</h3>
-                  <div className="text-right">
-                    <span className="text-xl font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
-                    {discountPercent && <span className="block text-[9px] text-green-600">-{discountPercent}% {discountTitle}</span>}
-                  </div>
-                </div>
-
-                {/* Codigo descuento */}
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border border-[#EADEC9] rounded-xl text-xs uppercase" />
-                  <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-4 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
-                </div>
-                {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
-                {discountPercent && <p className="text-[10px] text-green-600">{discountPercent}% de descuento aplicado: {discountTitle}</p>}
-
-                {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
-                  <p className="text-xs text-[#78716C] text-center py-4 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
-                    Completa servicios, especialista y fecha para continuar.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {session && session.role === 'cliente' ? (
-                      <div className="space-y-3">
-                        <p className="text-xs text-[#78716C]">Sesión activa: <strong>{session.name}</strong> ({session.phone})</p>
-                        <button
-                          onClick={() => createAppointment(session.id, session.name)}
-                          disabled={isSubmitting}
-                          className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
-                        >
-                          {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {bookingStep === 'selection' && (
-                          <button onClick={() => setBookingStep('auth')} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
-                            Continuar e Identificarse
-                          </button>
-                        )}
-
-                        {bookingStep === 'auth' && (
-                          <form onSubmit={handleCheckAuthBooking} className="space-y-3">
-                            <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Celular del Cliente</label>
-                            <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Ej: 3001234567" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
-                            {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                            <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
-                              {isSubmitting ? 'Verificando...' : 'Continuar'}
-                            </button>
-                          </form>
-                        )}
-
-                        {bookingStep === 'register' && (
-                          <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                            <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
-                            <div className="grid grid-cols-2 gap-3">
-                              <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
-                              <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
-                                <option value="Femenino">Femenino</option>
-                                <option value="Masculino">Masculino</option>
-                              </select>
-                            </div>
-                            {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                            <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
-                              {isSubmitting ? 'Procesando...' : 'Registrarse & Confirmar'}
-                            </button>
-                          </form>
-                        )}
-                      </>
-                    )}
-
-                    {bookingStep === 'success' && (
-                      <div className="text-center py-4 text-xs space-y-1 text-[#3B0019]">
-                        <p className="font-bold text-base">¡Cita Registrada!</p>
-                        <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
           </main>
 
           {/* Zoom avatar modal */}
