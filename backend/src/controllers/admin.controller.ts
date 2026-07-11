@@ -154,13 +154,16 @@ export async function createSpecialOffer(
   res: Response,
 ): Promise<void> {
   try {
-    const { title, description, discountPercentage, code, isActive } =
+    const { title, description, discountPercentage, code, isActive, validFrom, validUntil, newUsersOnly } =
       req.body as {
         title?: string;
         description?: string;
         discountPercentage?: number;
         code?: string;
         isActive?: boolean;
+        validFrom?: string | null;
+        validUntil?: string | null;
+        newUsersOnly?: boolean;
       };
 
     if (!title || discountPercentage == null || !code) {
@@ -182,6 +185,9 @@ export async function createSpecialOffer(
         discountPercentage,
         code,
         isActive: isActive ?? true,
+        validFrom: validFrom ? new Date(validFrom) : null,
+        validUntil: validUntil ? new Date(validUntil) : null,
+        newUsersOnly: newUsersOnly ?? false,
       },
     });
 
@@ -531,13 +537,16 @@ export async function updateSpecialOffer(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { title, description, discountPercentage, code, isActive } =
+    const { title, description, discountPercentage, code, isActive, validFrom, validUntil, newUsersOnly } =
       req.body as {
         title?: string;
         description?: string | null;
         discountPercentage?: number;
         code?: string;
         isActive?: boolean;
+        validFrom?: string | null;
+        validUntil?: string | null;
+        newUsersOnly?: boolean;
       };
 
     const existing = await prisma.specialOffer.findUnique({ where: { id: id! } });
@@ -554,6 +563,9 @@ export async function updateSpecialOffer(
         ...(discountPercentage !== undefined && { discountPercentage }),
         ...(code !== undefined && { code }),
         ...(isActive !== undefined && { isActive }),
+        ...(validFrom !== undefined && { validFrom: validFrom ? new Date(validFrom) : null }),
+        ...(validUntil !== undefined && { validUntil: validUntil ? new Date(validUntil) : null }),
+        ...(newUsersOnly !== undefined && { newUsersOnly }),
       },
     });
 

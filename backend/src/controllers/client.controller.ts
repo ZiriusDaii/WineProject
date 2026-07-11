@@ -549,7 +549,7 @@ export async function validateOfferCode(
   res: Response,
 ): Promise<void> {
   try {
-    const { code } = req.body as { code?: string };
+    const { code, phone } = req.body as { code?: string; phone?: string };
 
     if (!code) {
       res.status(400).json({ error: "El campo 'code' es requerido" });
@@ -568,6 +568,33 @@ export async function validateOfferCode(
     if (!offer.isActive) {
       res.status(400).json({ error: "Esta oferta ya no está vigente" });
       return;
+    }
+
+    const now = new Date();
+    if (offer.validFrom && now < offer.validFrom) {
+      res.status(400).json({ error: "Esta oferta aún no está vigente" });
+      return;
+    }
+    if (offer.validUntil && now > offer.validUntil) {
+      res.status(400).json({ error: "Esta oferta ha expirado" });
+      return;
+    }
+
+    if (offer.newUsersOnly) {
+      if (!phone) {
+        res.status(400).json({ error: "Este código es solo para nuevos clientes. Inicia sesión para validarlo." });
+        return;
+      }
+      const user = await prisma.user.findUnique({ where: { phone } });
+      if (user) {
+        const priorAppointments = await prisma.appointment.count({
+          where: { clientId: user.id, status: { not: "CANCELLED" } },
+        });
+        if (priorAppointments > 0) {
+          res.status(400).json({ error: "Este código es exclusivo para nuevos clientes (sin citas previas)" });
+          return;
+        }
+      }
     }
 
     res.json({

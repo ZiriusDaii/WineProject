@@ -41,6 +41,9 @@ export type SpecialOfferMinAggregateOutputType = {
   discountPercentage: number | null
   code: string | null
   isActive: boolean | null
+  validFrom: Date | null
+  validUntil: Date | null
+  newUsersOnly: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -52,6 +55,9 @@ export type SpecialOfferMaxAggregateOutputType = {
   discountPercentage: number | null
   code: string | null
   isActive: boolean | null
+  validFrom: Date | null
+  validUntil: Date | null
+  newUsersOnly: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -63,6 +69,9 @@ export type SpecialOfferCountAggregateOutputType = {
   discountPercentage: number
   code: number
   isActive: number
+  validFrom: number
+  validUntil: number
+  newUsersOnly: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -84,6 +93,9 @@ export type SpecialOfferMinAggregateInputType = {
   discountPercentage?: true
   code?: true
   isActive?: true
+  validFrom?: true
+  validUntil?: true
+  newUsersOnly?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -95,6 +107,9 @@ export type SpecialOfferMaxAggregateInputType = {
   discountPercentage?: true
   code?: true
   isActive?: true
+  validFrom?: true
+  validUntil?: true
+  newUsersOnly?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -106,6 +121,9 @@ export type SpecialOfferCountAggregateInputType = {
   discountPercentage?: true
   code?: true
   isActive?: true
+  validFrom?: true
+  validUntil?: true
+  newUsersOnly?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -204,6 +222,9 @@ export type SpecialOfferGroupByOutputType = {
   discountPercentage: number
   code: string
   isActive: boolean
+  validFrom: Date | null
+  validUntil: Date | null
+  newUsersOnly: boolean
   createdAt: Date
   updatedAt: Date
   _count: SpecialOfferCountAggregateOutputType | null
@@ -238,6 +259,9 @@ export type SpecialOfferWhereInput = {
   discountPercentage?: Prisma.IntFilter<"SpecialOffer"> | number
   code?: Prisma.StringFilter<"SpecialOffer"> | string
   isActive?: Prisma.BoolFilter<"SpecialOffer"> | boolean
+  validFrom?: Prisma.DateTimeNullableFilter<"SpecialOffer"> | Date | string | null
+  validUntil?: Prisma.DateTimeNullableFilter<"SpecialOffer"> | Date | string | null
+  newUsersOnly?: Prisma.BoolFilter<"SpecialOffer"> | boolean
   createdAt?: Prisma.DateTimeFilter<"SpecialOffer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SpecialOffer"> | Date | string
 }
@@ -249,6 +273,9 @@ export type SpecialOfferOrderByWithRelationInput = {
   discountPercentage?: Prisma.SortOrder
   code?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  validFrom?: Prisma.SortOrderInput | Prisma.SortOrder
+  validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  newUsersOnly?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -263,6 +290,9 @@ export type SpecialOfferWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringNullableFilter<"SpecialOffer"> | string | null
   discountPercentage?: Prisma.IntFilter<"SpecialOffer"> | number
   isActive?: Prisma.BoolFilter<"SpecialOffer"> | boolean
+  validFrom?: Prisma.DateTimeNullableFilter<"SpecialOffer"> | Date | string | null
+  validUntil?: Prisma.DateTimeNullableFilter<"SpecialOffer"> | Date | string | null
+  newUsersOnly?: Prisma.BoolFilter<"SpecialOffer"> | boolean
   createdAt?: Prisma.DateTimeFilter<"SpecialOffer"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SpecialOffer"> | Date | string
 }, "id" | "code">
@@ -274,6 +304,9 @@ export type SpecialOfferOrderByWithAggregationInput = {
   discountPercentage?: Prisma.SortOrder
   code?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  validFrom?: Prisma.SortOrderInput | Prisma.SortOrder
+  validUntil?: Prisma.SortOrderInput | Prisma.SortOrder
+  newUsersOnly?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.SpecialOfferCountOrderByAggregateInput
@@ -293,6 +326,9 @@ export type SpecialOfferScalarWhereWithAggregatesInput = {
   discountPercentage?: Prisma.IntWithAggregatesFilter<"SpecialOffer"> | number
   code?: Prisma.StringWithAggregatesFilter<"SpecialOffer"> | string
   isActive?: Prisma.BoolWithAggregatesFilter<"SpecialOffer"> | boolean
+  validFrom?: Prisma.DateTimeNullableWithAggregatesFilter<"SpecialOffer"> | Date | string | null
+  validUntil?: Prisma.DateTimeNullableWithAggregatesFilter<"SpecialOffer"> | Date | string | null
+  newUsersOnly?: Prisma.BoolWithAggregatesFilter<"SpecialOffer"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SpecialOffer"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SpecialOffer"> | Date | string
 }
@@ -304,6 +340,9 @@ export type SpecialOfferCreateInput = {
   discountPercentage: number
   code: string
   isActive?: boolean
+  validFrom?: Date | string | null
+  validUntil?: Date | string | null
+  newUsersOnly?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -315,6 +354,9 @@ export type SpecialOfferUncheckedCreateInput = {
   discountPercentage: number
   code: string
   isActive?: boolean
+  validFrom?: Date | string | null
+  validUntil?: Date | string | null
+  newUsersOnly?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -326,6 +368,9 @@ export type SpecialOfferUpdateInput = {
   discountPercentage?: Prisma.IntFieldUpdateOperationsInput | number
   code?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  validFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  newUsersOnly?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -337,6 +382,9 @@ export type SpecialOfferUncheckedUpdateInput = {
   discountPercentage?: Prisma.IntFieldUpdateOperationsInput | number
   code?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  validFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  newUsersOnly?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -348,6 +396,9 @@ export type SpecialOfferCreateManyInput = {
   discountPercentage: number
   code: string
   isActive?: boolean
+  validFrom?: Date | string | null
+  validUntil?: Date | string | null
+  newUsersOnly?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -359,6 +410,9 @@ export type SpecialOfferUpdateManyMutationInput = {
   discountPercentage?: Prisma.IntFieldUpdateOperationsInput | number
   code?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  validFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  newUsersOnly?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -370,6 +424,9 @@ export type SpecialOfferUncheckedUpdateManyInput = {
   discountPercentage?: Prisma.IntFieldUpdateOperationsInput | number
   code?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  validFrom?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  validUntil?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  newUsersOnly?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -381,6 +438,9 @@ export type SpecialOfferCountOrderByAggregateInput = {
   discountPercentage?: Prisma.SortOrder
   code?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  validFrom?: Prisma.SortOrder
+  validUntil?: Prisma.SortOrder
+  newUsersOnly?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -396,6 +456,9 @@ export type SpecialOfferMaxOrderByAggregateInput = {
   discountPercentage?: Prisma.SortOrder
   code?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  validFrom?: Prisma.SortOrder
+  validUntil?: Prisma.SortOrder
+  newUsersOnly?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -407,6 +470,9 @@ export type SpecialOfferMinOrderByAggregateInput = {
   discountPercentage?: Prisma.SortOrder
   code?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  validFrom?: Prisma.SortOrder
+  validUntil?: Prisma.SortOrder
+  newUsersOnly?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -419,6 +485,10 @@ export type BoolFieldUpdateOperationsInput = {
   set?: boolean
 }
 
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
 
 
 export type SpecialOfferSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -428,6 +498,9 @@ export type SpecialOfferSelect<ExtArgs extends runtime.Types.Extensions.Internal
   discountPercentage?: boolean
   code?: boolean
   isActive?: boolean
+  validFrom?: boolean
+  validUntil?: boolean
+  newUsersOnly?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["specialOffer"]>
@@ -439,6 +512,9 @@ export type SpecialOfferSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   discountPercentage?: boolean
   code?: boolean
   isActive?: boolean
+  validFrom?: boolean
+  validUntil?: boolean
+  newUsersOnly?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["specialOffer"]>
@@ -450,6 +526,9 @@ export type SpecialOfferSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   discountPercentage?: boolean
   code?: boolean
   isActive?: boolean
+  validFrom?: boolean
+  validUntil?: boolean
+  newUsersOnly?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["specialOffer"]>
@@ -461,11 +540,14 @@ export type SpecialOfferSelectScalar = {
   discountPercentage?: boolean
   code?: boolean
   isActive?: boolean
+  validFrom?: boolean
+  validUntil?: boolean
+  newUsersOnly?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type SpecialOfferOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "description" | "discountPercentage" | "code" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["specialOffer"]>
+export type SpecialOfferOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "description" | "discountPercentage" | "code" | "isActive" | "validFrom" | "validUntil" | "newUsersOnly" | "createdAt" | "updatedAt", ExtArgs["result"]["specialOffer"]>
 
 export type $SpecialOfferPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SpecialOffer"
@@ -477,6 +559,9 @@ export type $SpecialOfferPayload<ExtArgs extends runtime.Types.Extensions.Intern
     discountPercentage: number
     code: string
     isActive: boolean
+    validFrom: Date | null
+    validUntil: Date | null
+    newUsersOnly: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["specialOffer"]>
@@ -908,6 +993,9 @@ export interface SpecialOfferFieldRefs {
   readonly discountPercentage: Prisma.FieldRef<"SpecialOffer", 'Int'>
   readonly code: Prisma.FieldRef<"SpecialOffer", 'String'>
   readonly isActive: Prisma.FieldRef<"SpecialOffer", 'Boolean'>
+  readonly validFrom: Prisma.FieldRef<"SpecialOffer", 'DateTime'>
+  readonly validUntil: Prisma.FieldRef<"SpecialOffer", 'DateTime'>
+  readonly newUsersOnly: Prisma.FieldRef<"SpecialOffer", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"SpecialOffer", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"SpecialOffer", 'DateTime'>
 }
