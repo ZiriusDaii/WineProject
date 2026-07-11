@@ -696,9 +696,12 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-3 bg-white border border-[#EADEC9]/30 p-3 rounded-xl">
-              <input type="text" placeholder="Buscar manicurista..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs flex-1" />
-              <span className="text-[10px] text-[#A68F63]">{manicurists.length} en equipo</span>
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
+              <input type="text" placeholder="Buscar manicurista..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
+              {(() => {
+                const filtered = manicurists.filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.username || '').toLowerCase().includes(searchQuery.toLowerCase()));
+                return pagination(filtered.length);
+              })()}
             </div>
 
             {(() => {
@@ -729,7 +732,6 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                  {pagination(filtered.length)}
                 </div>
               );
             })()}
@@ -859,9 +861,18 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Service List */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-white border border-[#EADEC9]/30 p-3 rounded-xl">
-                <input type="text" placeholder="Buscar servicio..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs flex-1" />
-                <span className="text-[10px] text-[#A68F63]">{servicesCatalog.length} servicios</span>
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
+                <input type="text" placeholder="Buscar servicio..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
+                {(() => {
+                  const sorted = [...servicesCatalog]
+                    .sort((a, b) => {
+                      if (a.trending && !b.trending) return -1;
+                      if (!a.trending && b.trending) return 1;
+                      return (a.name || '').localeCompare(b.name || '');
+                    })
+                    .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()));
+                  return pagination(sorted.length);
+                })()}
               </div>
               {(() => {
                 const sorted = [...servicesCatalog]
@@ -897,7 +908,6 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    {pagination(sorted.length)}
                   </>
                 );
               })()}
