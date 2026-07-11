@@ -205,6 +205,8 @@ export default function App() {
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
 
+  const [portalToast, setPortalToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
   // Hydration al montar
   useEffect(() => {
     const saved = localStorage.getItem('winespa_session');
@@ -253,6 +255,15 @@ export default function App() {
       });
     }
   }, [view]);
+
+  useEffect(() => {
+    if (portalToast) {
+      const t = setTimeout(() => setPortalToast(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [portalToast]);
+
+  useEffect(() => { setPortalToast(null); }, [view]);
 
   // Recalcula los horarios disponibles (dentro del horario del local, sin
   // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
@@ -433,7 +444,7 @@ export default function App() {
         body: JSON.stringify({ status: 'CANCELLED' })
       });
       if (res.ok) {
-        alert('Cita cancelada con éxito.');
+        setPortalToast({ msg: 'Cita cancelada con exito.', ok: true });
         fetchClientAppointments();
       } else {
         setClientAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
@@ -445,7 +456,7 @@ export default function App() {
 
   const handleUpdateSchedule = async (id: string | number) => {
     if (!newDateInput || !newTimeInput) {
-      alert('Por favor ingresa fecha y hora.');
+      setPortalToast({ msg: 'Por favor ingresa fecha y hora.', ok: false });
       return;
     }
     setIsUpdatingSchedule(true);
@@ -458,14 +469,14 @@ export default function App() {
         body: JSON.stringify({ date: `${newDateInput}T${newTimeInput}:00.000Z` })
       });
       if (res.ok) {
-        alert('Horario modificado con éxito.');
+        setPortalToast({ msg: 'Horario modificado con exito.', ok: true });
         setEditingAppointmentId(null);
         fetchClientAppointments();
       } else {
-        alert('No se pudo modificar el horario en el servidor.');
+        setPortalToast({ msg: 'No se pudo modificar el horario.', ok: false });
       }
     } catch {
-      alert('Error de conexión al modificar el horario.');
+      setPortalToast({ msg: 'Error de conexion al modificar.', ok: false });
     } finally {
       setIsUpdatingSchedule(false);
     }
@@ -641,6 +652,28 @@ export default function App() {
     setClientAppointments([]);
     setBookingStep('selection');
     setIsBookingOpen(false);
+  };
+
+  const resetBooking = () => {
+    setSelectedServiceIds([]);
+    setSelectedSpecialist(null);
+    setBookingDate('');
+    setBookingTime('');
+    setDiscountCode('');
+    setDiscountPercent(null);
+    setDiscountTitle(null);
+    setDiscountError(null);
+    setBookingStep('selection');
+    setBookingWizardStep(1);
+    setBookingPhone('');
+    setBookingName('');
+    setBookingAge('');
+    setSubmitError(null);
+    setIsBookingOpen(false);
+    setSvcSearch('');
+    setManSearch('');
+    setSvcPage(1);
+    setManPage(1);
   };
 
   const handleCheckAuthBooking = async (e: React.FormEvent) => {
@@ -901,6 +934,12 @@ export default function App() {
             <h2 className="serif-title text-3xl text-[#3B0019]">Portal de Bienestar</h2>
             <p className="text-xs text-[#78716C]">Sincroniza tus turnos y consulta el registro de tus visitas.</p>
           </header>
+
+          {portalToast && (
+            <div className={`text-xs font-semibold p-3 rounded-xl animate-fade-in ${portalToast.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {portalToast.ok ? '✓' : '✕'} {portalToast.msg}
+            </div>
+          )}
 
           {/* CITAS PENDIENTES */}
           <div className="space-y-4">
@@ -1170,7 +1209,7 @@ export default function App() {
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
         <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <button onClick={() => setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing')} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
+          <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
             ← Volver
           </button>
 
@@ -1483,7 +1522,7 @@ export default function App() {
               ) : availableSlots.length === 0 ? (
                 <p className="text-[10px] text-[#78716C]">No hay horarios disponibles ese día, probá con otra fecha.</p>
               ) : (
-                <div className="flex flex-wrap gap-2 max-w-md">
+                <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
                   {availableSlots.map((slot) => (
                     <button
                       key={slot}
