@@ -261,7 +261,6 @@ export async function getAdminManicurists(
         gender: true,
         avatarPath: true,
         role: true,
-        sedeId: true,
         createdAt: true,
         schedules: {
           include: { shiftTemplate: true },
@@ -282,7 +281,7 @@ export async function updateManicuristStatus(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { phone, username, password, name, age, gender, avatarPath, role, sedeId } =
+    const { phone, username, password, name, age, gender, avatarPath, role } =
       req.body as {
         phone?: string;
         username?: string;
@@ -292,7 +291,6 @@ export async function updateManicuristStatus(
         gender?: string | null;
         avatarPath?: string | null;
         role?: string;
-        sedeId?: string | null;
       };
 
     const ALLOWED_ROLES = ["ADMIN", "MANICURISTA"];
@@ -322,7 +320,6 @@ export async function updateManicuristStatus(
           ...(gender !== undefined && { gender: gender ?? null }),
           ...(avatarPath !== undefined && { avatarPath: avatarPath ?? null }),
           ...(role !== undefined && { role: { set: role as "ADMIN" | "MANICURISTA" } }),
-          ...(sedeId !== undefined && { sedeId: sedeId ?? null }),
         },
         select: {
           id: true,
@@ -333,7 +330,6 @@ export async function updateManicuristStatus(
           gender: true,
           avatarPath: true,
           role: true,
-          sedeId: true,
         },
       });
       res.json(updated);
@@ -357,7 +353,6 @@ export async function updateManicuristStatus(
           gender: gender ?? null,
           avatarPath: avatarPath ?? null,
           role: (role as "ADMIN" | "MANICURISTA") ?? "MANICURISTA",
-          sedeId: sedeId ?? null,
         },
         select: {
           id: true,
@@ -368,7 +363,6 @@ export async function updateManicuristStatus(
           gender: true,
           avatarPath: true,
           role: true,
-          sedeId: true,
         },
       });
       res.status(201).json(created);

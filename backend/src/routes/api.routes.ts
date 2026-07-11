@@ -4,7 +4,6 @@ import { requireAdmin, requireStaff } from "../middlewares/auth.middleware.js";
 import {
   getServices,
   getManicurists,
-  getSedes,
   getOffers,
   validateOfferCode,
   authClient,
@@ -44,7 +43,6 @@ const router = Router();
 
 // Public routes
 router.get("/services", getServices);
-router.get("/sedes", getSedes);
 router.get("/manicurists", getManicurists);
 router.get("/offers", getOffers);
 router.get("/landing/content", getLandingContent);

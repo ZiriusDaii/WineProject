@@ -31,7 +31,7 @@ export const TerminosCondiciones: React.FC<{ onBack: () => void }> = ({ onBack }
         heading: '1. Objeto y Alcance',
         body: `Los presentes Terminos y Condiciones regulan el acceso y uso de la plataforma digital WineSpa (en adelante, "la Plataforma"), operada por WineSpa SAS, con domicilio principal en la ciudad de Medellin, Colombia.
 
-La Plataforma tiene como finalidad permitir a los usuarios (en adelante, "Clientes") consultar el catalogo de servicios de manicura, pedicura y nail art ofrecidos por profesionales independientes (en adelante, "Especialistas") que prestan sus servicios en las distintas sedes de WineSpa, asi como agendar, reprogramar y cancelar citas de manera autogestionada.
+La Plataforma tiene como finalidad permitir a los usuarios (en adelante, "Clientes") consultar el catalogo de servicios de manicura, pedicura y nail art ofrecidos por profesionales independientes (en adelante, "Especialistas") que prestan sus servicios en el local de WineSpa, asi como agendar, reprogramar y cancelar citas de manera autogestionada.
 
 El acceso y uso de la Plataforma implica la aceptacion integra e incondicional de estos Terminos y Condiciones. Si el Cliente no esta de acuerdo con los mismos, debera abstenerse de utilizar la Plataforma.`
       },
@@ -49,11 +49,11 @@ WineSpa se reserva el derecho de suspender o cancelar la cuenta de cualquier Cli
       },
       {
         heading: '3. Servicios, Precios y Pagos',
-        body: `Los servicios ofrecidos a traves de la Plataforma son prestados por Especialistas en las instalaciones fisicas de cada sede de WineSpa. Los precios publicados en el catalogo estan expresados en pesos colombianos (COP) e incluyen todos los impuestos aplicables, salvo indicacion expresa en contrario.
+        body: `Los servicios ofrecidos a traves de la Plataforma son prestados por Especialistas en las instalaciones fisicas del local de WineSpa. Los precios publicados en el catalogo estan expresados en pesos colombianos (COP) e incluyen todos los impuestos aplicables, salvo indicacion expresa en contrario.
 
 WineSpa se reserva el derecho de modificar los precios, descripciones y disponibilidad de los servicios en cualquier momento sin previo aviso. Los cambios no afectaran las citas ya confirmadas.
 
-El pago de los servicios se realiza directamente en la sede al momento de la prestacion del servicio, salvo que se indique una modalidad diferente para ofertas o paquetes especiales. La Plataforma no procesa pagos en linea; actua exclusivamente como sistema de agendamiento y gestion de turnos.
+El pago de los servicios se realiza directamente en el local al momento de la prestacion del servicio, salvo que se indique una modalidad diferente para ofertas o paquetes especiales. La Plataforma no procesa pagos en linea; actua exclusivamente como sistema de agendamiento y gestion de turnos.
 
 Los codigos de descuento y ofertas especiales tienen vigencia limitada, estan sujetos a disponibilidad y no son acumulables con otras promociones, salvo que se especifique lo contrario en los terminos particulares de cada oferta.`
       },
@@ -95,7 +95,7 @@ export const PoliticaPrivacidad: React.FC<{ onBack: () => void }> = ({ onBack })
     sections={[
       {
         heading: '1. Identificacion del Responsable',
-        body: `En cumplimiento de lo dispuesto en la Ley 1581 de 2012 y el Decreto 1377 de 2013, se informa al titular de los datos personales que WineSpa SAS, con domicilio en la ciudad de Medellin, es el responsable del tratamiento de los datos personales recolectados a traves de su plataforma digital, sus sedes fisicas y su canal de atencion al cliente.`
+        body: `En cumplimiento de lo dispuesto en la Ley 1581 de 2012 y el Decreto 1377 de 2013, se informa al titular de los datos personales que WineSpa SAS, con domicilio en la ciudad de Medellin, es el responsable del tratamiento de los datos personales recolectados a traves de su plataforma digital, su local fisico y su canal de atencion al cliente.`
       },
       {
         heading: '2. Datos Personales que Recolectamos',
@@ -104,10 +104,10 @@ export const PoliticaPrivacidad: React.FC<{ onBack: () => void }> = ({ onBack })
 - Nombre completo del Cliente.
 - Numero de telefono celular (utilizado como identificador unico de cuenta y medio de contacto principal).
 - Edad y genero (datos opcionales utilizados para personalizar la experiencia del servicio).
-- Historial de servicios contratados y citas agendadas en nuestras sedes.
-- Preferencias de manicurista, sede y tipo de servicio.
+- Historial de servicios contratados y citas agendadas en nuestro local.
+- Preferencias de manicurista y tipo de servicio.
 
-No recolectamos datos sensibles, financieros ni biometricos. La Plataforma no almacena informacion de tarjetas de credito o debito, ya que los pagos se realizan presencialmente en cada sede.`
+No recolectamos datos sensibles, financieros ni biometricos. La Plataforma no almacena informacion de tarjetas de credito o debito, ya que los pagos se realizan presencialmente en el local.`
       },
       {
         heading: '3. Finalidad del Tratamiento',
@@ -180,16 +180,16 @@ La cancelacion de una cita no genera derecho a reembolso de servicios ya prestad
         heading: '2. Reprogramacion de Citas',
         body: `El Cliente podra reprogramar su cita sin costo adicional siempre que lo haga con una antelacion minima de cuatro (4) horas respecto a la hora originalmente programada y exista disponibilidad en el nuevo horario solicitado.
 
-La reprogramacion esta sujeta a la disponibilidad de la Especialista seleccionada y de la sede correspondiente. Si la Especialista original no esta disponible en el nuevo horario, el Cliente podra elegir otra Especialista disponible en la misma sede, conservando los mismos servicios contratados.
+La reprogramacion esta sujeta a la disponibilidad de la Especialista seleccionada. Si la Especialista original no esta disponible en el nuevo horario, el Cliente podra elegir otra Especialista disponible, conservando los mismos servicios contratados.
 
-En caso de que el Cliente desee reprogramar con menos de cuatro (4) horas de antelacion, la solicitud estara sujeta a la politica de cancelacion tardia descrita en el punto anterior y se requerira contacto directo con la sede.`
+En caso de que el Cliente desee reprogramar con menos de cuatro (4) horas de antelacion, la solicitud estara sujeta a la politica de cancelacion tardia descrita en el punto anterior y se requerira contacto directo con el local.`
       },
       {
         heading: '3. Cancelacion o Reprogramacion por Parte de WineSpa',
         body: `WineSpa se reserva el derecho de cancelar o reprogramar una cita en las siguientes circunstancias:
 
 - Ausencia imprevista de la Especialista asignada por enfermedad, calamidad domestica o fuerza mayor.
-- Cierre temporal o emergencia en la sede correspondiente.
+- Cierre temporal o emergencia en el local.
 - Fallas en los servicios publicos esenciales que impidan la prestacion adecuada del servicio (agua, energia electrica).
 - Identificacion de un error en el sistema de agendamiento que haya generado una sobreventa de cupos.
 

@@ -65,7 +65,7 @@ backend/
     routes/api.routes.ts   # router unico con todos los endpoints
   prisma/
     schema.prisma
-    seed.ts                # datos iniciales (servicios, sedes, manicuristas)
+    seed.ts                # datos iniciales (servicios, manicuristas)
 frontend/
   src/
     App.tsx                # landing, login, portal cliente, flujo reserva
