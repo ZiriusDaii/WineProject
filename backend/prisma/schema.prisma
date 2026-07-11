@@ -104,14 +104,17 @@ model Appointment {
 }
 
 model SpecialOffer {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   title              String
   description        String?
-  discountPercentage Int      @map("discount_percentage")
-  code               String   @unique
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  discountPercentage Int       @map("discount_percentage")
+  code               String    @unique
+  isActive           Boolean   @default(true) @map("is_active")
+  validFrom          DateTime? @map("valid_from")
+  validUntil         DateTime? @map("valid_until")
+  newUsersOnly       Boolean   @default(false) @map("new_users_only")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@map("special_offers")
 }

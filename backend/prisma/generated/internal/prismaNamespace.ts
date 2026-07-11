@@ -1045,6 +1045,9 @@ export const SpecialOfferScalarFieldEnum = {
   discountPercentage: 'discountPercentage',
   code: 'code',
   isActive: 'isActive',
+  validFrom: 'validFrom',
+  validUntil: 'validUntil',
+  newUsersOnly: 'newUsersOnly',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
