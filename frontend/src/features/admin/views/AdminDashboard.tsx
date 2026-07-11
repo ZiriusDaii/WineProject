@@ -62,7 +62,6 @@ interface Manicurist {
   avatarUrl?: string;
   avatarPath?: string;
   role?: string;
-  sedeId?: string;
   schedules?: { shiftTemplate?: { name: string; startTime: string; endTime: string } }[];
 }
 
@@ -82,11 +81,6 @@ interface Offer {
   discountPercentage: number;
   code: string;
   isActive: boolean;
-}
-
-interface Sede {
-  id: string;
-  name: string;
 }
 
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
@@ -110,7 +104,6 @@ export const AdminDashboard: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [sedes, setSedes] = useState<Sede[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,7 +135,6 @@ export const AdminDashboard: React.FC = () => {
   const [manPass, setManPass] = useState('');
   const [manAge, setManAge] = useState('');
   const [manGender, setManGender] = useState('Femenino');
-  const [manSede, setManSede] = useState('');
   const [manAvatarFile, setManAvatarFile] = useState<File | null>(null);
 
   // Client detail modal
@@ -191,11 +183,10 @@ export const AdminDashboard: React.FC = () => {
     setLoading(true);
     const h = authHeaders();
     try {
-      const [mRes, sRes, cRes, sedesRes, oRes] = await Promise.all([
+      const [mRes, sRes, cRes, oRes] = await Promise.all([
         fetch(`${API}/api/admin/manicurists`, { headers: h }),
         fetch(`${API}/api/services`),
         fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
-        fetch(`${API}/api/sedes`),
         fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
       ]);
 
@@ -205,13 +196,11 @@ export const AdminDashboard: React.FC = () => {
       const mData = mRes.ok ? await mRes.json() : [];
       const sData = sRes.ok ? await sRes.json() : [];
       const cPayload = cRes?.ok ? await cRes.json() : null;
-      const sedesData = sedesRes?.ok ? await sedesRes.json() : [];
       const oData = oRes?.ok ? await oRes.json() : [];
 
       setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
       setServicesCatalog(sData || []);
       setClients(cPayload?.data ?? (Array.isArray(cPayload) ? cPayload : []));
-      setSedes(sedesData);
       setOffers(oData);
 
       let appts: Appointment[] = [];
@@ -308,7 +297,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!manPhone || !manUser || !manName) return;
     setSubmitting(true);
-    const body: any = { phone: manPhone, username: manUser, name: manName, age: manAge ? parseInt(manAge) : null, gender: manGender || null, sedeId: manSede || null };
+    const body: any = { phone: manPhone, username: manUser, name: manName, age: manAge ? parseInt(manAge) : null, gender: manGender || null };
     if (manId) { if (manPass) body.password = manPass; } else { if (!manPass) { setErrorMsg('Contraseña requerida para nueva manicurista.'); setSubmitting(false); return; } body.password = manPass; }
     try {
       const url = manId ? `${API}/api/admin/manicurists/${manId}` : `${API}/api/admin/manicurists`;
@@ -327,8 +316,8 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManSede(m.sedeId || ''); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManSede(''); setManAvatarFile(null); };
+  const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManAvatarFile(null); };
 
   // --- Client detail ---
   const viewClient = async (c: Client) => {
@@ -396,7 +385,6 @@ export const AdminDashboard: React.FC = () => {
   const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const getManName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || '—';
-  const getSedeName = (id?: string) => sedes.find(s => s.id === id)?.name || '';
   const svcNames = (ss: ServiceItem[]) => ss.map(s => s.name).join(', ') || '—';
   const clear = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
@@ -546,10 +534,7 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required maxLength={30} value={manUser} onChange={e => setManUser(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Sede</label><select value={manSede} onChange={e => setManSede(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="">Sin sede</option>{sedes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                </div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
@@ -571,7 +556,6 @@ export const AdminDashboard: React.FC = () => {
                       <div className="flex-1">
                         <h4 className="font-semibold text-sm text-[#3B0019]">{m.name}</h4>
                         <p className="text-[10px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
-                        {m.sedeId && <p className="text-[9px] text-[#A68F63]">📍 {getSedeName(m.sedeId)}</p>}
                       </div>
                     </div>
                     {m.schedules && m.schedules.length > 0 && (

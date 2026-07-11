@@ -20,14 +20,6 @@ interface Manicurist {
   age?: number;
   avatarUrl?: string;
   avatarPath?: string;
-  sedeId?: string;
-}
-
-interface Sede {
-  id: string;
-  name: string;
-  address: string;
-  phone?: string;
 }
 
 interface Offer {
@@ -58,12 +50,6 @@ interface Appointment {
 // El backend manda `date` como ISO string (incluye la hora), sin campo `time` separado.
 const toDateLabel = (isoDate: string) => (isoDate || '').slice(0, 10);
 const toTimeLabel = (isoDate: string) => (isoDate || '').slice(11, 16);
-
-const SEDES = [
-  { nombre: 'Cc. Parque Fabricato', direccion: 'S1 local 104', telefono: '+57 319 707 2921' },
-  { nombre: 'Cc. Metro Cencosud', direccion: 'Local 1009', telefono: '+57 314 862 2128' },
-  { nombre: 'Cc. Madera Mall', direccion: 'Local 209', telefono: '+57 310 499 7178' },
-];
 
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
 // 0=Domingo..6=Sabado. Debe coincidir con BUSINESS_HOURS en
@@ -172,8 +158,6 @@ export default function App() {
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Estados del Formulario de Booking
-  const [sedes, setSedes] = useState<Sede[]>([]);
-  const [selectedSede, setSelectedSede] = useState<string | null>(null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
   const [zoomedAvatar, setZoomedAvatar] = useState<string | null>(null);
@@ -244,11 +228,11 @@ export default function App() {
   // cargan una sola vez al montar la app y no se refrescaban solos despues.
   useEffect(() => {
     if (view === 'booking') {
-      fetchManicurists(selectedSede).then(fresh => {
+      fetchManicurists().then(fresh => {
         if (fresh.length > 0) setManicurists(fresh);
       });
     }
-  }, [view, selectedSede]);
+  }, [view]);
 
   // Recalcula los horarios disponibles (dentro del horario del local, sin
   // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
@@ -314,12 +298,9 @@ export default function App() {
     return () => { cancelled = true; };
   }, [editingAppointmentId, newDateInput, clientAppointments]);
 
-  const fetchManicurists = async (sedeId?: string | null): Promise<Manicurist[]> => {
+  const fetchManicurists = async (): Promise<Manicurist[]> => {
     try {
-      const url = sedeId
-        ? `http://localhost:3000/api/manicurists?sedeId=${encodeURIComponent(sedeId)}`
-        : 'http://localhost:3000/api/manicurists';
-      const res = await fetch(url);
+      const res = await fetch('http://localhost:3000/api/manicurists');
       if (res.ok) {
         const data = await res.json();
         return Array.isArray(data) ? data : (data?.manicurists || []);
@@ -363,11 +344,6 @@ export default function App() {
 
       setServices(fetchedServices.length > 0 ? fetchedServices : fallbackServices);
       setManicurists(fetchedManicurists.length > 0 ? fetchedManicurists : fallbackManicurists);
-
-      try {
-        const sedesRes = await fetch('http://localhost:3000/api/sedes');
-        if (sedesRes.ok) setSedes(await sedesRes.json());
-      } catch { /* sin fallback, el selector simplemente no aparece */ }
 
       try {
         const offersRes = await fetch('http://localhost:3000/api/offers');
@@ -636,7 +612,6 @@ export default function App() {
     setView('landing');
     setSelectedServiceIds([]);
     setSelectedSpecialist(null);
-    setSelectedSede(null);
     setBookingDate('');
     setBookingTime('');
     setDiscountCode('');
@@ -750,8 +725,7 @@ export default function App() {
 • Fecha: ${bookingDate} a las ${bookingTime}
 • Total: ${typeof total === 'number' ? `$${total.toLocaleString()}` : total}`;
 
-        const sedePhone = sedes.find(s => s.id === selectedSede)?.phone;
-        const whatsappNumber = (sedePhone || '+57 319 707 2921').replace(/\D/g, '');
+        const whatsappNumber = '+57 319 707 2921'.replace(/\D/g, '');
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
         
         setTimeout(() => {
@@ -1205,38 +1179,6 @@ export default function App() {
 
           <main className="md:col-span-7 p-6 md:p-12 space-y-10 pt-16">
             <section className="space-y-4">
-              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">0. Elige tu Sede</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {sedes.map(sede => {
-                  const isSelected = selectedSede === sede.id;
-                  return (
-                    <div
-                      key={sede.id}
-                      onClick={() => {
-                        if (selectedSede === sede.id) {
-                          setSelectedSede(null);
-                          setSelectedSpecialist(null);
-                        } else {
-                          setSelectedSede(sede.id);
-                          setSelectedSpecialist(null);
-                        }
-                      }}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white hover:border-[#8E1B54]/40'}`}
-                    >
-                      <span className="block text-xs font-bold text-[#44403C]">{sede.name}</span>
-                      <span className="block text-[9px] text-[#A68F63] mt-1">{sede.address}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {selectedSede && (
-                <p className="text-[9px] text-[#78716C]">
-                  Mostrando especialistas de esta sede. Seleccionala de nuevo para ver todas.
-                </p>
-              )}
-            </section>
-
-            <section className="space-y-4">
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Array.isArray(services) && services.map(s => {
@@ -1581,9 +1523,7 @@ export default function App() {
       <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-3 mt-auto">
         <span className="serif-title text-base text-[#3B0019] block">WineSpa</span>
         <div className="flex flex-wrap justify-center gap-x-8 gap-y-1.5 text-[10px] text-[#78716C]">
-          {SEDES.map((sede) => (
-            <span key={sede.nombre}>{sede.nombre} • {sede.direccion} • {sede.telefono}</span>
-          ))}
+          <span>Cc. Parque Fabricato • S1 local 104 • +57 319 707 2921</span>
         </div>
         <p className="text-[10px] text-[#78716C]">Lunes a Viernes: 9:00 AM - 8:00 PM • Sábado y Domingo: 9:00 AM - 7:00 PM</p>
         <a href="https://www.instagram.com/wine.spa" target="_blank" rel="noopener noreferrer" className="inline-block text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">@wine.spa</a>
