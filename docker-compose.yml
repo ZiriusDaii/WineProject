@@ -19,8 +19,9 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-winespa}
       PORT: ${PORT:-3000}
+      JWT_SECRET: ${JWT_SECRET:-winespa-jwt-secret-change-in-production}
     ports:
       - "${PORT:-3000}:3000"
     volumes:

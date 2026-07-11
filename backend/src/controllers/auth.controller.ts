@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { signToken } from "../lib/jwt.js";
 
 export async function loginStaff(
   req: Request,
@@ -51,7 +52,9 @@ export async function loginStaff(
 
     const { password: _, ...safeUser } = user;
 
-    res.json(safeUser);
+    const token = signToken({ userId: user.id, role: user.role });
+
+    res.json({ token, user: safeUser });
   } catch (error) {
     console.error("Error en loginStaff:", error);
     res.status(500).json({ error: "Error interno del servidor" });

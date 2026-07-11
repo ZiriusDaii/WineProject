@@ -177,14 +177,14 @@ export const StylistAgenda: React.FC = () => {
 
       const res = await fetch(`http://localhost:3000/api/manicurist/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
         body: JSON.stringify({ id: stylistId, ...payload })
       });
 
       if (!res.ok) {
         await fetch(`http://localhost:3000/api/admin/manicurists/${stylistId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
           body: JSON.stringify(payload)
         });
       }

@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { FallbackAvatar } from '../../../App';
 
 const API = 'http://localhost:3000';
+const authHeaders = () => {
+  const token = localStorage.getItem('winespa_token');
+  return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } as Record<string,string> : { 'Content-Type': 'application/json' };
+};
+const authHeadersNoJson = () => {
+  const token = localStorage.getItem('winespa_token');
+  return token ? { 'Authorization': `Bearer ${token}` } as Record<string,string> : {} as Record<string,string>;
+};
 
 interface Stats {
   totalEarnings: number;
@@ -41,6 +49,7 @@ interface ServiceCatalogItem {
   shortDescription?: string;
   includesDescription?: string;
   category?: string;
+  imageUrl?: string;
 }
 
 interface Manicurist {
@@ -115,6 +124,8 @@ export const AdminDashboard: React.FC = () => {
   const [svcShort, setSvcShort] = useState('');
   const [svcIncludes, setSvcIncludes] = useState('');
   const [svcCat, setSvcCat] = useState('');
+  const [svcImageUrl, setSvcImageUrl] = useState('');
+  const [svcImageFile, setSvcImageFile] = useState<File | null>(null);
 
   // Offer form
   const [offId, setOffId] = useState<string | null>(null);
@@ -143,25 +154,54 @@ export const AdminDashboard: React.FC = () => {
   const [cmsTitle, setCmsTitle] = useState('');
   const [cmsDesc, setCmsDesc] = useState('');
   const [cmsItems, setCmsItems] = useState<any[]>([]);
+  const [editingCmsId, setEditingCmsId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [adminLoginUser, setAdminLoginUser] = useState('');
+  const [adminLoginPass, setAdminLoginPass] = useState('');
+
   useEffect(() => { loadData(); }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
 
+  const doLogin = async () => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: adminLoginUser, password: adminLoginPass }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('winespa_token', data.token);
+        setUnauthorized(false);
+        setAdminLoginUser(''); setAdminLoginPass('');
+        loadData();
+      } else { setErrorMsg('Credenciales invalidas.'); }
+    } catch { setErrorMsg('Error de conexion.'); }
+    finally { setSubmitting(false); }
+  };
+
   const loadData = async () => {
     setLoading(true);
+    const h = authHeaders();
     try {
       const [mRes, sRes, cRes, sedesRes, oRes] = await Promise.all([
-        fetch(`${API}/api/admin/manicurists`),
+        fetch(`${API}/api/admin/manicurists`, { headers: h }),
         fetch(`${API}/api/services`),
-        fetch(`${API}/api/admin/clients`).catch(() => null),
-        fetch(`${API}/api/sedes`).catch(() => null),
-        fetch(`${API}/api/admin/offers`).catch(() => null),
+        fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
+        fetch(`${API}/api/sedes`),
+        fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
       ]);
+
+      if (mRes.status === 401 || cRes?.status === 401 || oRes?.status === 401) {
+        setUnauthorized(true); setLoading(false); return;
+      }
       const mData = mRes.ok ? await mRes.json() : [];
       const sData = sRes.ok ? await sRes.json() : [];
       const cPayload = cRes?.ok ? await cRes.json() : null;
@@ -176,14 +216,14 @@ export const AdminDashboard: React.FC = () => {
 
       let appts: Appointment[] = [];
       try {
-        const aRes = await fetch(`${API}/api/admin/appointments`);
+        const aRes = await fetch(`${API}/api/admin/appointments`, { headers: h });
         if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
       } catch { /* */ }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
       let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
       try {
-        const stRes = await fetch(`${API}/api/admin/stats`);
+        const stRes = await fetch(`${API}/api/admin/stats`, { headers: h });
         if (stRes.ok) {
           const r = await stRes.json();
           sData2 = {
@@ -205,7 +245,7 @@ export const AdminDashboard: React.FC = () => {
   const handleUpdateStatus = async (id: string | number, status: string) => {
     try {
       const res = await fetch(`${API}/api/admin/appointments/${id}/status`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status }),
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: status as any } : a));
@@ -220,20 +260,30 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!svcName || !svcPrice || !svcDuration) return;
     setSubmitting(true);
-    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined };
+
+    let finalImageUrl = svcImageUrl || undefined;
+    if (svcImageFile) {
+      try {
+        const fd = new FormData(); fd.append('image', svcImageFile);
+        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+        if (uRes.ok) { const d = await uRes.json(); finalImageUrl = d.imageUrl; }
+      } catch { /* */ }
+    }
+
+    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
-      const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); loadData(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
   const handleDeleteService = async (id: string | number) => {
     if (!confirm('Eliminar?')) return;
-    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
+    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
-  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); };
 
   // --- Offers ---
   const handleSaveOffer = async (e: React.FormEvent) => {
@@ -243,13 +293,13 @@ export const AdminDashboard: React.FC = () => {
     const body: any = { title: offTitle, discountPercentage: parseInt(offDiscount), code: offCode, description: offDesc || undefined };
     try {
       const url = offId ? `${API}/api/admin/offers/${offId}` : `${API}/api/admin/offers`;
-      const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (res.ok) { setSuccessMsg(offId ? 'Actualizada.' : 'Creada.'); resetOff(); loadData(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE' }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
-  const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
+  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
+  const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
   const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); };
 
@@ -262,7 +312,7 @@ export const AdminDashboard: React.FC = () => {
     if (manId) { if (manPass) body.password = manPass; } else { if (!manPass) { setErrorMsg('Contraseña requerida para nueva manicurista.'); setSubmitting(false); return; } body.password = manPass; }
     try {
       const url = manId ? `${API}/api/admin/manicurists/${manId}` : `${API}/api/admin/manicurists`;
-      const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(url, { method: manId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
       const saved = await res.json();
       const targetId = saved.id || manId;
@@ -270,7 +320,7 @@ export const AdminDashboard: React.FC = () => {
         const fd = new FormData();
         fd.append('image', manAvatarFile);
         fd.append('manicuristId', String(targetId));
-        await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', body: fd });
+        await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
       }
       setSuccessMsg(manId ? 'Actualizada.' : 'Creada.');
       resetMan(); loadData();
@@ -299,21 +349,42 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteCMS = async (id: string) => {
     if (!confirm('Eliminar este anuncio?')) return;
     try {
-      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE' });
+      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE', headers: authHeaders() });
       if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
     } catch { setErrorMsg('Error.'); }
   };
+  const editCms = (item: any) => {
+    setEditingCmsId(item.id);
+    setCmsTitle(item.title || '');
+    setCmsDesc(item.description || '');
+    setCmsFile(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const resetCms = () => {
+    setEditingCmsId(null);
+    setCmsFile(null);
+    setCmsTitle('');
+    setCmsDesc('');
+  };
   const handleSaveCMS = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
+    if (!editingCmsId && !cmsFile) { setErrorMsg('Selecciona una imagen.'); return; }
+    if (!cmsTitle) { setErrorMsg('El titulo es requerido.'); return; }
     setSubmitting(true);
     try {
-      const fd = new FormData(); fd.append('image', cmsFile);
-      const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', body: fd });
-      if (!uRes.ok) throw new Error();
-      const { imageUrl } = await uRes.json();
-      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([{ type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, imageUrl, isActive: true }]) });
-      if (r.ok) { setSuccessMsg('Publicado.'); setCmsFile(null); setCmsTitle(''); setCmsDesc(''); fetchCMS(); } else throw new Error();
+      let imageUrl = '';
+      if (cmsFile) {
+        const fd = new FormData(); fd.append('image', cmsFile);
+        const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+        if (!uRes.ok) throw new Error();
+        const data = await uRes.json();
+        imageUrl = data.imageUrl;
+      }
+      const payload: any = { type: 'CAROUSEL', title: cmsTitle, description: cmsDesc, isActive: true };
+      if (imageUrl) payload.imageUrl = imageUrl;
+      if (editingCmsId) payload.id = editingCmsId;
+      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+      if (r.ok) { setSuccessMsg(editingCmsId ? 'Actualizado.' : 'Publicado.'); resetCms(); fetchCMS(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -331,6 +402,23 @@ export const AdminDashboard: React.FC = () => {
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
+  if (unauthorized) return (
+    <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
+      <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-8 max-w-sm w-full space-y-5 text-center shadow-lg">
+        <div>
+          <span className="serif-title text-2xl text-[#3B0019]">WineSpa Admin</span>
+          <p className="text-xs text-[#78716C] mt-1">Inicia sesion para acceder al panel</p>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); doLogin(); }} className="space-y-3 text-left">
+          <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required value={adminLoginUser} onChange={e => setAdminLoginUser(e.target.value)} className="w-full p-2.5 border rounded-lg text-xs" /></div>
+          <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena</label><input type="password" required value={adminLoginPass} onChange={e => setAdminLoginPass(e.target.value)} className="w-full p-2.5 border rounded-lg text-xs" /></div>
+          {errorMsg && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{errorMsg}</p>}
+          <button type="submit" disabled={submitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{submitting ? 'Entrando...' : 'Ingresar'}</button>
+        </form>
+        <p className="text-[9px] text-[#A68F63]">Acceso exclusivo para administradores de WineSpa</p>
+      </div>
+    </div>
+  );
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'metrics', label: 'Estadisticas' },
@@ -566,6 +654,7 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
                   {svcId && <button type="button" onClick={resetSvc} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
@@ -662,7 +751,10 @@ export const AdminDashboard: React.FC = () => {
                         <p className="text-[9px] text-[#78716C] truncate">{item.description || 'Sin descripcion'}</p>
                         <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive ? '· Activo' : '· Inactivo'}</span>
                       </div>
-                      <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold shrink-0">Quitar</button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => editCms(item)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
+                        <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Quitar</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -670,11 +762,14 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveCMS} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <h3 className="text-xs font-bold text-[#3B0019] uppercase">Subir nuevo anuncio</h3>
-              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{editingCmsId ? 'Editar anuncio' : 'Subir nuevo anuncio'}</h3>
+              <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {editingCmsId && '(dejar vacio = no cambiar)'}</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" value={cmsTitle} onChange={e => setCmsTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><textarea value={cmsDesc} onChange={e => setCmsDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-20" /></div>
-              <button type="submit" disabled={submitting} className="w-full py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Publicar</button>
+              <div className="flex gap-2">
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{editingCmsId ? 'Actualizar' : 'Publicar'}</button>
+                {editingCmsId && <button type="button" onClick={resetCms} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
+              </div>
             </form>
           </div>
         )}

@@ -104,11 +104,12 @@ export async function createService(
   res: Response,
 ): Promise<void> {
   try {
-    const { name, shortDescription, includesDescription, category, price, durationInMinutes } = req.body as {
+    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes } = req.body as {
       name?: string;
       shortDescription?: string;
       includesDescription?: string | null;
       category?: string | null;
+      imageUrl?: string | null;
       price?: number;
       durationInMinutes?: number;
     };
@@ -135,6 +136,7 @@ export async function createService(
         shortDescription: shortDescription ?? null,
         includesDescription: includesDescription ?? null,
         category: category ?? null,
+        imageUrl: imageUrl ?? null,
         price,
         durationInMinutes,
       },
@@ -459,12 +461,13 @@ export async function updateService(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { name, shortDescription, includesDescription, category, price, durationInMinutes } =
+    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes } =
       req.body as {
         name?: string;
         shortDescription?: string | null;
         includesDescription?: string | null;
         category?: string | null;
+        imageUrl?: string | null;
         price?: number;
         durationInMinutes?: number;
       };
@@ -482,6 +485,7 @@ export async function updateService(
         ...(shortDescription !== undefined && { shortDescription }),
         ...(includesDescription !== undefined && { includesDescription }),
         ...(category !== undefined && { category }),
+        ...(imageUrl !== undefined && { imageUrl }),
         ...(price !== undefined && { price }),
         ...(durationInMinutes !== undefined && { durationInMinutes }),
       },

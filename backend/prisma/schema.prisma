@@ -61,6 +61,7 @@ model Service {
   shortDescription    String?  @map("short_description")
   includesDescription String?  @map("includes_description")
   category            String?
+  imageUrl            String?  @map("image_url")
   price               Decimal  @db.Decimal(10, 2)
   durationInMinutes   Int      @map("duration_in_minutes")
   createdAt           DateTime @default(now()) @map("created_at")

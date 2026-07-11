@@ -10,6 +10,7 @@ interface Service {
   durationInMinutes?: string | number;
   description?: string;
   shortDescription?: string;
+  imageUrl?: string;
 }
 
 interface Manicurist {
@@ -590,10 +591,16 @@ export default function App() {
 
       if (res.ok) {
         const data = await res.json();
-        
-        const apiRole = String(data.role || '').toLowerCase();
+        const userData = data.user || data;
+        const token = data.token;
+
+        if (token) {
+          localStorage.setItem('winespa_token', token);
+        }
+
+        const apiRole = String(userData.role || '').toLowerCase();
         let roleVal: 'admin' | 'manicurista' = 'manicurista';
-        if (apiRole.includes('admin') || apiRole.includes('director')) {
+        if (apiRole.includes('admin') || apiRole.includes('director') || apiRole.includes('owner')) {
           roleVal = 'admin';
         } else if (apiRole.includes('manic') || apiRole.includes('stylist') || apiRole.includes('colab') || apiRole.includes('profesional')) {
           roleVal = 'manicurista';
@@ -602,10 +609,10 @@ export default function App() {
         }
 
         const user: UserSession = {
-          id: String(data.id || data._id || 'staff'),
-          name: data.name || staffUser,
+          id: String(userData.id || userData._id || 'staff'),
+          name: userData.name || staffUser,
           role: roleVal,
-          avatarUrl: data.avatarUrl
+          avatarUrl: userData.avatarUrl
         };
         setSession(user);
         localStorage.setItem('winespa_session', JSON.stringify(user));
@@ -625,6 +632,7 @@ export default function App() {
   const handleLogout = () => {
     setSession(null);
     localStorage.removeItem('winespa_session');
+    localStorage.removeItem('winespa_token');
     setView('landing');
     setSelectedServiceIds([]);
     setSelectedSpecialist(null);
@@ -1044,6 +1052,36 @@ export default function App() {
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
         <div className="space-y-16 pb-16 animate-fade-in">
+          {/* Banner CMS como hero visual */}
+          {landingContent && landingContent.images && landingContent.images.length > 0 && (
+            <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
+              <div className="max-w-5xl mx-auto">
+                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
+                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  </div>
+                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                    {landingContent.news && landingContent.news[activeSlide] ? (
+                      <>
+                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
+                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
+                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
+                      </>
+                    ) : (
+                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      {landingContent.images.map((_, idx) => (
+                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-6 space-y-6 text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
@@ -1080,36 +1118,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Banner de anuncios CMS con imagenes */}
-          {landingContent && landingContent.images && landingContent.images.length > 0 && (
-            <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
-              <div className="max-w-5xl mx-auto">
-                <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
-                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
-                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
-                  </div>
-                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
-                    {landingContent.news && landingContent.news[activeSlide] ? (
-                      <>
-                        <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
-                        <h3 className="serif-title text-lg md:text-xl text-white font-medium mt-1 leading-snug">{landingContent.news[activeSlide].title}</h3>
-                        <p className="text-xs text-[#EADEC9]/80 mt-2 leading-relaxed line-clamp-2">{landingContent.news[activeSlide].description}</p>
-                      </>
-                    ) : (
-                      <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
-                    )}
-                    <div className="flex gap-2 mt-4">
-                      {landingContent.images.map((_, idx) => (
-                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Catálogo de Servicios */}
           <section id="services" className="max-w-7xl mx-auto px-6 space-y-8">
             <div className="text-center space-y-1">
@@ -1121,9 +1129,12 @@ export default function App() {
               {Array.isArray(services) && services.map(s => (
                 <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
-                    <img src={s.name.toLowerCase().includes('pies') || s.name.toLowerCase().includes('pedi')
-                      ? 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?q=80&w=800' 
-                      : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
+                    <img src={
+                      s.imageUrl
+                        ? (s.imageUrl.startsWith('/') ? `http://localhost:3000${s.imageUrl}` : s.imageUrl)
+                        : (s.name.toLowerCase().includes('pies') || s.name.toLowerCase().includes('pedi')
+                          ? 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?q=80&w=800'
+                          : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800')
                     } alt={s.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="p-5 space-y-3 flex-1 flex flex-col justify-between text-left">
