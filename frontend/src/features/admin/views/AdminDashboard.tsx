@@ -81,6 +81,9 @@ interface Offer {
   discountPercentage: number;
   code: string;
   isActive: boolean;
+  validFrom?: string;
+  validUntil?: string;
+  newUsersOnly?: boolean;
 }
 
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
@@ -126,6 +129,9 @@ export const AdminDashboard: React.FC = () => {
   const [offDesc, setOffDesc] = useState('');
   const [offDiscount, setOffDiscount] = useState('');
   const [offCode, setOffCode] = useState('');
+  const [offValidFrom, setOffValidFrom] = useState('');
+  const [offValidUntil, setOffValidUntil] = useState('');
+  const [offNewUsersOnly, setOffNewUsersOnly] = useState(false);
 
   // Manicurist form
   const [manId, setManId] = useState<string | null>(null);
@@ -279,7 +285,7 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     if (!offTitle || !offDiscount || !offCode) return;
     setSubmitting(true);
-    const body: any = { title: offTitle, discountPercentage: parseInt(offDiscount), code: offCode, description: offDesc || undefined };
+    const body: any = { title: offTitle, discountPercentage: parseInt(offDiscount), code: offCode, description: offDesc || undefined, validFrom: offValidFrom || null, validUntil: offValidUntil || null, newUsersOnly: offNewUsersOnly };
     try {
       const url = offId ? `${API}/api/admin/offers/${offId}` : `${API}/api/admin/offers`;
       const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
@@ -289,8 +295,8 @@ export const AdminDashboard: React.FC = () => {
   };
   const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
   const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
-  const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); };
+  const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); setOffValidFrom(o.validFrom ? o.validFrom.slice(0, 10) : ''); setOffValidUntil(o.validUntil ? o.validUntil.slice(0, 10) : ''); setOffNewUsersOnly(o.newUsersOnly || false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); setOffValidFrom(''); setOffValidUntil(''); setOffNewUsersOnly(false); };
 
   // --- Manicurists ---
   const handleSaveManicurist = async (e: React.FormEvent) => {
@@ -685,6 +691,14 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descuento %</label><input type="number" required min={1} max={100} value={offDiscount} onChange={e => setOffDiscount(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Codigo</label><input type="text" required value={offCode} onChange={e => setOffCode(e.target.value.toUpperCase())} className="w-full p-2 border rounded-lg text-xs uppercase" /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Vigencia desde</label><input type="date" value={offValidFrom} onChange={e => setOffValidFrom(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Vigencia hasta</label><input type="date" value={offValidUntil} onChange={e => setOffValidUntil(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                </div>
+                <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
+                  <input type="checkbox" checked={offNewUsersOnly} onChange={e => setOffNewUsersOnly(e.target.checked)} className="rounded" />
+                  Solo para nuevos clientes (sin citas previas)
+                </label>
                 <div className="flex gap-2">
                   <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{offId ? 'Actualizar' : 'Crear'}</button>
                   {offId && <button type="button" onClick={resetOff} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
@@ -698,11 +712,27 @@ export const AdminDashboard: React.FC = () => {
                 {filterOffers().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin descuentos.</p> :
                   paginate(filterOffers()).map(o => (
                     <div key={o.id} className={`p-3 rounded-xl border text-xs flex justify-between items-center ${o.isActive ? 'bg-white border-[#EADEC9]/30' : 'bg-neutral-50 opacity-70'}`}>
-                      <div>
-                        <span className="font-bold text-[#44403C]">{o.title}</span>
-                        <span className="ml-2 text-[9px] text-[#A68F63]">({o.code})</span>
-                        <span className="ml-2 text-[#78716C]">{o.discountPercentage}%</span>
-                        <span className={`ml-2 text-[9px] font-semibold ${o.isActive ? 'text-green-600' : 'text-red-400'}`}>{o.isActive ? 'Activo' : 'Inactivo'}</span>
+                      <div className="space-y-0.5">
+                        <div>
+                          <span className="font-bold text-[#44403C]">{o.title}</span>
+                          <span className="ml-2 text-[9px] text-[#A68F63]">({o.code})</span>
+                          <span className="ml-2 text-[#78716C]">{o.discountPercentage}%</span>
+                          <span className={`ml-2 text-[9px] font-semibold ${o.isActive ? 'text-green-600' : 'text-red-400'}`}>{o.isActive ? 'Activo' : 'Inactivo'}</span>
+                        </div>
+                        {(o.validFrom || o.validUntil) && (
+                          <div className="flex gap-2 text-[9px]">
+                            {o.validFrom && <span className="text-[#78716C]">Desde: {o.validFrom.slice(0, 10)}</span>}
+                            {o.validUntil && <span className="text-[#78716C]">Hasta: {o.validUntil.slice(0, 10)}</span>}
+                            {(() => {
+                              const now = new Date().toISOString();
+                              if (o.validUntil && now > o.validUntil) return <span className="text-red-500 font-semibold">Expirada</span>;
+                              if (o.validFrom && now < o.validFrom) return <span className="text-amber-500 font-semibold">Programada</span>;
+                              if (o.validFrom || o.validUntil) return <span className="text-green-600 font-semibold">Vigente</span>;
+                              return null;
+                            })()}
+                          </div>
+                        )}
+                        {o.newUsersOnly && <span className="text-[9px] text-blue-500 font-medium">Solo nuevos clientes</span>}
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => handleToggleOffer(o)} className={`px-2 py-1 text-[9px] rounded font-semibold ${o.isActive ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>{o.isActive ? 'Desactivar' : 'Activar'}</button>
