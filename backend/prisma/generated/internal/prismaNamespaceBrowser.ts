@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Service: 'Service',
+  ServiceCategory: 'ServiceCategory',
   ShiftTemplate: 'ShiftTemplate',
   ManicuristSchedule: 'ManicuristSchedule',
   Appointment: 'Appointment',
@@ -102,11 +103,21 @@ export const ServiceScalarFieldEnum = {
   imageUrl: 'imageUrl',
   price: 'price',
   durationInMinutes: 'durationInMinutes',
+  trending: 'trending',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type ServiceScalarFieldEnum = (typeof ServiceScalarFieldEnum)[keyof typeof ServiceScalarFieldEnum]
+
+
+export const ServiceCategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  createdAt: 'createdAt'
+} as const
+
+export type ServiceCategoryScalarFieldEnum = (typeof ServiceCategoryScalarFieldEnum)[keyof typeof ServiceCategoryScalarFieldEnum]
 
 
 export const ShiftTemplateScalarFieldEnum = {

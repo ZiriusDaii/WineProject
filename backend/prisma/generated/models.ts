@@ -10,6 +10,7 @@
  */
 export type * from './models/User.js'
 export type * from './models/Service.js'
+export type * from './models/ServiceCategory.js'
 export type * from './models/ShiftTemplate.js'
 export type * from './models/ManicuristSchedule.js'
 export type * from './models/Appointment.js'

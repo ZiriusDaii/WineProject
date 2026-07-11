@@ -28,6 +28,11 @@ export type User = Prisma.UserModel
  */
 export type Service = Prisma.ServiceModel
 /**
+ * Model ServiceCategory
+ * 
+ */
+export type ServiceCategory = Prisma.ServiceCategoryModel
+/**
  * Model ShiftTemplate
  * 
  */
