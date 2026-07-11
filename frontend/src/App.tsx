@@ -231,6 +231,7 @@ export default function App() {
   // cargan una sola vez al montar la app y no se refrescaban solos despues.
   useEffect(() => {
     if (view === 'booking') {
+      setBookingWizardStep(1);
       fetchManicurists().then(fresh => {
         if (fresh.length > 0) setManicurists(fresh);
       });
@@ -1390,6 +1391,33 @@ export default function App() {
                   </div>
                 )}
               </div>
+            </section>
+
+            {/* BLOCK RESUMEN MÓVIL — visible solo en mobile, arriba de la barra flotante */}
+            <section className="md:hidden pb-20 space-y-3 bg-[#FDFBF7] border-t border-[#EADEC9]/30 pt-4 mt-4">
+              <h3 className="serif-title text-sm text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
+              {selectedServiceIds.length > 0 && (
+                <div className="space-y-1">
+                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
+                    <div key={s.id} className="flex justify-between text-[10px]">
+                      <span className="text-[#44403C]">{s.name}</span>
+                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedSpecialist && (
+                <p className="text-[10px] text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
+              )}
+              {bookingDate && bookingTime && (
+                <p className="text-[10px] text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
+              )}
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[11px] text-[#A68F63] font-bold">Total</span>
+                <span className="text-base font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
+              </div>
+              {discountPercent && <p className="text-[9px] text-green-600">-{discountPercent}% {discountTitle}</p>}
+              {discountError && <p className="text-[9px] text-red-600">{discountError}</p>}
             </section>
           </main>
 
