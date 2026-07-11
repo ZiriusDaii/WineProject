@@ -1165,13 +1165,10 @@ export default function App() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {(() => {
-                const featured = [...services]
-                  .sort((a, b) => {
-                    if ((a as any).trending && !(b as any).trending) return -1;
-                    if (!(a as any).trending && (b as any).trending) return 1;
-                    return (a.name || '').localeCompare(b.name || '');
-                  })
-                  .slice(0, 4);
+                const trending = services.filter(s => (s as any).trending);
+                const featured = trending.length > 0
+                  ? trending.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).slice(0, 3)
+                  : [...services].sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 3);
                 return featured.map(s => (
                   <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
                     <div className="aspect-video relative overflow-hidden bg-neutral-100">
@@ -1310,11 +1307,14 @@ export default function App() {
                 <div className="space-y-1.5">
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
                     <div key={s.id} className="flex justify-between items-center text-[11px]">
-                      <span className="text-[#44403C] truncate max-w-[60%]">{s.name}</span>
+                      <span className="text-[#44403C] truncate max-w-[55%]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
                       <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
                     </div>
                   ))}
                 </div>
+                <p className="text-[9px] text-[#A68F63] pt-0.5">
+                  Tiempo aproximado: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min
+                </p>
               </div>
             )}
 
@@ -1495,7 +1495,10 @@ export default function App() {
                               </div>
                               <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
                             </div>
-                            {s.shortDescription && <p className="text-[9px] text-[#A68F63] italic pt-1">{s.shortDescription}</p>}
+                            <div className="flex gap-2 mt-0.5">
+                              <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
+                              {s.shortDescription && <span className="text-[9px] text-[#78716C] italic truncate">{s.shortDescription}</span>}
+                            </div>
                           </div>
                         );
                       })}
@@ -1617,14 +1620,17 @@ export default function App() {
             <section className="md:hidden pb-20 space-y-3 bg-[#FDFBF7] border-t border-[#EADEC9]/30 pt-4 mt-4">
               <h3 className="serif-title text-sm text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
               {selectedServiceIds.length > 0 && (
+                <>
                 <div className="space-y-1">
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
                     <div key={s.id} className="flex justify-between text-[10px]">
-                      <span className="text-[#44403C]">{s.name}</span>
+                      <span className="text-[#44403C]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
                       <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
                     </div>
                   ))}
                 </div>
+                <p className="text-[8px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
+                </>
               )}
               {selectedSpecialist && (
                 <p className="text-[10px] text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
