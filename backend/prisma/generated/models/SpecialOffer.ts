@@ -481,10 +481,6 @@ export type SpecialOfferSumOrderByAggregateInput = {
   discountPercentage?: Prisma.SortOrder
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
 }
