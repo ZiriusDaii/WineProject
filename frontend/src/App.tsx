@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { AdminDashboard } from './features/admin/views/AdminDashboard'
 import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
+import { DatePicker } from './components/DatePicker'
 
 interface Service {
   id: string | number;
@@ -951,7 +952,11 @@ export default function App() {
                           <div className="space-y-2 p-3 bg-[#FDFBF7] rounded-xl border border-[#EADEC9]/60 mt-1">
                             <div>
                               <label className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold block">Nueva Fecha</label>
-                              <input type="date" min={new Date().toISOString().slice(0, 10)} value={newDateInput} onChange={e => { setNewDateInput(e.target.value); setNewTimeInput(''); }} className="w-full p-1 border text-xs rounded bg-white focus:outline-hidden" />
+                              <DatePicker
+                                selectedDate={newDateInput}
+                                onSelectDate={(d) => { setNewDateInput(d); setNewTimeInput(''); }}
+                                className="max-w-[260px] mt-1"
+                              />
                             </div>
                             {newDateInput && (
                               loadingRescheduleSlots ? (
@@ -1399,13 +1404,11 @@ export default function App() {
             {/* ===== PASO 3 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 3 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Fecha & Hora</h2>
-              <input
-                type="date"
-                min={new Date().toISOString().slice(0, 10)}
-                value={bookingDate}
-                onChange={(e) => { setBookingDate(e.target.value); setBookingTime(''); }}
+              <DatePicker
+                selectedDate={bookingDate}
+                onSelectDate={(d) => { setBookingDate(d); setBookingTime(''); }}
                 disabled={!selectedSpecialist}
-                className="p-2.5 border rounded-xl text-xs bg-white max-w-[200px] disabled:opacity-50"
+                className="max-w-[280px]"
               />
               {!selectedSpecialist ? (
                 <p className="text-[10px] text-[#78716C]">Selecciona una especialista primero.</p>
