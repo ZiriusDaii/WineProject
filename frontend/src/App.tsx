@@ -216,6 +216,11 @@ export default function App() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+  }, [view]);
+
   // Recargar citas del cliente si la sesión cambia
   useEffect(() => {
     if (session && session.role === 'cliente') {
