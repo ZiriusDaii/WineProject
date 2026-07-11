@@ -169,6 +169,9 @@ export default function App() {
   // Control de Modales Booking
   const [isBookingOpen, setIsBookingOpen] = useState(false); // Móvil
 
+  // Wizard mobile: paso actual (1=servicios, 2=manicurista, 3=fecha/hora)
+  const [bookingWizardStep, setBookingWizardStep] = useState(1);
+
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
   const [bookingPhone, setBookingPhone] = useState('');
@@ -233,6 +236,7 @@ export default function App() {
   // cargan una sola vez al montar la app y no se refrescaban solos despues.
   useEffect(() => {
     if (view === 'booking') {
+      setBookingWizardStep(1);
       fetchManicurists().then(fresh => {
         if (fresh.length > 0) setManicurists(fresh);
       });
@@ -1308,7 +1312,31 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16">
-            <section className="space-y-4">
+            {/* Wizard Progress — mobile only */}
+            <div className="md:hidden flex items-center justify-center gap-3 pb-2">
+              {[1, 2, 3].map((s) => (
+                <div key={s} className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                      s === bookingWizardStep
+                        ? 'bg-[#5C0632] text-white shadow-md'
+                        : s < bookingWizardStep
+                        ? 'bg-[#8E1B54] text-white cursor-pointer'
+                        : 'bg-[#EADEC9]/40 text-[#A68F63]'
+                    }`}
+                    onClick={() => { if (s < bookingWizardStep) setBookingWizardStep(s); }}
+                  >
+                    {s}
+                  </div>
+                  {s < 3 && (
+                    <div className={`w-6 h-0.5 ${s < bookingWizardStep ? 'bg-[#8E1B54]' : 'bg-[#EADEC9]/40'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* ===== PASO 1 ===== */}
+            <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Array.isArray(services) && services.map(s => {
@@ -1325,10 +1353,17 @@ export default function App() {
                   );
                 })}
               </div>
+              {/* Navegación wizard — mobile only */}
+              <div className="md:hidden pt-4 flex justify-end">
+                <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                  Siguiente: Manicurista →
+                </button>
+              </div>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige a tu Especialista</h2>
+            {/* ===== PASO 2 ===== */}
+            <section className={`space-y-4 ${bookingWizardStep !== 2 ? 'hidden md:block' : ''}`}>
+              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige a tu Manicurista</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {Array.isArray(manicurists) && manicurists.map(m => {
                   const manicuristIdStr = String(m.id);
@@ -1350,9 +1385,19 @@ export default function App() {
                   );
                 })}
               </div>
+              {/* Navegación wizard — mobile only */}
+              <div className="md:hidden pt-4 flex justify-between">
+                <button onClick={() => setBookingWizardStep(1)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
+                  ← Anterior
+                </button>
+                <button onClick={() => setBookingWizardStep(3)} disabled={!selectedSpecialist} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                  Siguiente: Fecha & Hora →
+                </button>
+              </div>
             </section>
 
-            <section className="space-y-4">
+            {/* ===== PASO 3 ===== */}
+            <section className={`space-y-4 ${bookingWizardStep !== 3 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Fecha & Hora</h2>
               <input
                 type="date"
@@ -1382,8 +1427,43 @@ export default function App() {
                   ))}
                 </div>
               )}
+              {/* Navegación wizard — mobile only */}
+              <div className="md:hidden pt-4 flex justify-between">
+                <button onClick={() => setBookingWizardStep(2)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
+                  ← Anterior
+                </button>
+                <button onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }} disabled={selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime} className="px-6 py-2.5 bg-[#8E1B54] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                  Revisar y Confirmar
+                </button>
+              </div>
             </section>
 
+            {/* BLOCK RESUMEN MÓVIL — visible solo en mobile, arriba de la barra flotante */}
+            <section className="md:hidden pb-20 space-y-3 bg-[#FDFBF7] border-t border-[#EADEC9]/30 pt-4 mt-4">
+              <h3 className="serif-title text-sm text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
+              {selectedServiceIds.length > 0 && (
+                <div className="space-y-1">
+                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
+                    <div key={s.id} className="flex justify-between text-[10px]">
+                      <span className="text-[#44403C]">{s.name}</span>
+                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedSpecialist && (
+                <p className="text-[10px] text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
+              )}
+              {bookingDate && bookingTime && (
+                <p className="text-[10px] text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
+              )}
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[11px] text-[#A68F63] font-bold">Total</span>
+                <span className="text-base font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
+              </div>
+              {discountPercent && <p className="text-[9px] text-green-600">-{discountPercent}% {discountTitle}</p>}
+              {discountError && <p className="text-[9px] text-red-600">{discountError}</p>}
+            </section>
           </main>
 
           {/* Zoom avatar modal */}
