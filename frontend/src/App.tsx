@@ -124,7 +124,7 @@ export default function App() {
   const [session, setSession] = useState<UserSession | null>(null);
 
   // VISTA ACTIVA: 'landing' | 'booking' | 'clientPortal' | 'terms' | 'privacy' | 'cancellation'
-  const [view, setView] = useState<'landing' | 'booking' | 'clientPortal' | 'terms' | 'privacy' | 'cancellation'>('landing');
+  const [view, setView] = useState<'landing' | 'booking' | 'clientPortal' | 'servicesCatalog' | 'terms' | 'privacy' | 'cancellation'>('landing');
 
   // Datos dinámicos del Backend
   const [services, setServices] = useState<Service[]>([]);
@@ -177,6 +177,7 @@ export default function App() {
   const [svcPage, setSvcPage] = useState(1);
   const [manPage, setManPage] = useState(1);
   const PER_PAGE = 5;
+  const [showDiscount, setShowDiscount] = useState(false);
 
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
@@ -1155,54 +1156,117 @@ export default function App() {
             </div>
           </section>
 
-          {/* Catálogo de Servicios */}
-          <section id="services" className="max-w-7xl mx-auto px-6 space-y-8">
+          {/* Servicios Destacados — compacto en landing */}
+          <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
             <div className="text-center space-y-1">
               <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Carta de Rituales</span>
               <h2 className="serif-title text-2xl text-[#3B0019] font-light">Servicios de Uñas & Cuidado Premium</h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.isArray(services) && services.map(s => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(() => {
+                const featured = [...services]
+                  .sort((a, b) => {
+                    if ((a as any).trending && !(b as any).trending) return -1;
+                    if (!(a as any).trending && (b as any).trending) return 1;
+                    return (a.name || '').localeCompare(b.name || '');
+                  })
+                  .slice(0, 4);
+                return featured.map(s => (
+                  <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                    <div className="aspect-video relative overflow-hidden bg-neutral-100">
+                      <img src={
+                        s.imageUrl
+                          ? (s.imageUrl.startsWith('/') ? `http://localhost:3000${s.imageUrl}` : s.imageUrl)
+                          : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
+                      } alt={s.name} className="w-full h-full object-cover" />
+                      {(s as any).trending && (
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#8E1B54] text-white text-[8px] font-bold rounded-full">TOP</span>
+                      )}
+                    </div>
+                    <div className="p-4 space-y-2 flex-1 flex flex-col justify-between text-left">
+                      <div className="space-y-1">
+                        <span className="text-[8px] uppercase tracking-wider text-[#A68F63] font-bold">{s.durationInMinutes || 60} mins</span>
+                        <h3 className="serif-title text-sm text-[#3B0019] font-medium">{s.name}</h3>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
+                        <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                        <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            <div className="text-center">
+              <button onClick={() => setView('servicesCatalog')} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl shadow-sm">
+                Ver Todos los Servicios →
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* VISTA: Catálogo Completo de Servicios */}
+      {view === 'servicesCatalog' && (
+        <div className="max-w-7xl mx-auto px-6 py-12 space-y-8 animate-fade-in text-left">
+          <div className="flex items-center justify-between">
+            <div>
+              <button onClick={() => setView('landing')} className="text-xs text-[#A68F63] hover:text-[#5C0632] font-semibold mb-2 inline-block">← Volver al Inicio</button>
+              <h1 className="serif-title text-3xl text-[#3B0019]">Carta de Rituales</h1>
+              <p className="text-xs text-[#78716C] mt-1">Explora todos nuestros servicios premium de cuidado de uñas.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => setSvcSearch(e.target.value)} className="p-2.5 border border-[#EADEC9] rounded-xl text-xs flex-1 bg-white" />
+            <select value={svcSearch} onChange={e => setSvcSearch(e.target.value)} className="p-2.5 border border-[#EADEC9] rounded-xl text-xs bg-white">
+              <option value="">Todas las categorias</option>
+              {[...new Set(services.map(s => (s as any).category).filter(Boolean))].map(c => (
+                <option key={c as string} value={c as string}>{c as string}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(() => {
+              const filtered = services
+                .filter(s => !svcSearch || (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()) || ((s as any).category || '').toLowerCase().includes(svcSearch.toLowerCase()))
+                .sort((a, b) => {
+                  if ((a as any).trending && !(b as any).trending) return -1;
+                  if (!(a as any).trending && (b as any).trending) return 1;
+                  return (a.name || '').localeCompare(b.name || '');
+                });
+              if (filtered.length === 0) return <p className="text-xs text-[#78716C] py-12 text-center col-span-full">Sin servicios que coincidan.</p>;
+              return filtered.map(s => (
                 <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
                     <img src={
                       s.imageUrl
                         ? (s.imageUrl.startsWith('/') ? `http://localhost:3000${s.imageUrl}` : s.imageUrl)
-                        : (s.name.toLowerCase().includes('pies') || s.name.toLowerCase().includes('pedi')
-                          ? 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?q=80&w=800'
-                          : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800')
+                        : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
                     } alt={s.name} className="w-full h-full object-cover" />
+                    {(s as any).trending && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#8E1B54] text-white text-[8px] font-bold rounded-full">TOP</span>
+                    )}
                   </div>
                   <div className="p-5 space-y-3 flex-1 flex flex-col justify-between text-left">
                     <div className="space-y-1">
-                      <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold">{s.durationInMinutes || 60} mins de sesión</span>
-                      <h3 className="serif-title text-base text-[#3B0019] font-medium">{s.name}</h3>
+                      {(s as any).category && <span className="text-[8px] uppercase bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63] font-semibold">{(s as any).category}</span>}
+                      <h3 className="serif-title text-base text-[#3B0019] font-medium mt-1">{s.name}</h3>
                       {s.shortDescription && <p className="text-[10px] italic text-[#A68F63]">{s.shortDescription}</p>}
                       <p className="text-xs text-[#78716C] leading-normal font-light line-clamp-2">{s.description || 'Cuidado integral diseñado para nutrir y estilizar.'}</p>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
                       <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                      <button
-                        onClick={() => {
-                          setSelectedServiceIds([String(s.id)]);
-                          setBookingStep('selection');
-                          if (session && session.role === 'cliente') {
-                            setBookingPhone(session.phone || '');
-                            setBookingName(session.name || '');
-                          }
-                          setView('booking');
-                        }}
-                        className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all"
-                      >
-                        Reservar
-                      </button>
+                      <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+              ));
+            })()}
+          </div>
         </div>
       )}
 
@@ -1274,30 +1338,33 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Codigo descuento */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Codigo de descuento"
-                  value={discountCode}
-                  onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }}
-                  className="flex-1 p-2.5 border border-[#EADEC9] rounded-xl text-xs uppercase bg-white"
-                />
-                <button
-                  type="button"
-                  onClick={handleValidateDiscount}
-                  disabled={discountValidating || !discountCode.trim()}
-                  className="px-4 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50"
-                >
-                  {discountValidating ? '...' : 'Aplicar'}
-                </button>
-              </div>
-              {discountError && <p className="text-[10px] text-red-600 bg-red-50 p-1.5 rounded-lg">{discountError}</p>}
-              {discountPercent && (
+              {/* Codigo descuento — boton revelador */}
+              {discountPercent ? (
                 <p className="text-[10px] text-green-600 bg-green-50 p-1.5 rounded-lg">
                   {discountPercent}% de descuento aplicado: {discountTitle}
                 </p>
+              ) : showDiscount ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Codigo de descuento"
+                      value={discountCode}
+                      onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }}
+                      className="flex-1 p-2.5 border border-[#EADEC9] rounded-xl text-xs uppercase bg-white"
+                    />
+                    <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-4 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">
+                      {discountValidating ? '...' : 'Aplicar'}
+                    </button>
+                  </div>
+                  <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline text-left">
+                  ¿Tienes un codigo de descuento?
+                </button>
               )}
+              {discountError && <p className="text-[10px] text-red-600 bg-red-50 p-1.5 rounded-lg">{discountError}</p>}
 
               {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                 <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
@@ -1604,12 +1671,22 @@ export default function App() {
                 </div>
 
                 {/* Codigo descuento movil */}
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
-                  <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
-                </div>
+                {discountPercent ? (
+                  <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>
+                ) : showDiscount ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
+                      <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
+                    </div>
+                    <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                    ¿Tienes un codigo de descuento?
+                  </button>
+                )}
                 {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
-                {discountPercent && <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>}
 
                 {session && session.role === 'cliente' ? (
                   <div className="space-y-3 text-xs">
