@@ -496,7 +496,8 @@ export const AdminDashboard: React.FC = () => {
               <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
               {pagination(filterApps().length)}
             </div>
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
+            {/* Desktop: tabla normal */}
+            <div className="hidden md:block bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Especialista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
                 <tbody className="divide-y divide-[#EADEC9]/20">
@@ -522,6 +523,36 @@ export const AdminDashboard: React.FC = () => {
                   }
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile: cards apiladas */}
+            <div className="md:hidden space-y-2">
+              {filterApps().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin citas.</p> :
+                paginate(filterApps()).map(a => (
+                  <div key={a.id} className={`p-4 rounded-xl border text-left text-xs ${a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5 border-[#8E1B54]/40' : 'bg-white border-[#EADEC9]/40'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-mono font-bold text-[#3B0019]">#{a.appointmentId || a.id}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                        a.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' :
+                        a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
+                      }`}>{STATUS_LABELS[a.status || 'PENDING']}</span>
+                    </div>
+                    <div className="space-y-1 mb-3">
+                      <p className="text-[#44403C]"><span className="text-[#A68F63] font-medium">Cliente:</span> {a.clientName || a.client?.name || '—'}</p>
+                      <p className="text-[#44403C]"><span className="text-[#A68F63] font-medium">Manicurista:</span> {a.manicurist?.name || getManName(a.manicuristId)}</p>
+                      <p className="text-[#44403C]"><span className="text-[#A68F63] font-medium">Servicios:</span> {svcNames(a.services)}</p>
+                      <p className="text-[#44403C]"><span className="text-[#A68F63] font-medium">Fecha:</span> {toDateLabel(a.date)} · {toTimeLabel(a.date)}</p>
+                      <p className="font-semibold text-[#8E1B54]">Total: {priceFmt(a.totalPrice)}</p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {a.status === 'PENDING' && <button onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="flex-1 py-2.5 text-[11px] bg-amber-100 text-amber-800 rounded-xl font-bold">Iniciar</button>}
+                      {a.status === 'IN_PROGRESS' && <button onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="flex-1 py-2.5 text-[11px] bg-[#8E1B54] text-white rounded-xl font-bold">Completar</button>}
+                      {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="flex-1 py-2.5 text-[11px] border border-red-200 text-red-700 rounded-xl">Cancelar</button>}
+                    </div>
+                  </div>
+                ))
+              }
             </div>
           </div>
         )}
