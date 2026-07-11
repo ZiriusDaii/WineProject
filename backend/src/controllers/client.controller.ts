@@ -72,6 +72,7 @@ export async function getServices(req: Request, res: Response): Promise<void> {
           imageUrl: true,
           price: true,
           durationInMinutes: true,
+          trending: true,
         },
         orderBy: { name: "asc" },
       });
@@ -100,6 +101,7 @@ export async function getServices(req: Request, res: Response): Promise<void> {
           imageUrl: true,
           price: true,
           durationInMinutes: true,
+          trending: true,
         },
         skip,
         take: limit,

@@ -800,7 +800,7 @@ export default function App() {
     try {
       const res = await fetch('http://localhost:3000/api/offers/validate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: discountCode.trim().toUpperCase() }),
+        body: JSON.stringify({ code: discountCode.trim().toUpperCase(), phone: session?.phone || bookingPhone || undefined }),
       });
       const data = await res.json();
       if (res.ok && data.valid) {
