@@ -12,6 +12,7 @@ interface Service {
   description?: string;
   shortDescription?: string;
   imageUrl?: string;
+  category?: string;
 }
 
 interface Manicurist {
@@ -899,9 +900,20 @@ export default function App() {
   };
 
   const handleServiceToggle = (idStr: string) => {
-    setSelectedServiceIds(prev =>
-      prev.includes(idStr) ? prev.filter(x => x !== idStr) : [...prev, idStr]
-    );
+    setSelectedServiceIds(prev => {
+      if (prev.includes(idStr)) return prev.filter(x => x !== idStr);
+
+      // Dos servicios de la misma categoria no se pueden agendar juntos (lo
+      // rechaza el backend). En vez de dejar que falle al confirmar, al elegir
+      // uno nuevo se quita automaticamente el anterior de esa misma categoria.
+      const newService = services.find(s => String(s.id) === idStr);
+      const category = newService?.category;
+      const withoutSameCategory = category
+        ? prev.filter(existingId => services.find(s => String(s.id) === existingId)?.category !== category)
+        : prev;
+
+      return [...withoutSameCategory, idStr];
+    });
   };
 
   const activeSpecialistDetails = manicurists.find(m => String(m.id) === String(selectedSpecialist));
@@ -1451,13 +1463,7 @@ export default function App() {
                     </div>
                   ) : (
                     <>
-                      {bookingStep === 'selection' && (
-                        <button onClick={() => setBookingStep('auth')} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
-                          Continuar e Identificarse
-                        </button>
-                      )}
-
-                      {bookingStep === 'auth' && (
+                      {(bookingStep === 'selection' || bookingStep === 'auth') && (
                         <form onSubmit={handleCheckAuthBooking} className="space-y-3">
                           <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Celular del Cliente</label>
                           <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Ej: 3001234567" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
@@ -1689,32 +1695,32 @@ export default function App() {
 
             {/* BLOCK RESUMEN MÓVIL — visible solo en mobile, arriba de la barra flotante */}
             <section className="md:hidden pb-20 space-y-3 bg-[#FDFBF7] border-t border-[#EADEC9]/30 pt-4 mt-4">
-              <h3 className="serif-title text-sm text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
+              <h3 className="serif-title text-base text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
               {selectedServiceIds.length > 0 && (
                 <>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
-                    <div key={s.id} className="flex justify-between text-[10px]">
+                    <div key={s.id} className="flex justify-between text-xs">
                       <span className="text-[#44403C]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
                       <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-[8px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
+                <p className="text-[11px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
                 </>
               )}
               {selectedSpecialist && (
-                <p className="text-[10px] text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
+                <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
               )}
               {bookingDate && bookingTime && (
-                <p className="text-[10px] text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
+                <p className="text-xs text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
               )}
               <div className="flex justify-between items-center pt-1">
-                <span className="text-[11px] text-[#A68F63] font-bold">Total</span>
+                <span className="text-xs text-[#A68F63] font-bold">Total</span>
                 <span className="text-base font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
               </div>
-              {discountPercent && <p className="text-[9px] text-green-600">-{discountPercent}% {discountTitle}</p>}
-              {discountError && <p className="text-[9px] text-red-600">{discountError}</p>}
+              {discountPercent && <p className="text-[11px] text-green-600">-{discountPercent}% {discountTitle}</p>}
+              {discountError && <p className="text-[11px] text-red-600">{discountError}</p>}
             </section>
           </main>
 
@@ -1728,6 +1734,11 @@ export default function App() {
 
           {/* BARRA FLOTANTE MÓVIL */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FDFBF7]/90 border-t border-[#EADEC9]/30 p-4 z-30">
+            {selectedServiceIds.length > 0 && (
+              <p className="text-[9px] text-[#78716C] mb-1.5 truncate">
+                {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => s.name).join(', ')}
+              </p>
+            )}
             <button
               onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }}
               disabled={selectedServiceIds.length === 0}
@@ -1775,11 +1786,7 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    {bookingStep === 'selection' && (
-                      <button onClick={() => setBookingStep('auth')} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Siguiente</button>
-                    )}
-
-                    {bookingStep === 'auth' && (
+                    {(bookingStep === 'selection' || bookingStep === 'auth') && (
                       <form onSubmit={handleCheckAuthBooking} className="space-y-3">
                         <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
                         {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
