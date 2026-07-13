@@ -192,6 +192,8 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdAppointment, setCreatedAppointment] = useState<AppointmentResponse | null>(null);
+  // Sesion armada con los datos de la reserva (flujo invitado, sin login real) para el boton "Ver mi cita"
+  const [postBookingSession, setPostBookingSession] = useState<UserSession | null>(null);
 
   // Codigo de descuento
   const [discountCode, setDiscountCode] = useState('');
@@ -353,8 +355,8 @@ export default function App() {
     ];
 
     const fallbackManicurists: Manicurist[] = [
-      { id: '1', name: 'Sofía Valenzuela', role: 'Master Nail Artist', age: 26, avatarUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=100' },
-      { id: '2', name: 'Camila Ortega', role: 'Especialista en Pedicura', age: 29, avatarUrl: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?q=80&w=100' }
+      { id: '1', name: 'Sofía Valenzuela', role: 'Master Nail Artist', age: 26 },
+      { id: '2', name: 'Camila Ortega', role: 'Especialista en Pedicura', age: 29 }
     ];
 
     try {
@@ -399,15 +401,15 @@ export default function App() {
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         if (carousel.length === 0) throw new Error();
         setLandingContent({
-          images: carousel.map((i) => i.imageUrl),
+          images: carousel.map((i) => i.imageUrl.startsWith('/uploads') ? `${API_URL}${i.imageUrl}` : i.imageUrl),
           news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
         });
       } catch {
         setLandingContent({
           images: [
-            'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800',
-            'https://images.unsplash.com/photo-1519699047748-de8e457a634e?q=80&w=800',
-            'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=800'
+            '/hero_1.jpg',
+            '/hero_2.jpg',
+            '/hero_3.jpg'
           ],
           news: [
             { title: 'Inauguración El Poblado', description: 'Disfruta de nuestras nuevas estaciones boutique con aromaterapia.' },
@@ -679,6 +681,15 @@ export default function App() {
     setManPage(1);
   };
 
+  const handleViewMyAppointment = () => {
+    if (!session && postBookingSession) {
+      setSession(postBookingSession);
+      localStorage.setItem('winespa_session', JSON.stringify(postBookingSession));
+    }
+    setView('clientPortal');
+    resetBooking();
+  };
+
   const handleCheckAuthBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingPhone || bookingPhone.length < 7) {
@@ -765,6 +776,19 @@ export default function App() {
         const apptData = await apptRes.json();
         setCreatedAppointment(apptData);
         setBookingStep('success');
+
+        if (session && session.role === 'cliente') {
+          // Ya estaba logueado: lo llevamos directo a ver la cita en su perfil.
+          setTimeout(() => {
+            fetchClientAppointments();
+            setView('clientPortal');
+            resetBooking();
+          }, 2200);
+        } else {
+          // Reservo como invitado (auth por telefono o registro rapido): no lo logueamos
+          // automaticamente, pero dejamos la sesion lista para el boton "Ver mi cita".
+          setPostBookingSession({ id: clientId, name, role: 'cliente', phone: bookingPhone });
+        }
 
         const appointmentId = apptData.appointmentId || apptData.id || 'WS-TEMP';
         const total = apptData.total || apptData.price || calculateManualTotal();
@@ -901,9 +925,12 @@ export default function App() {
       {/* NAVBAR */}
       <nav className="sticky top-0 z-40 w-full bg-[#FDFBF7] border-b border-[#EADEC9]/30">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex flex-col cursor-pointer" onClick={() => setView('landing')}>
-            <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019]">WineSpa</span>
-            <span className="text-[8px] uppercase tracking-[0.22em] text-[#A68F63] -mt-1 font-semibold">Boutique</span>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('landing')}>
+            <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
+            <div className="flex flex-col">
+              <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019] leading-none">WineSpa</span>
+              <span className="text-[8px] uppercase tracking-[0.22em] text-[#A68F63] font-semibold">Boutique</span>
+            </div>
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-xs text-[#78716C]">
@@ -933,9 +960,12 @@ export default function App() {
       {/* RENDER PORTAL DEL CLIENTE */}
       {view === 'clientPortal' && session && session.role === 'cliente' && (
         <div className="max-w-4xl mx-auto px-6 py-12 flex-1 w-full space-y-10 animate-fade-in text-left">
-          <header className="space-y-1">
-            <h2 className="serif-title text-3xl text-[#3B0019]">Portal de Bienestar</h2>
-            <p className="text-xs text-[#78716C]">Sincroniza tus turnos y consulta el registro de tus visitas.</p>
+          <header className="flex items-center gap-3">
+            <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
+            <div className="flex flex-col">
+              <h2 className="serif-title text-3xl text-[#3B0019] leading-none">Portal de Bienestar</h2>
+              <p className="text-xs text-[#78716C] mt-1">Sincroniza tus turnos y consulta el registro de tus visitas.</p>
+            </div>
           </header>
 
           {portalToast && (
@@ -1154,7 +1184,7 @@ export default function App() {
             </div>
 
             <div className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square">
-              <img src="https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=1000" alt="Nails Room" className="w-full h-full object-cover" />
+              <img src="/hero_1.jpg" alt="Nails Room" className="w-full h-full object-cover" />
             </div>
           </section>
 
@@ -1177,7 +1207,7 @@ export default function App() {
                       <img src={
                         s.imageUrl
                           ? (s.imageUrl.startsWith('/') ? `${API_URL}${s.imageUrl}` : s.imageUrl)
-                          : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
+                          : '/hero_1.jpg'
                       } alt={s.name} className="w-full h-full object-cover" />
                       {(s as any).trending && (
                         <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#8E1B54] text-white text-[8px] font-bold rounded-full">TOP</span>
@@ -1244,7 +1274,7 @@ export default function App() {
                     <img src={
                       s.imageUrl
                         ? (s.imageUrl.startsWith('/') ? `${API_URL}${s.imageUrl}` : s.imageUrl)
-                        : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
+                        : '/hero_1.jpg'
                     } alt={s.name} className="w-full h-full object-cover" />
                     {(s as any).trending && (
                       <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#8E1B54] text-white text-[8px] font-bold rounded-full">TOP</span>
@@ -1278,7 +1308,10 @@ export default function App() {
 
           <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-16">
             <div className="space-y-4 mb-6">
-              <span className="serif-title text-2xl text-[#3B0019]">WineSpa Booking</span>
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
+                <span className="serif-title text-2xl text-[#3B0019] leading-none">WineSpa Booking</span>
+              </div>
               <p className="text-xs text-[#78716C] font-light max-w-xs">
                 Configura tu cita boutique. Selecciona tus tratamientos favoritos de la carta, tu manicurista preferida y tus turnos estimados.
               </p>
@@ -1422,9 +1455,14 @@ export default function App() {
                       )}
 
                       {bookingStep === 'success' && (
-                        <div className="text-center py-4 text-xs space-y-1 text-[#3B0019]">
+                        <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
                           <p className="font-bold text-base">Cita Agendada</p>
                           <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
+                          {!session && (
+                            <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                              Ver mi cita
+                            </button>
+                          )}
                         </div>
                       )}
                     </>
@@ -1729,9 +1767,14 @@ export default function App() {
                 )}
 
                 {bookingStep === 'success' && (
-                  <div className="text-center py-4 text-xs space-y-1 text-[#3B0019]">
+                  <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
                     <p className="font-bold text-base">¡Cita Agendada!</p>
                     <p>Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
+                    {!session && (
+                      <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                        Ver mi cita
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
