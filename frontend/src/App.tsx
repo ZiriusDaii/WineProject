@@ -181,6 +181,7 @@ export default function App() {
   const [manPage, setManPage] = useState(1);
   const PER_PAGE = 5;
   const [showDiscount, setShowDiscount] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
@@ -1509,7 +1510,7 @@ export default function App() {
             </div>
           </aside>
 
-          <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16">
+          <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16 pb-24 md:pb-10">
             {/* Wizard Progress — mobile only */}
             <div className="md:hidden flex items-center justify-center gap-3 pb-2">
               {[1, 2, 3].map((s) => (
@@ -1693,35 +1694,6 @@ export default function App() {
               </div>
             </section>
 
-            {/* BLOCK RESUMEN MÓVIL — visible solo en mobile, arriba de la barra flotante */}
-            <section className="md:hidden pb-20 space-y-3 bg-[#FDFBF7] border-t border-[#EADEC9]/30 pt-4 mt-4">
-              <h3 className="serif-title text-base text-[#3B0019] border-b border-[#EADEC9]/20 pb-2">Resumen</h3>
-              {selectedServiceIds.length > 0 && (
-                <>
-                <div className="space-y-1.5">
-                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
-                    <div key={s.id} className="flex justify-between text-xs">
-                      <span className="text-[#44403C]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
-                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[11px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
-                </>
-              )}
-              {selectedSpecialist && (
-                <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
-              )}
-              {bookingDate && bookingTime && (
-                <p className="text-xs text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
-              )}
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-xs text-[#A68F63] font-bold">Total</span>
-                <span className="text-base font-bold text-[#8E1B54]">{getFormattedTotal()}</span>
-              </div>
-              {discountPercent && <p className="text-[11px] text-green-600">-{discountPercent}% {discountTitle}</p>}
-              {discountError && <p className="text-[11px] text-red-600">{discountError}</p>}
-            </section>
           </main>
 
           {/* Zoom avatar modal */}
@@ -1732,20 +1704,52 @@ export default function App() {
             </div>
           )}
 
-          {/* BARRA FLOTANTE MÓVIL */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FDFBF7]/90 border-t border-[#EADEC9]/30 p-4 z-30">
+          {/* BARRA FLOTANTE MÓVIL — resumen pegado y plegable, siempre junto al boton */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FDFBF7]/95 border-t border-[#EADEC9]/30 z-30">
             {selectedServiceIds.length > 0 && (
-              <p className="text-[9px] text-[#78716C] mb-1.5 truncate">
-                {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => s.name).join(', ')}
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowMobileSummary(v => !v)}
+                className="w-full px-4 pt-2.5 pb-1 flex items-center justify-between text-left"
+              >
+                <span className="text-[10px] text-[#78716C] truncate pr-2">
+                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => s.name).join(', ')}
+                </span>
+                <span className="text-[9px] text-[#A68F63] font-bold shrink-0">{showMobileSummary ? 'Ocultar ▾' : 'Ver resumen ▴'}</span>
+              </button>
             )}
-            <button
-              onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }}
-              disabled={selectedServiceIds.length === 0}
-              className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs"
-            >
-              Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
-            </button>
+
+            {showMobileSummary && selectedServiceIds.length > 0 && (
+              <div className="px-4 pb-2 space-y-2 max-h-[45vh] overflow-y-auto border-b border-[#EADEC9]/20">
+                <div className="space-y-1.5">
+                  {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
+                    <div key={s.id} className="flex justify-between text-xs">
+                      <span className="text-[#44403C]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
+                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
+                {selectedSpecialist && (
+                  <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
+                )}
+                {bookingDate && bookingTime && (
+                  <p className="text-xs text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
+                )}
+                {discountPercent && <p className="text-[11px] text-green-600">-{discountPercent}% {discountTitle}</p>}
+                {discountError && <p className="text-[11px] text-red-600">{discountError}</p>}
+              </div>
+            )}
+
+            <div className="p-4 pt-2">
+              <button
+                onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }}
+                disabled={selectedServiceIds.length === 0}
+                className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs"
+              >
+                Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
+              </button>
+            </div>
           </div>
 
           {/* DRAWER MÓVIL */}
