@@ -257,9 +257,12 @@ export const StylistAgenda: React.FC = () => {
       
       {/* HEADER */}
       <header className="flex flex-col md:flex-row md:justify-between md:items-end pb-6 border-b border-[#EADEC9]/30 gap-4 text-left">
-        <div className="flex flex-col">
-          <span className="serif-title text-3xl text-[#3B0019] tracking-wide">Estación de Trabajo</span>
-          <span className="text-[9px] uppercase tracking-widest text-[#A68F63] font-semibold mt-0.5">Gestión de Citas Propias</span>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
+          <div className="flex flex-col">
+            <span className="serif-title text-3xl text-[#3B0019] tracking-wide leading-none">Estación de Trabajo</span>
+            <span className="text-[9px] uppercase tracking-widest text-[#A68F63] font-semibold mt-1">Gestión de Citas Propias</span>
+          </div>
         </div>
       </header>
 
@@ -412,13 +415,13 @@ export const StylistAgenda: React.FC = () => {
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Nombre Completo</label>
-                <input type="text" required value={profileName} onChange={(e) => setProfileName(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs bg-white" />
+                <input type="text" required maxLength={60} value={profileName} onChange={(e) => setProfileName(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''))} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs bg-white" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Edad</label>
-                  <input type="number" required value={profileAge} onChange={(e) => setProfileAge(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs bg-white" />
+                  <input type="number" required min={0} max={100} value={profileAge} onChange={(e) => setProfileAge(e.target.value)} className="w-full p-2.5 rounded-xl border border-[#EADEC9]/60 text-xs bg-white" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase tracking-wider text-[#A68F63] font-bold block">Género</label>

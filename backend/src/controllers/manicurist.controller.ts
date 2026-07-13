@@ -123,6 +123,11 @@ export async function updateManicuristProfile(
       return;
     }
 
+    if (age != null && (age < 0 || age > 100)) {
+      res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
+      return;
+    }
+
     const updated = await prisma.user.update({
       where: { id },
       data: {

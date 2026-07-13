@@ -167,8 +167,10 @@ export async function authClient(
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { phone },
+    // Solo cuentas de tipo CLIENTE: un telefono de staff (admin/manicurista)
+    // no debe autenticar ni prellenar datos en el flujo de clientes.
+    const user = await prisma.user.findFirst({
+      where: { phone, role: "CLIENTE" },
       select: {
         id: true,
         name: true,
@@ -234,8 +236,14 @@ export async function createClient(
       return;
     }
 
-    if (age != null && (age < 0 || age > 120)) {
+    if (age != null && (age < 0 || age > 100)) {
       res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { phone } });
+    if (existing) {
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
       return;
     }
 

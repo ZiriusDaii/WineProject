@@ -510,6 +510,12 @@ export default function App() {
     setter(e.target.value.replace(/\D/g, '').slice(0, 10));
   };
 
+  // Nombres de persona: solo letras (con tildes/enie), espacios, apostrofe y guion.
+  // Nada de digitos ni simbolos -- evita que alguien meta basura en un campo de nombre.
+  const handleNameInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''));
+  };
+
   const handleClientAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput || phoneInput.length < 7) {
@@ -681,6 +687,19 @@ export default function App() {
     setManPage(1);
   };
 
+  const handleConfirmLoggedInBooking = async () => {
+    if (!session) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await createAppointment(session.id, session.name);
+    } catch (err: any) {
+      setSubmitError(err.message || 'No se pudo confirmar la reserva.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleViewMyAppointment = () => {
     if (!session && postBookingSession) {
       setSession(postBookingSession);
@@ -711,13 +730,20 @@ export default function App() {
 
       if (response.ok && (data.exists || data.client)) {
         const client = data.client || data;
-        setBookingName(client.name);
-        await createAppointment(String(client.id || client._id), client.name);
+        try {
+          await createAppointment(String(client.id || client._id), client.name);
+        } catch (err: any) {
+          // El telefono si tiene cuenta -- si falla, es un problema real de la
+          // reserva (horario, servicio, etc.), no un cliente nuevo. No lo mandes
+          // a "register" ni le prellenes ese nombre en un formulario que no es suyo.
+          setSubmitError(err.message || 'No se pudo confirmar la reserva.');
+        }
       } else {
+        setBookingName('');
         setBookingStep('register');
       }
     } catch {
-      setBookingStep('register');
+      setSubmitError('Error al verificar el numero. Intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -745,7 +771,10 @@ export default function App() {
         })
       });
 
-      if (!clientRes.ok) throw new Error('Error al registrar.');
+      if (!clientRes.ok) {
+        const errData = await clientRes.json().catch(() => null);
+        throw new Error(errData?.error || 'Error al registrar.');
+      }
 
       const clientData = await clientRes.json();
       await createAppointment(String(clientData.id || clientData._id || 'nuevo-cliente'), bookingName);
@@ -812,7 +841,8 @@ export default function App() {
           window.open(whatsappUrl, '_blank');
         }, 1800);
       } else {
-        throw new Error('Error en el servidor al registrar cita.');
+        const errData = await apptRes.json().catch(() => null);
+        throw new Error(errData?.error || 'Error en el servidor al registrar cita.');
       }
     } catch (err: any) {
       throw new Error(err.message || 'Error al registrar.');
@@ -1410,10 +1440,11 @@ export default function App() {
                   {session && session.role === 'cliente' ? (
                     <div className="space-y-3">
                       <p className="text-[10px] text-[#78716C]">Sesión activa: <strong>{session.name}</strong> ({session.phone})</p>
+                      {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
                       <button
-                        onClick={() => createAppointment(session.id, session.name)}
+                        onClick={handleConfirmLoggedInBooking}
                         disabled={isSubmitting}
-                        className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
+                        className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60"
                       >
                         {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
                       </button>
@@ -1439,9 +1470,9 @@ export default function App() {
 
                       {bookingStep === 'register' && (
                         <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                          <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
                           <div className="grid grid-cols-2 gap-3">
-                            <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
+                            <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
                             <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
                               <option value="Femenino">Femenino</option>
                               <option value="Masculino">Masculino</option>
@@ -1737,7 +1768,8 @@ export default function App() {
                 {session && session.role === 'cliente' ? (
                   <div className="space-y-3 text-xs">
                     <p>Sesión activa: <strong>{session.name}</strong></p>
-                    <button onClick={() => createAppointment(session.id, session.name)} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                    {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
+                    <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
                       {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
                     </button>
                   </div>
@@ -1757,8 +1789,8 @@ export default function App() {
 
                     {bookingStep === 'register' && (
                       <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                        <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={(e) => setBookingName(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        <input type="number" required min={0} max={120} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
                         {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
                         <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
                       </form>
@@ -1824,12 +1856,12 @@ export default function App() {
                     <p className="text-[10px] text-[#A68F63] font-semibold">Crea tu cuenta de Cliente:</p>
                     <div className="space-y-1">
                       <label className="text-[9px] uppercase font-bold text-[#78716C] block">Nombre Completo</label>
-                      <input type="text" required maxLength={60} value={clientNameInput} onChange={(e) => setClientNameInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                      <input type="text" required maxLength={60} value={clientNameInput} onChange={handleNameInputChange(setClientNameInput)} className="w-full p-2 border rounded-lg text-xs" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Edad</label>
-                        <input type="number" required min={0} max={120} value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                        <input type="number" required min={0} max={100} value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Género</label>

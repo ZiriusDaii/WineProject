@@ -315,6 +315,11 @@ export async function updateManicuristStatus(
       return;
     }
 
+    if (age != null && (age < 0 || age > 100)) {
+      res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
+      return;
+    }
+
     if (id) {
       if (!phone || !username || !name) {
         res.status(400).json({

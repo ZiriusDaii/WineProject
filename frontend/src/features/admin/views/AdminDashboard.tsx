@@ -449,9 +449,10 @@ export const AdminDashboard: React.FC = () => {
   if (unauthorized) return (
     <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-4">
       <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-8 max-w-sm w-full space-y-5 text-center shadow-lg">
-        <div>
-          <span className="serif-title text-2xl text-[#3B0019]">WineSpa Admin</span>
-          <p className="text-xs text-[#78716C] mt-1">Inicia sesion para acceder al panel</p>
+        <div className="flex flex-col items-center gap-2">
+          <img src="/logo.png" alt="WineSpa Logo" className="w-12 h-12 object-contain" />
+          <span className="serif-title text-2xl text-[#3B0019] leading-none">WineSpa Admin</span>
+          <p className="text-xs text-[#78716C]">Inicia sesion para acceder al panel</p>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); doLogin(); }} className="space-y-3 text-left">
           <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required value={adminLoginUser} onChange={e => setAdminLoginUser(e.target.value)} className="w-full p-2.5 border rounded-lg text-xs" /></div>
@@ -486,14 +487,22 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col md:flex-row font-sans">
       <header className="md:hidden bg-[#FDFBF7] border-b border-[#EADEC9]/30 px-6 py-4 flex justify-between items-center sticky top-0 z-40 bg-opacity-90 backdrop-blur-md">
-        <span className="serif-title text-xl text-[#3B0019]">WineSpa Admin</span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="WineSpa Logo" className="w-6 h-6 object-contain" />
+          <span className="serif-title text-xl text-[#3B0019] leading-none">WineSpa Admin</span>
+        </div>
         <button onClick={() => { const next = !isMobileMenuOpen; setIsMobileMenuOpen(next); if (next) window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
       </header>
 
       <aside className={`w-full md:w-56 bg-[#5C0632]/5 border-r border-[#EADEC9]/35 p-5 md:sticky md:top-0 md:h-screen shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden md:block'}`}>
         <div className="hidden md:block mb-6 text-left">
-          <span className="serif-title text-xl text-[#3B0019]">WineSpa</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-semibold block">Panel Admin</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
+            <div className="flex flex-col">
+              <span className="serif-title text-xl text-[#3B0019] leading-none">WineSpa</span>
+              <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-semibold">Panel Admin</span>
+            </div>
+          </div>
         </div>
         <nav className="flex flex-col gap-1">
           {tabs.map(t => (
@@ -678,13 +687,13 @@ export const AdminDashboard: React.FC = () => {
                 <h3 className="text-xs font-bold text-[#3B0019] uppercase">{manId ? 'Editar Manicurista' : 'Nueva Manicurista'}</h3>
                 <form onSubmit={handleSaveManicurist} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" inputMode="numeric" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full p-2 border rounded-lg text-xs" /></div>
                     <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Usuario</label><input type="text" required maxLength={30} value={manUser} onChange={e => setManUser(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   </div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre Completo</label><input type="text" required maxLength={60} value={manName} onChange={e => setManName(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''))} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Contrasena {manId && '(dejar vacio = no cambiar)'}</label><input type="password" maxLength={64} required={!manId} value={manPass} onChange={e => setManPass(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={120} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Edad</label><input type="number" min={0} max={100} value={manAge} onChange={e => setManAge(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                     <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label><select value={manGender} onChange={e => setManGender(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
                   </div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Foto {manId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setManAvatarFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
@@ -844,9 +853,9 @@ export const AdminDashboard: React.FC = () => {
                       {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required min={1} value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 </div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required min={0} value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
                   <input type="checkbox" checked={svcTrending} onChange={e => setSvcTrending(e.target.checked)} className="rounded" />
@@ -995,7 +1004,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="space-y-2">
                   {cmsItems.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
-                      <img src={item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
+                      <img src={item.imageUrl?.startsWith('/uploads') ? `${API}${item.imageUrl}` : item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-[#44403C] truncate">{item.title || 'Sin titulo'}</p>
                         <p className="text-[9px] text-[#78716C] truncate">{item.description || 'Sin descripcion'}</p>
