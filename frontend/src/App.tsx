@@ -67,6 +67,8 @@ const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
 
 const SLOT_STEP_MINUTES = 30;
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const timeToMinutes = (hhmm: string) => {
   const [h, m] = hhmm.split(':');
   return Number(h) * 60 + Number(m);
@@ -281,7 +283,7 @@ export default function App() {
 
     let cancelled = false;
     setLoadingSlots(true);
-    fetch(`http://localhost:3000/api/appointments?date=${bookingDate}&manicuristId=${selectedSpecialist}`)
+    fetch(`${API_URL}/api/appointments?date=${bookingDate}&manicuristId=${selectedSpecialist}`)
       .then(res => res.ok ? res.json() : [])
       .then((occupied: { date: string; totalDuration: number }[]) => {
         if (cancelled) return;
@@ -312,7 +314,7 @@ export default function App() {
 
     let cancelled = false;
     setLoadingRescheduleSlots(true);
-    fetch(`http://localhost:3000/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
+    fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
       .then(res => res.ok ? res.json() : [])
       .then((occupied: { date: string; totalDuration: number }[]) => {
         if (cancelled) return;
@@ -332,7 +334,7 @@ export default function App() {
 
   const fetchManicurists = async (): Promise<Manicurist[]> => {
     try {
-      const res = await fetch('http://localhost:3000/api/manicurists');
+      const res = await fetch(`${API_URL}/api/manicurists`);
       if (res.ok) {
         const data = await res.json();
         return Array.isArray(data) ? data : (data?.manicurists || []);
@@ -363,7 +365,7 @@ export default function App() {
       let fetchedManicurists: Manicurist[] = [];
 
       try {
-        const servicesRes = await fetch('http://localhost:3000/api/services');
+        const servicesRes = await fetch(`${API_URL}/api/services`);
         if (servicesRes.ok) {
           const data = await servicesRes.json();
           fetchedServices = Array.isArray(data) ? data : (data?.services || []);
@@ -378,7 +380,7 @@ export default function App() {
       setManicurists(fetchedManicurists.length > 0 ? fetchedManicurists : fallbackManicurists);
 
       try {
-        const offersRes = await fetch('http://localhost:3000/api/offers');
+        const offersRes = await fetch(`${API_URL}/api/offers`);
         if (offersRes.ok) {
           setOffers(await offersRes.json());
         } else {
@@ -389,7 +391,7 @@ export default function App() {
       }
 
       try {
-        const landingRes = await fetch('http://localhost:3000/api/landing/content');
+        const landingRes = await fetch(`${API_URL}/api/landing/content`);
         if (!landingRes.ok) throw new Error();
         const items: { type: string; title: string; description?: string | null; imageUrl: string; order?: number }[] = await landingRes.json();
         const carousel = items
@@ -426,7 +428,7 @@ export default function App() {
   const fetchClientAppointments = async () => {
     if (!session || session.role !== 'cliente') return;
     try {
-      const res = await fetch(`http://localhost:3000/api/appointments?clientId=${session.id}`);
+      const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`);
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
@@ -439,7 +441,7 @@ export default function App() {
   const handleCancelAppointment = async (id: string | number) => {
     if (!window.confirm('¿Seguro que deseas cancelar esta cita?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/api/appointments/${id}`, {
+      const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'CANCELLED' })
@@ -462,7 +464,7 @@ export default function App() {
     }
     setIsUpdatingSchedule(true);
     try {
-      const res = await fetch(`http://localhost:3000/api/appointments/${id}`, {
+      const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         // Concatenacion directa: `new Date(...).toISOString()` interpretaba el string
@@ -518,7 +520,7 @@ export default function App() {
 
     try {
       if (!showClientRegister) {
-        const response = await fetch('http://localhost:3000/api/clients/auth', {
+        const response = await fetch(`${API_URL}/api/clients/auth`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: phoneInput })
@@ -543,7 +545,7 @@ export default function App() {
           setShowClientRegister(true);
         }
       } else {
-        const clientRes = await fetch('http://localhost:3000/api/clients', {
+        const clientRes = await fetch(`${API_URL}/api/clients`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -591,7 +593,7 @@ export default function App() {
     setAuthError(null);
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: staffUser, password: staffPassword })
@@ -688,7 +690,7 @@ export default function App() {
     setSubmitError(null);
 
     try {
-      const response = await fetch('http://localhost:3000/api/clients/auth', {
+      const response = await fetch(`${API_URL}/api/clients/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: bookingPhone })
@@ -721,7 +723,7 @@ export default function App() {
     setSubmitError(null);
 
     try {
-      const clientRes = await fetch('http://localhost:3000/api/clients', {
+      const clientRes = await fetch(`${API_URL}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -745,7 +747,7 @@ export default function App() {
 
   const createAppointment = async (clientId: string, name: string) => {
     try {
-      const apptRes = await fetch('http://localhost:3000/api/appointments', {
+      const apptRes = await fetch(`${API_URL}/api/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -798,7 +800,7 @@ export default function App() {
     setDiscountValidating(true);
     setDiscountError(null);
     try {
-      const res = await fetch('http://localhost:3000/api/offers/validate', {
+      const res = await fetch(`${API_URL}/api/offers/validate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: discountCode.trim().toUpperCase(), phone: session?.phone || bookingPhone || undefined }),
       });
@@ -961,7 +963,7 @@ export default function App() {
                         <h4 className="text-xs font-bold text-[#44403C] pt-1">{getServiceNames(appt.services)}</h4>
                         <div className="flex items-center gap-2 pt-0.5">
                           {appt.manicurist?.avatarPath ? (
-                            <img src={appt.manicurist.avatarPath.startsWith('/') ? `http://localhost:3000${appt.manicurist.avatarPath}` : appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
+                            <img src={appt.manicurist.avatarPath.startsWith('/') ? `${API_URL}${appt.manicurist.avatarPath}` : appt.manicurist.avatarPath} alt={appt.manicurist.name} className="w-5 h-5 rounded-full object-cover border border-[#EADEC9]" />
                           ) : (
                             <FallbackAvatar className="w-5 h-5" />
                           )}
@@ -1174,7 +1176,7 @@ export default function App() {
                     <div className="aspect-video relative overflow-hidden bg-neutral-100">
                       <img src={
                         s.imageUrl
-                          ? (s.imageUrl.startsWith('/') ? `http://localhost:3000${s.imageUrl}` : s.imageUrl)
+                          ? (s.imageUrl.startsWith('/') ? `${API_URL}${s.imageUrl}` : s.imageUrl)
                           : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
                       } alt={s.name} className="w-full h-full object-cover" />
                       {(s as any).trending && (
@@ -1241,7 +1243,7 @@ export default function App() {
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
                     <img src={
                       s.imageUrl
-                        ? (s.imageUrl.startsWith('/') ? `http://localhost:3000${s.imageUrl}` : s.imageUrl)
+                        ? (s.imageUrl.startsWith('/') ? `${API_URL}${s.imageUrl}` : s.imageUrl)
                         : 'https://images.unsplash.com/photo-1604654894610-df63bc536371?q=80&w=800'
                     } alt={s.name} className="w-full h-full object-cover" />
                     {(s as any).trending && (
@@ -1287,7 +1289,7 @@ export default function App() {
                 <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Manicurista Seleccionada</span>
                 <div className="flex items-center gap-3">
                   {activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl ? (
-                    <img src={activeSpecialistDetails.avatarPath?.startsWith('/') ? `http://localhost:3000${activeSpecialistDetails.avatarPath}` : (activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl)} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
+                    <img src={activeSpecialistDetails.avatarPath?.startsWith('/') ? `${API_URL}${activeSpecialistDetails.avatarPath}` : (activeSpecialistDetails.avatarPath || activeSpecialistDetails.avatarUrl)} alt={activeSpecialistDetails.name} className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]" />
                   ) : (
                     <FallbackAvatar className="w-12 h-12" />
                   )}
@@ -1542,9 +1544,9 @@ export default function App() {
                           <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                             {m.avatarPath || m.avatarUrl ? (
                               <img
-                                src={m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                                src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
                                 alt={m.name}
-                                onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `http://localhost:3000${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
+                                onClick={(e) => { e.stopPropagation(); setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
                                 className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
                               />
                             ) : (

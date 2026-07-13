@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
 
-const API = 'http://localhost:3000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const authHeaders = () => {
   const token = localStorage.getItem('winespa_token');
   return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } as Record<string,string> : { 'Content-Type': 'application/json' };

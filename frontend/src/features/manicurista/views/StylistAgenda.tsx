@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FallbackAvatar } from '../../../App';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 interface Appointment {
   id: string | number;
   appointmentId?: string | number;
@@ -74,7 +76,7 @@ export const StylistAgenda: React.FC = () => {
       setLoading(true);
 
       // Cargar información de la manicurista específica (filtrada del listado, no hay endpoint por id)
-      const stylistRes = await fetch('http://localhost:3000/api/manicurists');
+      const stylistRes = await fetch(`${API_URL}/api/manicurists`);
       const activeManicurist = stylistRes.ok
         ? (await stylistRes.json()).find((m: { id: string | number }) => String(m.id) === stylistId)
         : null;
@@ -82,7 +84,7 @@ export const StylistAgenda: React.FC = () => {
         setProfileName(activeManicurist.name || '');
         setProfileAge(String(activeManicurist.age || 26));
         setProfileGender(activeManicurist.gender || 'Femenino');
-        setProfileAvatar(activeManicurist.avatarPath ? `http://localhost:3000${activeManicurist.avatarPath}` : '');
+        setProfileAvatar(activeManicurist.avatarPath ? `${API_URL}${activeManicurist.avatarPath}` : '');
         setProfileRole(activeManicurist.role || 'Especialista');
       } else {
         // Fallback
@@ -96,7 +98,7 @@ export const StylistAgenda: React.FC = () => {
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
       let apptsData: Appointment[] = [];
       try {
-        const apptsRes = await fetch(`http://localhost:3000/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`);
+        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`);
         if (apptsRes.ok) {
           apptsData = await apptsRes.json();
         }
@@ -127,7 +129,7 @@ export const StylistAgenda: React.FC = () => {
   const handleCompleteAppointment = async (id: string | number) => {
     setStatusUpdatingId(id);
     try {
-      const res = await fetch(`http://localhost:3000/api/appointments/${id}/complete`, {
+      const res = await fetch(`${API_URL}/api/appointments/${id}/complete`, {
         method: 'PUT',
       });
       if (res.ok) {
@@ -154,13 +156,13 @@ export const StylistAgenda: React.FC = () => {
         const formData = new FormData();
         formData.append('image', selectedAvatarFile);
         formData.append('manicuristId', stylistId);
-        const uploadRes = await fetch('http://localhost:3000/api/admin/manicurists/upload-avatar', {
+        const uploadRes = await fetch(`${API_URL}/api/admin/manicurists/upload-avatar`, {
           method: 'POST',
           body: formData
         });
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
-          finalAvatarUrl = `http://localhost:3000${uploadData.avatarPath}`;
+          finalAvatarUrl = `${API_URL}${uploadData.avatarPath}`;
           setProfileAvatar(finalAvatarUrl);
         } else {
           throw new Error('Error al subir la foto de perfil');
@@ -175,14 +177,14 @@ export const StylistAgenda: React.FC = () => {
         role: profileRole
       };
 
-      const res = await fetch(`http://localhost:3000/api/manicurist/profile`, {
+      const res = await fetch(`${API_URL}/api/manicurist/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
         body: JSON.stringify({ id: stylistId, ...payload })
       });
 
       if (!res.ok) {
-        await fetch(`http://localhost:3000/api/admin/manicurists/${stylistId}`, {
+        await fetch(`${API_URL}/api/admin/manicurists/${stylistId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
           body: JSON.stringify(payload)

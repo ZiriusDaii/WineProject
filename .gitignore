@@ -3,3 +3,6 @@ node_modules/
 dist/
 AI_ORCHESTRATION.md
 NEXT_STEPS.md
+vault/
+.obsidian/
+CLAUDE.md
