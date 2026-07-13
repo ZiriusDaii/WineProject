@@ -487,7 +487,7 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col md:flex-row font-sans">
       <header className="md:hidden bg-[#FDFBF7] border-b border-[#EADEC9]/30 px-6 py-4 flex justify-between items-center sticky top-0 z-40 bg-opacity-90 backdrop-blur-md">
         <span className="serif-title text-xl text-[#3B0019]">WineSpa Admin</span>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
+        <button onClick={() => { const next = !isMobileMenuOpen; setIsMobileMenuOpen(next); if (next) window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
       </header>
 
       <aside className={`w-full md:w-56 bg-[#5C0632]/5 border-r border-[#EADEC9]/35 p-5 md:sticky md:top-0 md:h-screen shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden md:block'}`}>
