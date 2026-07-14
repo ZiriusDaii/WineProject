@@ -181,7 +181,7 @@ export default function App() {
   const [manPage, setManPage] = useState(1);
   const PER_PAGE = 5;
   const [showDiscount, setShowDiscount] = useState(false);
-  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(true);
 
   // Flujo Drawer Booking (Mobile/Inline): 'selection' | 'auth' | 'register' | 'success'
   const [bookingStep, setBookingStep] = useState<'selection' | 'auth' | 'register' | 'success'>('selection');
@@ -1227,7 +1227,7 @@ export default function App() {
             </div>
 
             <div className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square">
-              <img src="/hero_1.jpg" alt="Nails Room" className="w-full h-full object-cover" />
+              <img src="/hero_1.jpg" alt="Trabajo de uñas WineSpa" className="w-full h-full object-cover" />
             </div>
           </section>
 
@@ -1712,10 +1712,10 @@ export default function App() {
                 onClick={() => setShowMobileSummary(v => !v)}
                 className="w-full px-4 pt-2.5 pb-1 flex items-center justify-between text-left"
               >
-                <span className="text-[10px] text-[#78716C] truncate pr-2">
+                <span className="text-xs text-[#78716C] truncate pr-2">
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => s.name).join(', ')}
                 </span>
-                <span className="text-[9px] text-[#A68F63] font-bold shrink-0">{showMobileSummary ? 'Ocultar ▾' : 'Ver resumen ▴'}</span>
+                <span className="text-[11px] text-[#A68F63] font-bold shrink-0">{showMobileSummary ? 'Ocultar ▾' : 'Ver resumen ▴'}</span>
               </button>
             )}
 
@@ -1729,15 +1729,15 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
+                <p className="text-xs text-[#A68F63]">Tiempo aprox: {services.filter(s => selectedServiceIds.includes(String(s.id))).reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0)} min</p>
                 {selectedSpecialist && (
                   <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{getManicuristName(selectedSpecialist)}</strong></p>
                 )}
                 {bookingDate && bookingTime && (
                   <p className="text-xs text-[#78716C]">Fecha: <strong className="text-[#3B0019]">{bookingDate} · {bookingTime}</strong></p>
                 )}
-                {discountPercent && <p className="text-[11px] text-green-600">-{discountPercent}% {discountTitle}</p>}
-                {discountError && <p className="text-[11px] text-red-600">{discountError}</p>}
+                {discountPercent && <p className="text-xs text-green-600">-{discountPercent}% {discountTitle}</p>}
+                {discountError && <p className="text-xs text-red-600">{discountError}</p>}
               </div>
             )}
 
