@@ -3,6 +3,12 @@ import { FallbackAvatar } from '../../../App';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+// Los endpoints de manicurista pasan por requireStaff: hay que mandar el token.
+const authHeader = (): Record<string, string> => {
+  const t = localStorage.getItem('winespa_token');
+  return t ? { Authorization: `Bearer ${t}` } : {};
+};
+
 interface Appointment {
   id: string | number;
   appointmentId?: string | number;
@@ -98,7 +104,7 @@ export const StylistAgenda: React.FC = () => {
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
       let apptsData: Appointment[] = [];
       try {
-        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`);
+        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`, { headers: authHeader() });
         if (apptsRes.ok) {
           apptsData = await apptsRes.json();
         }
@@ -131,6 +137,7 @@ export const StylistAgenda: React.FC = () => {
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}/complete`, {
         method: 'PUT',
+        headers: authHeader(),
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
@@ -150,47 +157,44 @@ export const StylistAgenda: React.FC = () => {
     setSubmitError(null);
 
     try {
-      let finalAvatarUrl = profileAvatar;
-
+      // El backend guarda avatarPath como ruta relativa (/uploads/...) y rechaza
+      // URLs absolutas; solo lo mandamos si se subio una foto nueva.
+      let uploadedAvatarPath: string | null = null;
       if (selectedAvatarFile) {
         const formData = new FormData();
         formData.append('image', selectedAvatarFile);
         formData.append('manicuristId', stylistId);
         const uploadRes = await fetch(`${API_URL}/api/admin/manicurists/upload-avatar`, {
           method: 'POST',
+          headers: authHeader(),
           body: formData
         });
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          finalAvatarUrl = `${API_URL}${uploadData.avatarPath}`;
-          setProfileAvatar(finalAvatarUrl);
-        } else {
-          throw new Error('Error al subir la foto de perfil');
-        }
+        if (!uploadRes.ok) throw new Error('Error al subir la foto de perfil');
+        const uploadData = await uploadRes.json();
+        uploadedAvatarPath = uploadData.avatarPath; // ruta relativa /uploads/...
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
+        id: stylistId,
         name: profileName,
         age: parseInt(profileAge),
         gender: profileGender,
-        avatarPath: finalAvatarUrl,
-        role: profileRole
       };
+      if (uploadedAvatarPath) payload.avatarPath = uploadedAvatarPath;
 
       const res = await fetch(`${API_URL}/api/manicurist/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
-        body: JSON.stringify({ id: stylistId, ...payload })
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) {
-        await fetch(`${API_URL}/api/admin/manicurists/${stylistId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
-          body: JSON.stringify(payload)
-        });
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'No se pudo guardar el perfil.');
       }
 
+      const saved = await res.json();
+      if (saved.avatarPath) setProfileAvatar(`${API_URL}${saved.avatarPath}`);
       setSubmitSuccess('Tu perfil ha sido actualizado con éxito.');
       setSelectedAvatarFile(null);
     } catch (err: any) {
