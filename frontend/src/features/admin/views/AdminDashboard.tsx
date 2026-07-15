@@ -91,7 +91,20 @@ interface Offer {
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
 const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
-type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news';
+// Misma semana ISO 8601 que backend/src/lib/week.ts -- necesaria para saber
+// que semana/anio corresponde al turno que se esta editando.
+function getISOWeek(date: Date): { week: number; year: number } {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return { week, year: d.getUTCFullYear() };
+}
+
+type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news' | 'schedule';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pendiente', IN_PROGRESS: 'En Curso', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
@@ -126,6 +139,17 @@ export const AdminDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
   const itemsPerPage = 5;
+
+  // Turnos
+  const [shiftTemplates, setShiftTemplates] = useState<{ id: string; name: string; startTime: string; endTime: string }[]>([]);
+  const [weekSchedule, setWeekSchedule] = useState<{ manicuristId: string; shiftTemplateId: string }[]>([]);
+  const initialWeek = getISOWeek(new Date());
+  const [scheduleWeek, setScheduleWeek] = useState(initialWeek.week);
+  const [scheduleYear, setScheduleYear] = useState(initialWeek.year);
+  const [shiftName, setShiftName] = useState('');
+  const [shiftStart, setShiftStart] = useState('');
+  const [shiftEnd, setShiftEnd] = useState('');
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
 
   // Service form
   const [svcId, setSvcId] = useState<string | null>(null);
@@ -181,6 +205,7 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
+  useEffect(() => { if (activeTab === 'schedule') fetchWeekSchedule(); }, [activeTab, scheduleWeek, scheduleYear]);
 
   const doLogin = async () => {
     setSubmitting(true);
@@ -228,6 +253,11 @@ export const AdminDashboard: React.FC = () => {
       try {
         const catRes = await fetch(`${API}/api/admin/categories`, { headers: h });
         if (catRes.ok) setCategories(await catRes.json());
+      } catch { /* */ }
+
+      try {
+        const shiftRes = await fetch(`${API}/api/admin/shift-templates`, { headers: h });
+        if (shiftRes.ok) setShiftTemplates(await shiftRes.json());
       } catch { /* */ }
 
       let appts: Appointment[] = [];
@@ -378,6 +408,70 @@ export const AdminDashboard: React.FC = () => {
   const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManAvatarFile(null); };
 
+  // --- Turnos ---
+  const fetchWeekSchedule = async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/manicurist-schedule?week=${scheduleWeek}&year=${scheduleYear}`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setWeekSchedule(data.map((s: any) => ({ manicuristId: s.manicuristId, shiftTemplateId: s.shiftTemplateId })));
+      }
+    } catch { /* */ }
+  };
+  const handleSaveShiftTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shiftName.trim() || !shiftStart || !shiftEnd) return;
+    setSubmitting(true);
+    try {
+      const url = editingShiftId ? `${API}/api/admin/shift-templates/${editingShiftId}` : `${API}/api/admin/shift-templates`;
+      const res = await fetch(url, {
+        method: editingShiftId ? 'PATCH' : 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ name: shiftName.trim(), startTime: shiftStart, endTime: shiftEnd }),
+      });
+      if (res.ok) {
+        setSuccessMsg(editingShiftId ? 'Turno actualizado.' : 'Turno creado.');
+        resetShiftForm();
+        loadData();
+      } else {
+        const err = await res.json().catch(() => null);
+        setErrorMsg(err?.error || 'Error.');
+      }
+    } catch { setErrorMsg('Error.'); }
+    finally { setSubmitting(false); }
+  };
+  const handleDeleteShiftTemplate = async (id: string) => {
+    if (!confirm('Eliminar este turno? Las manicuristas que lo tengan asignado quedaran sin turno esa semana.')) return;
+    try {
+      const r = await fetch(`${API}/api/admin/shift-templates/${id}`, { method: 'DELETE', headers: authHeaders() });
+      if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else {
+        const err = await r.json().catch(() => null);
+        setErrorMsg(err?.error || 'No se pudo eliminar.');
+      }
+    } catch { setErrorMsg('Error.'); }
+  };
+  const editShiftTemplate = (s: { id: string; name: string; startTime: string; endTime: string }) => {
+    setEditingShiftId(s.id); setShiftName(s.name); setShiftStart(s.startTime); setShiftEnd(s.endTime);
+  };
+  const resetShiftForm = () => { setEditingShiftId(null); setShiftName(''); setShiftStart(''); setShiftEnd(''); };
+  const handleAssignShift = async (manicuristId: string, shiftTemplateId: string) => {
+    try {
+      const res = await fetch(`${API}/api/admin/manicurist-schedule`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ manicuristId, week: scheduleWeek, year: scheduleYear, shiftTemplateId: shiftTemplateId || null }),
+      });
+      if (res.ok) fetchWeekSchedule();
+    } catch { /* */ }
+  };
+  const changeScheduleWeek = (delta: number) => {
+    let w = scheduleWeek + delta;
+    let y = scheduleYear;
+    if (w < 1) { w = 52; y -= 1; }
+    if (w > 52) { w = 1; y += 1; }
+    setScheduleWeek(w); setScheduleYear(y);
+  };
+
   // --- Client detail ---
   const viewClient = async (c: Client) => {
     setSelectedClient(c);
@@ -483,6 +577,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'appointments', label: 'Pizarra de Citas' },
     { id: 'calendar', label: 'Calendario' },
     { id: 'manicurists', label: 'Manicuristas' },
+    { id: 'schedule', label: 'Turnos' },
     { id: 'clients', label: 'Base de Clientes' },
     { id: 'services', label: 'Servicios' },
     { id: 'offers', label: 'Descuentos' },
@@ -768,6 +863,84 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* SCHEDULE / TURNOS */}
+        {activeTab === 'schedule' && (
+          <div className="space-y-6 animate-fade-in text-left">
+            <h2 className="serif-title text-3xl text-[#3B0019]">Turnos</h2>
+
+            {/* Plantillas de turno */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{editingShiftId ? 'Editar turno' : 'Nuevo turno'}</h3>
+              <form onSubmit={handleSaveShiftTemplate} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label>
+                  <input type="text" required placeholder="Ej: Turno Manana" value={shiftName} onChange={e => setShiftName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Desde</label>
+                  <input type="time" required value={shiftStart} onChange={e => setShiftStart(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Hasta</label>
+                  <input type="time" required value={shiftEnd} onChange={e => setShiftEnd(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                </div>
+                <div className="sm:col-span-4 flex gap-2">
+                  <button type="submit" disabled={submitting} className="flex-1 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{editingShiftId ? 'Actualizar' : 'Crear turno'}</button>
+                  {editingShiftId && <button type="button" onClick={resetShiftForm} className="px-4 py-2 border rounded-xl text-xs">Cancelar</button>}
+                </div>
+              </form>
+              {shiftTemplates.length > 0 && (
+                <div className="space-y-1 pt-2 border-t border-[#EADEC9]/20">
+                  {shiftTemplates.map(s => (
+                    <div key={s.id} className="flex justify-between items-center text-xs py-1.5 px-2 rounded-lg bg-[#F7F3EB]/50">
+                      <span className="font-medium text-[#44403C]">{s.name} <span className="text-[#A68F63]">({s.startTime}-{s.endTime})</span></span>
+                      <div className="flex gap-2">
+                        <button onClick={() => editShiftTemplate(s)} className="text-[#A68F63] font-semibold">Editar</button>
+                        <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-red-400 font-semibold">Eliminar</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {shiftTemplates.length === 0 && <p className="text-[10px] text-[#78716C]">Todavia no hay turnos creados.</p>}
+            </div>
+
+            {/* Asignacion semanal */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Asignar por semana</h3>
+                <div className="flex items-center gap-2 text-xs">
+                  <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63]">‹</button>
+                  <span className="font-semibold text-[#3B0019]">Semana {scheduleWeek} · {scheduleYear}</span>
+                  <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63]">›</button>
+                </div>
+              </div>
+              {shiftTemplates.length === 0 ? (
+                <p className="text-[10px] text-[#78716C]">Cre&aacute; al menos un turno arriba para poder asignarlo.</p>
+              ) : (
+                <div className="space-y-2">
+                  {manicurists.map(m => {
+                    const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
+                    return (
+                      <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F7F3EB]/30">
+                        <span className="text-xs font-semibold text-[#44403C]">{m.name}</span>
+                        <select
+                          value={assigned?.shiftTemplateId || ''}
+                          onChange={e => handleAssignShift(String(m.id), e.target.value)}
+                          className="p-1.5 border rounded-lg text-xs bg-white"
+                        >
+                          <option value="">Sin turno</option>
+                          {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

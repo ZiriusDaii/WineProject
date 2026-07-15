@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { getISOWeek } from "../lib/week.js";
 
 const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 
@@ -27,6 +28,28 @@ function isWithinBusinessHours(date: Date, durationMinutes: number): boolean {
   const hours = BUSINESS_HOURS[date.getUTCDay()]!;
   const startMin = date.getUTCHours() * 60 + date.getUTCMinutes();
   return startMin >= timeToMinutes(hours.open) && startMin + durationMinutes <= timeToMinutes(hours.close);
+}
+
+// Si la manicurista tiene un turno asignado para la semana de `date`, la cita
+// debe caer dentro de ese turno. Sin turno asignado no se restringe nada mas
+// alla del horario del local (isWithinBusinessHours) -- evita bloquear el
+// booking en negocios que todavia no cargaron turnos.
+async function isWithinManicuristShift(
+  manicuristId: string,
+  date: Date,
+  durationMinutes: number,
+): Promise<boolean> {
+  const { week, year } = getISOWeek(date);
+  const schedule = await prisma.manicuristSchedule.findUnique({
+    where: { manicuristId_weekNumber_year: { manicuristId, weekNumber: week, year } },
+    include: { shiftTemplate: true },
+  });
+  if (!schedule) return true;
+  const startMin = date.getUTCHours() * 60 + date.getUTCMinutes();
+  return (
+    startMin >= timeToMinutes(schedule.shiftTemplate.startTime) &&
+    startMin + durationMinutes <= timeToMinutes(schedule.shiftTemplate.endTime)
+  );
 }
 
 async function findOverlappingAppointment(
@@ -131,7 +154,28 @@ export async function getManicurists(
       where: { role: "MANICURISTA" },
       select: { id: true, name: true, avatarPath: true, age: true, gender: true },
     });
-    res.json(manicurists);
+
+    // Si viene `date`, se adjunta el turno asignado esa semana (o null si no
+    // tiene uno asignado -- se interpreta como "sin restriccion", no como
+    // "no disponible", para no romper el booking en negocios sin turnos cargados).
+    const date = req.query.date as string | undefined;
+    if (!date) {
+      res.json(manicurists);
+      return;
+    }
+
+    const { week, year } = getISOWeek(new Date(`${date}T00:00:00.000Z`));
+    const schedules = await prisma.manicuristSchedule.findMany({
+      where: { weekNumber: week, year },
+      include: { shiftTemplate: true },
+    });
+    const shiftByManicurist = new Map(
+      schedules.map((s) => [s.manicuristId, { startTime: s.shiftTemplate.startTime, endTime: s.shiftTemplate.endTime }]),
+    );
+
+    res.json(
+      manicurists.map((m) => ({ ...m, shift: shiftByManicurist.get(m.id) ?? null })),
+    );
   } catch (error) {
     console.error("Error obteniendo manicuristas:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -315,6 +359,11 @@ export async function createAppointment(
       return;
     }
 
+    if (!(await isWithinManicuristShift(manicuristId!, parsedDate, totalDuration))) {
+      res.status(400).json({ error: "El horario elegido esta fuera del turno de la manicurista" });
+      return;
+    }
+
     if (await findOverlappingAppointment(manicuristId!, parsedDate, totalDuration)) {
       res.status(409).json({ error: "La manicurista ya tiene una cita en ese horario" });
       return;
@@ -405,6 +454,11 @@ export async function updateAppointment(
 
       if (!isWithinBusinessHours(targetDate, existing.totalDuration)) {
         res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
+        return;
+      }
+
+      if (!(await isWithinManicuristShift(targetManicuristId, targetDate, existing.totalDuration))) {
+        res.status(400).json({ error: "El horario elegido esta fuera del turno de la manicurista" });
         return;
       }
 

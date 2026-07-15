@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { getISOWeek } from "../lib/week.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -776,3 +777,139 @@ export async function deleteServiceCategory(
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
+
+// --- Turnos (ShiftTemplate + ManicuristSchedule) ---
+
+export async function getShiftTemplates(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const templates = await prisma.shiftTemplate.findMany({ orderBy: { startTime: "asc" } });
+    res.json(templates);
+  } catch (error) {
+    console.error("Error obteniendo turnos:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function createShiftTemplate(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { name, startTime, endTime } = req.body as {
+      name?: string;
+      startTime?: string;
+      endTime?: string;
+    };
+    if (!name || !startTime || !endTime) {
+      res.status(400).json({ error: "Faltan campos requeridos: name, startTime, endTime" });
+      return;
+    }
+    const created = await prisma.shiftTemplate.create({ data: { name, startTime, endTime } });
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Error creando turno:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function updateShiftTemplate(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { name, startTime, endTime } = req.body as {
+      name?: string;
+      startTime?: string;
+      endTime?: string;
+    };
+    const updated = await prisma.shiftTemplate.update({
+      where: { id: id! },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(startTime !== undefined && { startTime }),
+        ...(endTime !== undefined && { endTime }),
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando turno:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function deleteShiftTemplate(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    await prisma.shiftTemplate.delete({ where: { id: id! } });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Error eliminando turno:", error);
+    res.status(400).json({ error: "No se pudo eliminar (puede estar en uso por alguna manicurista)" });
+  }
+}
+
+export async function getManicuristScheduleWeek(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const week = Number(req.query.week);
+    const year = Number(req.query.year);
+    if (!week || !year) {
+      res.status(400).json({ error: "Los parametros 'week' y 'year' son requeridos" });
+      return;
+    }
+    const schedules = await prisma.manicuristSchedule.findMany({
+      where: { weekNumber: week, year },
+      include: { shiftTemplate: true, manicurist: { select: { id: true, name: true } } },
+    });
+    res.json(schedules);
+  } catch (error) {
+    console.error("Error obteniendo horario semanal:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function assignManicuristSchedule(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { manicuristId, week, year, shiftTemplateId } = req.body as {
+      manicuristId?: string;
+      week?: number;
+      year?: number;
+      shiftTemplateId?: string | null;
+    };
+    if (!manicuristId || !week || !year) {
+      res.status(400).json({ error: "Faltan campos requeridos: manicuristId, week, year" });
+      return;
+    }
+    if (!shiftTemplateId) {
+      await prisma.manicuristSchedule.deleteMany({
+        where: { manicuristId, weekNumber: week, year },
+      });
+      res.json({ message: "Turno removido para esa semana" });
+      return;
+    }
+    const upserted = await prisma.manicuristSchedule.upsert({
+      where: { manicuristId_weekNumber_year: { manicuristId, weekNumber: week, year } },
+      update: { shiftTemplateId },
+      create: { manicuristId, weekNumber: week, year, shiftTemplateId },
+      include: { shiftTemplate: true },
+    });
+    res.json(upserted);
+  } catch (error) {
+    console.error("Error asignando turno:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export { getISOWeek };

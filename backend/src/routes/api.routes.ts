@@ -34,6 +34,12 @@ import {
   createServiceCategory,
   updateServiceCategory,
   deleteServiceCategory,
+  getShiftTemplates,
+  createShiftTemplate,
+  updateShiftTemplate,
+  deleteShiftTemplate,
+  getManicuristScheduleWeek,
+  assignManicuristSchedule,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -82,6 +88,12 @@ router.put("/admin/manicurists/:id", requireAdmin, updateManicuristStatus);
 router.post("/admin/landing-cms", requireAdmin, manageLandingContent);
 router.delete("/admin/landing-cms/:id", requireAdmin, deleteLandingContent);
 router.put("/admin/appointments/:id/status", requireAdmin, updateAppointmentStatus);
+router.get("/admin/shift-templates", requireAdmin, getShiftTemplates);
+router.post("/admin/shift-templates", requireAdmin, createShiftTemplate);
+router.patch("/admin/shift-templates/:id", requireAdmin, updateShiftTemplate);
+router.delete("/admin/shift-templates/:id", requireAdmin, deleteShiftTemplate);
+router.get("/admin/manicurist-schedule", requireAdmin, getManicuristScheduleWeek);
+router.put("/admin/manicurist-schedule", requireAdmin, assignManicuristSchedule);
 
 router.post(
   "/admin/manicurists/upload-avatar",

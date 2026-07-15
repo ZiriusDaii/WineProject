@@ -169,6 +169,7 @@ export default function App() {
   const [bookingTime, setBookingTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [manicuristShifts, setManicuristShifts] = useState<Record<string, { startTime: string; endTime: string } | null>>({});
 
   // Control de Modales Booking
   const [isBookingOpen, setIsBookingOpen] = useState(false); // Móvil
@@ -271,6 +272,24 @@ export default function App() {
   }, [portalToast]);
 
   useEffect(() => { setPortalToast(null); }, [view]);
+
+  // Trae el turno asignado (si existe) a cada manicurista para la fecha elegida,
+  // para mostrarlo como dato al elegir manicurista (no filtra a nadie: sin turno
+  // asignado se interpreta como "sin restriccion", el backend hace lo mismo).
+  useEffect(() => {
+    if (!bookingDate) { setManicuristShifts({}); return; }
+    let cancelled = false;
+    fetch(`${API_URL}/api/manicurists?date=${bookingDate}`)
+      .then(res => res.ok ? res.json() : [])
+      .then((data: any[]) => {
+        if (cancelled) return;
+        const map: Record<string, { startTime: string; endTime: string } | null> = {};
+        (data || []).forEach(m => { map[String(m.id)] = m.shift || null; });
+        setManicuristShifts(map);
+      })
+      .catch(() => { if (!cancelled) setManicuristShifts({}); });
+    return () => { cancelled = true; };
+  }, [bookingDate]);
 
   // Recalcula los horarios disponibles (dentro del horario del local, sin
   // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
@@ -1521,7 +1540,7 @@ export default function App() {
                         ? 'bg-[#5C0632] text-white shadow-md'
                         : s < bookingWizardStep
                         ? 'bg-[#8E1B54] text-white cursor-pointer'
-                        : (s === 2 && selectedServiceIds.length > 0) || (s === 3 && selectedServiceIds.length > 0 && selectedSpecialist)
+                        : (s === 2 && selectedServiceIds.length > 0) || (s === 3 && selectedServiceIds.length > 0 && bookingDate)
                         ? 'bg-[#EADEC9]/60 text-[#8E1B54] hover:bg-[#8E1B54] hover:text-white cursor-pointer'
                         : 'bg-[#EADEC9]/40 text-[#A68F63] cursor-default'
                     }`}
@@ -1530,7 +1549,7 @@ export default function App() {
                       if (s === bookingWizardStep) return;
                       // s > bookingWizardStep: forward only if prerequisites met
                       if (s === 2 && selectedServiceIds.length === 0) return;
-                      if (s === 3 && (!selectedSpecialist || selectedServiceIds.length === 0)) return;
+                      if (s === 3 && (!bookingDate || selectedServiceIds.length === 0)) return;
                       setBookingWizardStep(s);
                     }}
                   >
@@ -1594,94 +1613,102 @@ export default function App() {
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-end">
                 <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
-                  Siguiente: Manicurista →
+                  Siguiente: Fecha →
                 </button>
               </div>
             </section>
 
             {/* ===== PASO 2 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 2 ? 'hidden md:block' : ''}`}>
-              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige a tu Manicurista</h2>
-              <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
-              {(() => {
-                const filtered = manicurists
-                  .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
-                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                const total = filtered.length;
-                const start = (manPage - 1) * PER_PAGE;
-                const page = filtered.slice(start, start + PER_PAGE);
-                return (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {page.map(m => {
-                        const manicuristIdStr = String(m.id);
-                        const isSelected = selectedSpecialist === manicuristIdStr;
-                        return (
-                          <div key={m.id} onClick={() => setSelectedSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                            {m.avatarPath || m.avatarUrl ? (
-                              <img
-                                src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
-                                alt={m.name}
-                                onClick={() => setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
-                                className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
-                              />
-                            ) : (
-                              <FallbackAvatar className="w-10 h-10 mx-auto" />
-                            )}
-                            <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {total > PER_PAGE && (
-                      <div className="flex items-center justify-center gap-3 text-xs pt-2">
-                        <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
-                        <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
-                        <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige la Fecha</h2>
+              <DatePicker
+                selectedDate={bookingDate}
+                onSelectDate={(d) => { setBookingDate(d); setBookingTime(''); setSelectedSpecialist(null); }}
+                className="max-w-[280px]"
+              />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
                 <button onClick={() => setBookingWizardStep(1)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
                   ← Anterior
                 </button>
-                <button onClick={() => setBookingWizardStep(3)} disabled={!selectedSpecialist} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
-                  Siguiente: Fecha & Hora →
+                <button onClick={() => setBookingWizardStep(3)} disabled={!bookingDate} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                  Siguiente: Manicurista →
                 </button>
               </div>
             </section>
 
             {/* ===== PASO 3 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 3 ? 'hidden md:block' : ''}`}>
-              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Fecha & Hora</h2>
-              <DatePicker
-                selectedDate={bookingDate}
-                onSelectDate={(d) => { setBookingDate(d); setBookingTime(''); }}
-                disabled={!selectedSpecialist}
-                className="max-w-[280px]"
-              />
-              {!selectedSpecialist ? (
-                <p className="text-[10px] text-[#78716C]">Selecciona una especialista primero.</p>
-              ) : !bookingDate ? null : loadingSlots ? (
-                <p className="text-[10px] text-[#78716C]">Buscando horarios disponibles...</p>
-              ) : availableSlots.length === 0 ? (
-                <p className="text-[10px] text-[#78716C]">No hay horarios disponibles ese día, probá con otra fecha.</p>
+              <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Manicurista y Hora</h2>
+              {!bookingDate ? (
+                <p className="text-[10px] text-[#78716C]">Elegí primero una fecha.</p>
               ) : (
-                <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setBookingTime(slot)}
-                      className={`px-3 py-1.5 rounded-lg text-xs border ${bookingTime === slot ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60 hover:border-[#8E1B54]'}`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+                  {(() => {
+                    const filtered = manicurists
+                      .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    const total = filtered.length;
+                    const start = (manPage - 1) * PER_PAGE;
+                    const page = filtered.slice(start, start + PER_PAGE);
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {page.map(m => {
+                            const manicuristIdStr = String(m.id);
+                            const isSelected = selectedSpecialist === manicuristIdStr;
+                            const shift = manicuristShifts[manicuristIdStr];
+                            return (
+                              <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+                                {m.avatarPath || m.avatarUrl ? (
+                                  <img
+                                    src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                                    alt={m.name}
+                                    onClick={() => setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
+                                    className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
+                                  />
+                                ) : (
+                                  <FallbackAvatar className="w-10 h-10 mx-auto" />
+                                )}
+                                <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
+                                {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {total > PER_PAGE && (
+                          <div className="flex items-center justify-center gap-3 text-xs pt-2">
+                            <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+                            <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
+                            <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  {!selectedSpecialist ? (
+                    <p className="text-[10px] text-[#78716C]">Elegí una manicurista para ver sus horarios disponibles.</p>
+                  ) : loadingSlots ? (
+                    <p className="text-[10px] text-[#78716C]">Buscando horarios disponibles...</p>
+                  ) : availableSlots.length === 0 ? (
+                    <p className="text-[10px] text-[#78716C]">No hay horarios disponibles ese día para esta manicurista, probá con otra.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
+                      {availableSlots.map((slot) => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setBookingTime(slot)}
+                          className={`px-3 py-1.5 rounded-lg text-xs border ${bookingTime === slot ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60 hover:border-[#8E1B54]'}`}
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
