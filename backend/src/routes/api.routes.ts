@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { upload } from "../middlewares/upload.middleware.js";
+import { upload, validateUploadedFileMagicNumbers } from "../middlewares/upload.middleware.js";
 import { requireAdmin, requireStaff } from "../middlewares/auth.middleware.js";
 import {
   getServices,
@@ -99,6 +99,7 @@ router.post(
   "/admin/manicurists/upload-avatar",
   requireAdmin,
   upload.single("image"),
+  validateUploadedFileMagicNumbers,
   uploadManicuristAvatar,
 );
 
@@ -106,6 +107,7 @@ router.post(
   "/admin/landing/upload",
   requireAdmin,
   upload.single("image"),
+  validateUploadedFileMagicNumbers,
   uploadLandingImage,
 );
 

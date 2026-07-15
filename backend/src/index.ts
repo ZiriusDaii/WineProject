@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import rateLimit from "express-rate-limit";
 import path from "node:path";
 import dotenv from "dotenv";
@@ -17,8 +18,19 @@ app.set("trust proxy", 1);
 // crossOriginResourcePolicy en "cross-origin": el frontend corre en otro
 // puerto/dominio y carga imagenes de /uploads via <img>, el default
 // same-origin de helmet las bloquea.
+const corsOriginEnv = process.env.CORS_ORIGIN;
+let allowedOrigins = corsOriginEnv ? corsOriginEnv.split(",").map(o => o.trim()) : ["http://localhost:5173"];
+allowedOrigins = allowedOrigins.filter(o => o !== "*");
+if (allowedOrigins.length === 0) {
+  allowedOrigins = ["http://localhost:5173"];
+}
+
+// crossOriginResourcePolicy en "cross-origin": el frontend corre en otro
+// puerto/dominio y carga imagenes de /uploads via <img>, el default
+// same-origin de helmet las bloquea.
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(compression());
 app.use(express.json({ limit: "1mb" }));
 
 const globalLimiter = rateLimit({
@@ -39,6 +51,24 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth", authLimiter);
 app.use("/api/clients/auth", authLimiter);
+
+const bookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiadas reservas creadas desde esta IP, intente de nuevo mas tarde" },
+});
+app.post("/api/appointments", bookingLimiter);
+
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiados registros de cliente creados desde esta IP, intente de nuevo mas tarde" },
+});
+app.post("/api/clients", registrationLimiter);
 
 app.use("/uploads", express.static(path.resolve("uploads"), { index: false }));
 

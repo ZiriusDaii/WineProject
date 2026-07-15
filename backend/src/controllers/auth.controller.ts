@@ -9,11 +9,16 @@ export async function loginStaff(
 ): Promise<void> {
   try {
     const { username, password } = req.body as {
-      username?: string;
-      password?: string;
+      username?: unknown;
+      password?: unknown;
     };
 
-    if (!username || !password) {
+    if (typeof username !== "string" || typeof password !== "string") {
+      res.status(400).json({ error: "Credenciales inválidas o tipo de datos incorrecto" });
+      return;
+    }
+
+    if (!username.trim() || !password.trim()) {
       res
         .status(400)
         .json({ error: "Los campos 'username' y 'password' son requeridos" });

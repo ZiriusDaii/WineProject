@@ -199,10 +199,10 @@ export async function authClient(
   res: Response,
 ): Promise<void> {
   try {
-    const { phone } = req.body as { phone?: string };
+    const { phone } = req.body as { phone?: unknown };
 
-    if (!phone) {
-      res.status(400).json({ error: "El campo 'phone' es requerido" });
+    if (typeof phone !== "string") {
+      res.status(400).json({ error: "El campo 'phone' debe ser un texto" });
       return;
     }
 
@@ -257,16 +257,14 @@ export async function createClient(
 ): Promise<void> {
   try {
     const { phone, name, age, gender } = req.body as {
-      phone?: string;
-      name?: string;
-      age?: number | null;
-      gender?: string | null;
+      phone?: unknown;
+      name?: unknown;
+      age?: unknown;
+      gender?: unknown;
     };
 
-    if (!phone || !name) {
-      res
-        .status(400)
-        .json({ error: "Los campos 'phone' y 'name' son requeridos" });
+    if (typeof phone !== "string" || typeof name !== "string") {
+      res.status(400).json({ error: "Los campos 'phone' y 'name' son requeridos y deben ser textos" });
       return;
     }
 
@@ -275,14 +273,28 @@ export async function createClient(
       return;
     }
 
-    if (name.length > 60) {
-      res.status(400).json({ error: "El campo 'name' es demasiado largo" });
+    if (name.length > 60 || name.trim() === "") {
+      res.status(400).json({ error: "El campo 'name' es inválido o demasiado largo" });
       return;
     }
 
-    if (age != null && (age < 0 || age > 100)) {
-      res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
-      return;
+    let validatedAge: number | null = null;
+    if (age !== undefined && age !== null) {
+      const parsedAge = Number(age);
+      if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 100) {
+        res.status(400).json({ error: "El campo 'age' debe ser un número entre 0 y 100" });
+        return;
+      }
+      validatedAge = parsedAge;
+    }
+
+    let validatedGender: string | null = null;
+    if (gender !== undefined && gender !== null) {
+      if (typeof gender !== "string") {
+        res.status(400).json({ error: "El campo 'gender' debe ser un texto" });
+        return;
+      }
+      validatedGender = gender;
     }
 
     const existing = await prisma.user.findUnique({ where: { phone } });
@@ -295,8 +307,8 @@ export async function createClient(
       data: {
         phone,
         name,
-        age: age ?? null,
-        gender: gender ?? null,
+        age: validatedAge,
+        gender: validatedGender,
         role: "CLIENTE",
       },
       select: { id: true, name: true, phone: true, age: true, gender: true },
@@ -315,34 +327,39 @@ export async function createAppointment(
 ): Promise<void> {
   try {
     const { clientId, manicuristId, date, serviceIds } = req.body as {
-      clientId?: string;
-      manicuristId?: string;
-      date?: string;
-      serviceIds?: string[];
+      clientId?: unknown;
+      manicuristId?: unknown;
+      date?: unknown;
+      serviceIds?: unknown;
     };
 
+    if (typeof clientId !== "string" || typeof manicuristId !== "string" || typeof date !== "string" || !Array.isArray(serviceIds)) {
+      res.status(400).json({ error: "Tipos de datos inválidos en la solicitud" });
+      return;
+    }
+
     const missing: string[] = [];
-    if (!clientId) missing.push("clientId");
-    if (!manicuristId) missing.push("manicuristId");
-    if (!date) missing.push("date");
-    if (!serviceIds || !Array.isArray(serviceIds) || serviceIds.length === 0) {
-      missing.push("serviceIds (no vacío)");
+    if (!clientId.trim()) missing.push("clientId");
+    if (!manicuristId.trim()) missing.push("manicuristId");
+    if (!date.trim()) missing.push("date");
+    if (serviceIds.length === 0 || !serviceIds.every(id => typeof id === "string")) {
+      missing.push("serviceIds (debe ser un array de strings no vacío)");
     }
 
     if (missing.length > 0) {
-      console.error("createAppointment - campos faltantes:", missing, "body:", req.body);
+      console.error("createAppointment - campos faltantes o inválidos:", missing, "body:", req.body);
       res.status(400).json({
-        error: `Faltan campos requeridos: ${missing.join(", ")}`,
+        error: `Faltan campos requeridos o son inválidos: ${missing.join(", ")}`,
         missing,
       });
       return;
     }
 
     const services = await prisma.service.findMany({
-      where: { id: { in: serviceIds! } },
+      where: { id: { in: serviceIds as string[] } },
     });
 
-    if (services.length !== serviceIds!.length) {
+    if (services.length !== serviceIds.length) {
       res.status(400).json({ error: "Uno o más serviceIds no existen" });
       return;
     }
@@ -352,7 +369,18 @@ export async function createAppointment(
       0,
     );
     const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
-    const parsedDate = new Date(date!);
+    
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      res.status(400).json({ error: "La fecha proporcionada es inválida" });
+      return;
+    }
+
+    const now = new Date();
+    if (parsedDate.getTime() < now.getTime() - 2 * 60 * 1000) {
+      res.status(400).json({ error: "La fecha de la reserva debe ser en el futuro" });
+      return;
+    }
 
     if (!isWithinBusinessHours(parsedDate, totalDuration)) {
       res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
@@ -450,6 +478,10 @@ export async function updateAppointment(
 
     if (date || manicuristId) {
       const targetDate = date ? new Date(date) : existing.date;
+      if (isNaN(targetDate.getTime())) {
+        res.status(400).json({ error: "La fecha proporcionada es inválida" });
+        return;
+      }
       const targetManicuristId = manicuristId ?? existing.manicuristId;
 
       if (!isWithinBusinessHours(targetDate, existing.totalDuration)) {
