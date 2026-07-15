@@ -136,6 +136,8 @@ export const AdminDashboard: React.FC = () => {
   const [showSvcForm, setShowSvcForm] = useState(false);
   const [showShiftForm, setShowShiftForm] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
+  const [metricsOffsetDays, setMetricsOffsetDays] = useState(0);
+  const [metricsType, setMetricsType] = useState<'earnings' | 'appointments'>('earnings');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -656,6 +658,49 @@ export const AdminDashboard: React.FC = () => {
             };
           });
 
+          const getDailyMetrics = () => {
+            const dates = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - (6 - i) + metricsOffsetDays);
+              return d.toISOString().split('T')[0];
+            });
+
+            const dailyData = dates.reduce((acc, dateStr) => {
+              acc[dateStr] = { earnings: 0, appointments: 0 };
+              return acc;
+            }, {} as Record<string, { earnings: number; appointments: number }>);
+
+            appointments.forEach(a => {
+              try {
+                const dateStr = new Date(a.date).toISOString().split('T')[0];
+                if (dateStr in dailyData) {
+                  dailyData[dateStr].appointments += 1;
+                  if (a.status === 'COMPLETED' || a.status === 'IN_PROGRESS') {
+                    dailyData[dateStr].earnings += Number(a.totalPrice || 0);
+                  }
+                }
+              } catch (e) {}
+            });
+
+            return dates.map(dateStr => {
+              const dateObj = new Date(dateStr + 'T00:00:00');
+              const label = dateObj.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
+              return {
+                date: dateStr,
+                label: label.charAt(0).toUpperCase() + label.slice(1),
+                earnings: dailyData[dateStr].earnings,
+                appointments: dailyData[dateStr].appointments,
+              };
+            });
+          };
+
+          const dailyMetrics = getDailyMetrics();
+          const isEarnings = metricsType === 'earnings';
+          const maxVal = Math.max(
+            ...dailyMetrics.map(d => isEarnings ? d.earnings : d.appointments),
+            isEarnings ? 50000 : 5
+          );
+
           return (
             <div className="space-y-8 animate-fade-in text-left">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-[#EADEC9]/30 pb-4">
@@ -717,39 +762,96 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
-                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
-                    <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
+                    <div className="text-left">
+                      <h3 className="serif-title text-base font-bold text-[#3B0019]">Estadísticas Diarias</h3>
+                      <p className="text-[10px] text-[#78716C] mt-0.5">Métricas de rendimiento por fecha de cita.</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex bg-[#F7F3EB] rounded-lg p-0.5 text-[10px] font-bold border border-[#EADEC9]/40">
+                        <button
+                          onClick={() => { setMetricsType('earnings'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className={`px-2 py-0.5 rounded transition-colors ${isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                        >
+                          Ingresos ($)
+                        </button>
+                        <button
+                          onClick={() => { setMetricsType('appointments'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className={`px-2 py-0.5 rounded transition-colors ${!isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                        >
+                          Citas (Cant.)
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => { setMetricsOffsetDays(prev => prev - 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className="w-6 h-6 flex items-center justify-center border border-[#EADEC9]/60 rounded-md text-[#A68F63] bg-white hover:bg-[#5C0632]/5 transition-all text-xs font-bold"
+                          title="Anterior"
+                        >
+                          ‹
+                        </button>
+                        <button
+                          onClick={() => { setMetricsOffsetDays(0); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className="px-2 py-1.5 border border-[#EADEC9]/60 rounded-md text-[8px] font-extrabold uppercase text-[#A68F63] bg-white hover:bg-[#5C0632]/5 leading-none"
+                        >
+                          Hoy
+                        </button>
+                        <button
+                          onClick={() => { setMetricsOffsetDays(prev => prev + 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className="w-6 h-6 flex items-center justify-center border border-[#EADEC9]/60 rounded-md text-[#A68F63] bg-white hover:bg-[#5C0632]/5 transition-all text-xs font-bold"
+                          title="Siguiente"
+                        >
+                          ›
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  {stats.manicuristPerformance.length === 0 ? (
-                    <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">Sin datos de rendimiento.</div>
-                  ) : (
-                    <div className="flex justify-around items-end h-40 pt-4 px-2">
-                      {stats.manicuristPerformance.map((p, i) => {
-                        const maxCompleted = Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1);
-                        const percent = (p.completedAppointments / maxCompleted) * 100;
+
+                  <div className="relative">
+                    <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
+                      <line x1="30" y1="30" x2="470" y2="30" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="85" x2="470" y2="85" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="140" x2="470" y2="140" stroke="#EADEC9" strokeWidth="1" />
+
+                      {dailyMetrics.map((d, index) => {
+                        const val = isEarnings ? d.earnings : d.appointments;
+                        const heightVal = (val / maxVal) * 100;
+                        const x = index * 60 + 45;
                         return (
-                          <div key={i} className="flex flex-col items-center group relative w-16 sm:w-20">
-                            <span className="text-[10px] font-bold text-[#8E1B54] mb-1">
-                              {p.completedAppointments}
-                            </span>
-                            <div className="w-6 sm:w-8 bg-[#EADEC9]/20 rounded-t-lg overflow-hidden flex items-end h-20">
-                              <div
-                                className="bg-[#8E1B54] w-full rounded-t-lg transition-all duration-700 ease-out"
-                                style={{ height: `${animateBars ? percent : 0}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] font-semibold text-[#44403C] mt-2 text-center truncate w-full" title={p.name}>
-                              {p.name.split(' ')[0]}
-                            </span>
-                            <span className="text-[8px] text-[#A68F63] font-bold uppercase mt-0.5">
-                              {i === 0 ? '★ Top' : `#${i+1}`}
-                            </span>
-                          </div>
+                          <g key={index} className="group/bar">
+                            <rect
+                              x={x}
+                              y={140 - (animateBars ? heightVal : 0)}
+                              width="24"
+                              height={animateBars ? heightVal : 0}
+                              rx="4"
+                              ry="4"
+                              fill="#8E1B54"
+                              className="transition-all duration-700 ease-out hover:fill-[#5C0632] cursor-pointer"
+                            />
+                            <text
+                              x={x + 12}
+                              y={140 - (animateBars ? heightVal : 0) - 6}
+                              textAnchor="middle"
+                              className="text-[8px] font-bold fill-[#8E1B54]"
+                            >
+                              {val > 0 ? (isEarnings ? `$${val.toLocaleString('es-CO')}` : val) : ''}
+                            </text>
+                            <text
+                              x={x + 12}
+                              y="154"
+                              textAnchor="middle"
+                              className="text-[8px] font-semibold fill-[#78716C]"
+                            >
+                              {d.label}
+                            </text>
+                          </g>
                         );
                       })}
-                    </div>
-                  )}
+                    </svg>
+                  </div>
                 </div>
 
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
@@ -797,6 +899,31 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Row 3: Specialist Performance */}
+              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
+                  <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
+                  <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
+                </div>
+                {stats.manicuristPerformance.length === 0 ? (
+                  <p className="text-xs text-[#78716C] py-4 text-center">Sin datos de rendimiento.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {stats.manicuristPerformance.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[#F7F3EB]/25 hover:bg-[#F7F3EB]/50 border border-[#EADEC9]/20 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
+                            {i === 0 ? '★' : i + 1}
+                          </span>
+                          <span className="font-semibold text-xs text-[#44403C]">{p.name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
