@@ -95,9 +95,11 @@ router.delete("/admin/shift-templates/:id", requireAdmin, deleteShiftTemplate);
 router.get("/admin/manicurist-schedule", requireAdmin, getManicuristScheduleWeek);
 router.put("/admin/manicurist-schedule", requireAdmin, assignManicuristSchedule);
 
+// requireStaff (no requireAdmin): una manicurista sube su propio avatar; el
+// controller fuerza el manicuristId a su propio id salvo admin/owner.
 router.post(
   "/admin/manicurists/upload-avatar",
-  requireAdmin,
+  requireStaff,
   upload.single("image"),
   validateUploadedFileMagicNumbers,
   uploadManicuristAvatar,

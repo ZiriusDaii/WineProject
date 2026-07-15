@@ -1,17 +1,26 @@
 import type { Request, Response } from "express";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import { prisma } from "../lib/prisma.js";
 
 export async function getManicuristDashboard(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
-    const { month, year, date, manicuristId } = req.query as {
+    const { month, year, date } = req.query as {
       month?: string;
       year?: string;
       date?: string;
-      manicuristId?: string;
     };
+
+    // Una manicurista solo ve su propia agenda; admin/owner pueden consultar la
+    // de cualquiera pasando ?manicuristId=. El id sale del token, no del query,
+    // para que una manicurista no lea la agenda (ni los telefonos de clientes)
+    // de otra.
+    const isPrivileged = req.user?.role === "ADMIN" || req.user?.role === "OWNER";
+    const manicuristId = isPrivileged
+      ? (req.query.manicuristId as string | undefined)
+      : req.user?.userId;
 
     if (!manicuristId) {
       res.status(400).json({ error: "El query param 'manicuristId' es requerido" });
@@ -20,17 +29,19 @@ export async function getManicuristDashboard(
 
     let dateFilter: { gte: Date; lte: Date };
 
+    // Fechas en UTC-literal, igual que el resto de la app (ver client.controller).
     if (date) {
-      const d = new Date(date as string);
-      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-      dateFilter = { gte: startOfDay, lte: endOfDay };
+      const day = (date as string).slice(0, 10);
+      dateFilter = {
+        gte: new Date(`${day}T00:00:00.000Z`),
+        lte: new Date(`${day}T23:59:59.999Z`),
+      };
     } else if (month && year) {
       const m = Number(month);
       const y = Number(year);
       dateFilter = {
-        gte: new Date(y, m - 1, 1),
-        lte: new Date(y, m, 0, 23, 59, 59, 999),
+        gte: new Date(Date.UTC(y, m - 1, 1)),
+        lte: new Date(Date.UTC(y, m, 1) - 1),
       };
     } else {
       res.status(400).json({ error: "Se requiere 'month' y 'year', o 'date' como query params" });
@@ -72,7 +83,7 @@ export async function getManicuristDashboard(
 }
 
 export async function completeAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -80,6 +91,22 @@ export async function completeAppointment(
 
     if (!id) {
       res.status(400).json({ error: "El parámetro 'id' es requerido" });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({
+      where: { id },
+      select: { manicuristId: true },
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    // Una manicurista solo completa citas propias; admin/owner cualquiera.
+    const isPrivileged = req.user?.role === "ADMIN" || req.user?.role === "OWNER";
+    if (!isPrivileged && existing.manicuristId !== req.user?.userId) {
+      res.status(403).json({ error: "Solo podés completar tus propias citas" });
       return;
     }
 
@@ -101,7 +128,7 @@ export async function completeAppointment(
 }
 
 export async function updateManicuristProfile(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -115,6 +142,13 @@ export async function updateManicuristProfile(
 
     if (!id) {
       res.status(400).json({ error: "El campo 'id' es requerido" });
+      return;
+    }
+
+    // Una manicurista solo edita su propio perfil; admin/owner cualquiera.
+    const isPrivileged = req.user?.role === "ADMIN" || req.user?.role === "OWNER";
+    if (!isPrivileged && id !== req.user?.userId) {
+      res.status(403).json({ error: "Solo podés editar tu propio perfil" });
       return;
     }
 

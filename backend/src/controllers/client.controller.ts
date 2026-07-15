@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
 
@@ -184,8 +185,19 @@ export async function getManicurists(
 
 export async function getOffers(_req: Request, res: Response): Promise<void> {
   try {
+    // No exponer `code` en el listado publico: los codigos se validan aparte
+    // (validateOfferCode) y listarlos permitiria usar cualquier promo sin conocerla.
     const offers = await prisma.specialOffer.findMany({
       where: { isActive: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        discountPercentage: true,
+        validFrom: true,
+        validUntil: true,
+        newUsersOnly: true,
+      },
     });
     res.json(offers);
   } catch (error) {
@@ -227,6 +239,11 @@ export async function authClient(
     });
 
     if (!user) {
+      const takenByOther = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
+      if (takenByOther) {
+        res.status(409).json({ error: "Este numero de telefono ya esta asociado a otra cuenta. Usa un numero distinto para reservar." });
+        return;
+      }
       res.json({ exists: false });
       return;
     }
@@ -352,6 +369,12 @@ export async function createAppointment(
         error: `Faltan campos requeridos o son inválidos: ${missing.join(", ")}`,
         missing,
       });
+      return;
+    }
+
+    const client = await prisma.user.findFirst({ where: { id: clientId, role: "CLIENTE" } });
+    if (!client) {
+      res.status(400).json({ error: "El clientId no corresponde a un cliente valido" });
       return;
     }
 
@@ -583,12 +606,17 @@ export async function getClientAppointments(
 }
 
 export async function uploadManicuristAvatar(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
     const file = req.file;
-    const { manicuristId } = req.body as { manicuristId?: string };
+    // Admin/owner suben avatar de cualquier manicurista (pasan manicuristId);
+    // una manicurista solo cambia el suyo (id del token), no el de otra.
+    const isPrivileged = req.user?.role === "ADMIN" || req.user?.role === "OWNER";
+    const manicuristId = isPrivileged
+      ? (req.body as { manicuristId?: string }).manicuristId
+      : req.user?.userId;
 
     if (!file) {
       res.status(400).json({ error: "No se recibió ninguna imagen" });
