@@ -134,6 +134,7 @@ export const AdminDashboard: React.FC = () => {
   const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
   const [showManForm, setShowManForm] = useState(false);
   const [showSvcForm, setShowSvcForm] = useState(false);
+  const [animateBars, setAnimateBars] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -206,6 +207,13 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => { loadData(); }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'schedule') fetchWeekSchedule(); }, [activeTab, scheduleWeek, scheduleYear]);
+  useEffect(() => {
+    if (activeTab === 'metrics') {
+      setAnimateBars(false);
+      const timer = setTimeout(() => setAnimateBars(true), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
 
   const doLogin = async () => {
     setSubmitting(true);
@@ -284,6 +292,10 @@ export const AdminDashboard: React.FC = () => {
         }
       } catch { /* */ }
       setStats(sData2);
+      if (activeTab === 'metrics') {
+        setAnimateBars(false);
+        setTimeout(() => setAnimateBars(true), 150);
+      }
     } catch { /* */ }
     finally { setLoading(false); }
   };
@@ -625,56 +637,6 @@ export const AdminDashboard: React.FC = () => {
 
         {/* METRICS */}
         {activeTab === 'metrics' && stats && (() => {
-          const getEarningsLast7Days = () => {
-            const last7Days = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              d.setDate(d.getDate() - i);
-              return d.toISOString().split('T')[0];
-            }).reverse();
-
-            const dailyEarnings = last7Days.reduce((acc, dateStr) => {
-              acc[dateStr] = 0;
-              return acc;
-            }, {} as Record<string, number>);
-
-            appointments.forEach(a => {
-              if (a.status === 'COMPLETED' || a.status === 'IN_PROGRESS') {
-                try {
-                  const dateStr = new Date(a.date).toISOString().split('T')[0];
-                  if (dateStr in dailyEarnings) {
-                    dailyEarnings[dateStr] += Number(a.totalPrice || 0);
-                  }
-                } catch (e) {}
-              }
-            });
-
-            return last7Days.map(dateStr => {
-              const dateObj = new Date(dateStr + 'T00:00:00');
-              const label = dateObj.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
-              return {
-                date: dateStr,
-                label: label.charAt(0).toUpperCase() + label.slice(1),
-                amount: dailyEarnings[dateStr]
-              };
-            });
-          };
-
-          const earningsData = getEarningsLast7Days();
-          const maxAmount = Math.max(...earningsData.map(d => d.amount), 50000);
-          const points = earningsData.map((d, index) => {
-            const x = (index / 6) * 440 + 30;
-            const y = 160 - (d.amount / maxAmount) * 120;
-            return { x, y, amount: d.amount, label: d.label };
-          });
-
-          const areaPath = points.length > 0 
-            ? `M 30 160 L ${points.map(p => `${p.x} ${p.y}`).join(' L ')} L ${points[points.length-1].x} 160 Z`
-            : '';
-          
-          const linePath = points.length > 0
-            ? `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}`
-            : '';
-
           const statusColors: Record<string, string> = {
             PENDING: '#A68F63',
             IN_PROGRESS: '#8E1B54',
@@ -713,7 +675,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-[#8E1B54]" />
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Ganancias Totales</span>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Ingresos</span>
                       <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">${stats.totalEarnings.toLocaleString('es-CO')}</h3>
                       <span className="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Completado & En Progreso</span>
                     </div>
@@ -760,62 +722,39 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Evolución de Ingresos (Últimos 7 Días)</h3>
-                    <span className="text-[10px] bg-[#8E1B54]/5 text-[#8E1B54] px-2 py-0.5 rounded-full font-bold">Por fecha de cita</span>
+                  <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
+                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
+                    <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
                   </div>
-                  
-                  <div className="relative">
-                    <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
-                      <defs>
-                        <linearGradient id="earningsAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#8E1B54" stopOpacity="0.18" />
-                          <stop offset="100%" stopColor="#8E1B54" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      <line x1="30" y1="30" x2="470" y2="30" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
-                      <line x1="30" y1="95" x2="470" y2="95" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
-                      <line x1="30" y1="160" x2="470" y2="160" stroke="#EADEC9" strokeWidth="1" />
-
-                      {areaPath && (
-                        <path d={areaPath} fill="url(#earningsAreaGrad)" />
-                      )}
-
-                      {linePath && (
-                        <path d={linePath} fill="none" stroke="#8E1B54" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      )}
-
-                      {points.map((p, idx) => (
-                        <g key={idx} className="group/dot">
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r="4.5"
-                            fill="#8E1B54"
-                            stroke="#FFFFFF"
-                            strokeWidth="2"
-                            className="cursor-pointer transition-all duration-150 group-hover/dot:r-6"
-                          />
-                          <text
-                            x={p.x}
-                            y={p.y - 10}
-                            textAnchor="middle"
-                            className="text-[9px] font-bold fill-[#8E1B54]"
-                          >
-                            {p.amount > 0 ? `$${(p.amount / 1000).toFixed(0)}k` : ''}
-                          </text>
-                          <text
-                            x={p.x}
-                            y="174"
-                            textAnchor="middle"
-                            className="text-[8px] font-semibold fill-[#78716C]"
-                          >
-                            {p.label}
-                          </text>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
+                  {stats.manicuristPerformance.length === 0 ? (
+                    <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">Sin datos de rendimiento.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {stats.manicuristPerformance.map((p, i) => {
+                        const maxCompleted = Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1);
+                        const percent = (p.completedAppointments / maxCompleted) * 100;
+                        return (
+                          <div key={i} className="flex flex-col space-y-1.5 p-2 rounded-xl hover:bg-[#F7F3EB]/20 transition-colors">
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
+                                  {i === 0 ? '★' : i + 1}
+                                </span>
+                                <span className="font-semibold text-[#44403C]">{p.name}</span>
+                              </div>
+                              <span className="font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
+                            </div>
+                            <div className="h-3 bg-[#EADEC9]/25 rounded-full overflow-hidden relative shadow-inner">
+                              <div
+                                className="bg-gradient-to-r from-[#8E1B54] to-[#5C0632] h-full rounded-full transition-all duration-700 ease-out"
+                                style={{ width: `${animateBars ? percent : 0}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
@@ -864,40 +803,6 @@ export const AdminDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-
-              {stats.manicuristPerformance.length > 0 && (
-                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
-                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
-                    <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                    {stats.manicuristPerformance.map((p, i) => {
-                      const maxCompleted = Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1);
-                      const percent = (p.completedAppointments / maxCompleted) * 100;
-                      return (
-                        <div key={i} className="flex flex-col space-y-1.5 p-2 rounded-xl hover:bg-[#F7F3EB]/20 transition-colors">
-                          <div className="flex justify-between items-center text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
-                                {i === 0 ? '★' : i + 1}
-                              </span>
-                              <span className="font-semibold text-[#44403C]">{p.name}</span>
-                            </div>
-                            <span className="font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
-                          </div>
-                          <div className="h-3 bg-[#EADEC9]/25 rounded-full overflow-hidden relative shadow-inner">
-                            <div
-                              className="bg-gradient-to-r from-[#8E1B54] to-[#5C0632] h-full rounded-full transition-all duration-500 ease-out"
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })()}

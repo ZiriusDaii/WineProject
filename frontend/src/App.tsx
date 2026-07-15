@@ -1403,11 +1403,10 @@ export default function App() {
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
         <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
-            ← Volver
-          </button>
-
-          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-16">
+          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-8">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
+              ← Volver
+            </button>
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
@@ -1569,6 +1568,9 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16 pb-24 md:pb-10">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
+              ← Volver
+            </button>
             {/* Wizard Progress — mobile only */}
             <div className="md:hidden flex items-center justify-center gap-3 pb-2">
               {[1, 2, 3].map((s) => (
