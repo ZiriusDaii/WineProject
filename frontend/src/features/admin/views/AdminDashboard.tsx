@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
 
@@ -121,6 +121,8 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [apptDateFilter, setApptDateFilter] = useState<'all' | 'today' | 'tomorrow'>('all');
+  const [apptManicuristFilter, setApptManicuristFilter] = useState('all');
+  const [apptStatusFilter, setApptStatusFilter] = useState('all');
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -274,7 +276,7 @@ export const AdminDashboard: React.FC = () => {
 
       let appts: Appointment[] = [];
       try {
-        const aRes = await fetch(`${API}/api/admin/appointments`, { headers: h });
+        const aRes = await fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h });
         if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
       } catch { /* */ }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
@@ -476,7 +478,7 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(`${API}/api/admin/manicurist-schedule`, {
         method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify({ manicuristId, week: scheduleWeek, year: scheduleYear, shiftTemplateId: shiftTemplateId || null }),
+        body: JSON.stringify({ manicuristId, year: scheduleYear, shiftTemplateId: shiftTemplateId || null }),
       });
       if (res.ok) fetchWeekSchedule();
     } catch { /* */ }
@@ -553,7 +555,9 @@ export const AdminDashboard: React.FC = () => {
         if (apptDateFilter === 'all') return true;
         const apptDay = toDateLabel(a.date);
         return apptDateFilter === 'today' ? apptDay === todayStr : apptDay === tomorrowStr;
-      });
+      })
+      .filter(a => apptManicuristFilter === 'all' || String(a.manicuristId) === apptManicuristFilter)
+      .filter(a => apptStatusFilter === 'all' || a.status === apptStatusFilter);
   };
   const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -561,6 +565,9 @@ export const AdminDashboard: React.FC = () => {
   const svcNames = (ss: ServiceItem[]) => ss.map(s => s.name).join(', ') || '—';
   const clear = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
+  // Se usa 4 veces por render (tabla desktop, cards movil, paginacion); memoizar
+  // evita re-filtrar todas las citas (hasta 1000) en cada re-render.
+  const filteredApps = useMemo(() => filterApps(), [appointments, searchQuery, apptDateFilter, apptManicuristFilter, apptStatusFilter, manicurists]);
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
   if (unauthorized) return (
@@ -680,7 +687,7 @@ export const AdminDashboard: React.FC = () => {
                     dailyData[dateStr].earnings += Number(a.totalPrice || 0);
                   }
                 }
-              } catch (e) {}
+              } catch { /* fecha invalida: se ignora esa cita */ }
             });
 
             return dates.map(dateStr => {
@@ -699,7 +706,7 @@ export const AdminDashboard: React.FC = () => {
           const isEarnings = metricsType === 'earnings';
           const maxVal = Math.max(
             ...dailyMetrics.map(d => isEarnings ? d.earnings : d.appointments),
-            isEarnings ? 50000 : 5
+            1
           );
 
           return (
@@ -792,7 +799,7 @@ export const AdminDashboard: React.FC = () => {
                           onClick={() => { setMetricsOffsetDays(0); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                           className="px-3.5 py-2 border border-[#EADEC9]/60 rounded-xl text-xs font-semibold text-[#8E1B54] bg-[#F7F3EB] hover:bg-[#8E1B54]/5 active:scale-95 transition-all animate-fade-in"
                         >
-                          Hoy
+                          Semana Actual
                         </button>
                         <div className="flex items-center bg-white border border-[#EADEC9]/60 rounded-xl overflow-hidden shadow-xs">
                           <button
@@ -940,7 +947,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra de Citas</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {([['all', 'Todas'], ['today', 'Hoy'], ['tomorrow', 'Mañana']] as const).map(([value, label]) => (
                 <button
                   key={value}
@@ -950,18 +957,34 @@ export const AdminDashboard: React.FC = () => {
                   {label}
                 </button>
               ))}
+              <select
+                value={apptManicuristFilter}
+                onChange={e => { setApptManicuristFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#EADEC9]/60 bg-white text-[#78716C]"
+              >
+                <option value="all">Todas las manicuristas</option>
+                {manicurists.map(m => <option key={m.id} value={String(m.id)}>{m.name}</option>)}
+              </select>
+              <select
+                value={apptStatusFilter}
+                onChange={e => { setApptStatusFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#EADEC9]/60 bg-white text-[#78716C]"
+              >
+                <option value="all">Todos los estados</option>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
               <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
-              {pagination(filterApps().length)}
+              {pagination(filteredApps.length)}
             </div>
             {/* Desktop: tabla normal */}
             <div className="hidden md:block bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Especialista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
                 <tbody className="divide-y divide-[#EADEC9]/20">
-                  {filterApps().length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
-                    paginate(filterApps()).map(a => (
+                  {filteredApps.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
+                    paginate(filteredApps).map(a => (
                       <tr key={a.id} className={a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5' : ''}>
                         <td className="p-3 font-mono font-bold">#{a.appointmentId || a.id}</td>
                         <td className="p-3">{a.clientName || a.client?.name || '—'}</td>
@@ -986,8 +1009,8 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Mobile: cards apiladas */}
             <div className="md:hidden space-y-2">
-              {filterApps().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin citas.</p> :
-                paginate(filterApps()).map(a => (
+              {filteredApps.length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin citas.</p> :
+                paginate(filteredApps).map(a => (
                   <div key={a.id} className={`p-4 rounded-xl border text-left text-xs ${a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5 border-[#8E1B54]/40' : 'bg-white border-[#EADEC9]/40'}`}>
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-mono font-bold text-[#3B0019]">#{a.appointmentId || a.id}</span>
@@ -1019,16 +1042,17 @@ export const AdminDashboard: React.FC = () => {
         {/* CALENDAR */}
         {activeTab === 'calendar' && (
           <div className="space-y-6 animate-fade-in text-left max-w-3xl">
-            <h2 className="serif-title text-2xl text-[#3B0019]">Vista de Calendario</h2>
+            <h2 className="serif-title text-3xl text-[#3B0019]">Vista de Calendario</h2>
             <div className="md:grid md:grid-cols-12 md:gap-8">
               <div className="md:col-span-5">
                 <DatePicker
                   selectedDate={calendarDate}
                   onSelectDate={setCalendarDate}
+                  markedDates={new Set(appointments.map(a => (a.date || '').slice(0, 10)))}
                 />
               </div>
               <div className="md:col-span-7 space-y-3">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase border-b border-[#EADEC9]/30 pb-2">
+                <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">
                   Citas del {calendarDate}
                 </h3>
                 {appointments.filter(a => (a.date || '').slice(0, 10) === calendarDate).length === 0 ? (
@@ -1047,7 +1071,7 @@ export const AdminDashboard: React.FC = () => {
                           }`} />
                           <span className="font-bold text-[#44403C] w-12">{(a.date || '').slice(11, 16)}</span>
                           <div className="flex-1 min-w-0">
-                            <span className="text-[#3B0019] font-semibold">{a.clientName || 'Cliente'}</span>
+                            <span className="text-[#3B0019] font-semibold">{a.clientName || a.client?.name || 'Cliente'}</span>
                             <span className="ml-2 text-[#A68F63]">{a.manicurist?.name || '—'}</span>
                             <p className="text-[9px] text-[#78716C] truncate">{a.services?.map(s => s.name).join(', ') || '—'}</p>
                           </div>
@@ -1080,7 +1104,7 @@ export const AdminDashboard: React.FC = () => {
 
             {showManForm && (
               <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">{manId ? 'Editar Manicurista' : 'Nueva Manicurista'}</h3>
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">{manId ? 'Editar Manicurista' : 'Nueva Manicurista'}</h3>
                 <form onSubmit={handleSaveManicurist} className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Telefono</label><input type="tel" inputMode="numeric" required maxLength={10} value={manPhone} onChange={e => setManPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full p-2 border rounded-lg text-xs" /></div>
@@ -1170,7 +1194,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Formulario collapsible para crear/editar plantillas */}
             {showShiftForm && (
               <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">
                   {editingShiftId ? 'Editar Plantilla de Turno' : 'Nueva Plantilla de Turno'}
                 </h3>
                 <form onSubmit={async (e) => { await handleSaveShiftTemplate(e); setShowShiftForm(false); }} className="space-y-3">
@@ -1222,7 +1246,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Plantillas de Turno Panel (Collapsible like categories in services) */}
             {showTemplatesPanel && (
               <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Gestionar Plantillas de Turnos</h3>
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">Gestionar Plantillas de Turnos</h3>
                 {shiftTemplates.length === 0 ? (
                   <p className="text-xs text-[#78716C] py-2">Todavía no hay turnos creados.</p>
                 ) : (
@@ -1359,7 +1383,7 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-xs font-mono text-[#8E1B54]">{selectedClient.phone}</p>
                   <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} anos · {selectedClient.gender || '—'}</p>
                   <div className="border-t pt-3 space-y-2">
-                    <h4 className="text-xs font-bold text-[#3B0019] uppercase">Historial de Citas ({clientAppts.length})</h4>
+                    <h4 className="serif-title text-base font-bold text-[#3B0019]">Historial de Citas ({clientAppts.length})</h4>
                     {clientAppts.length === 0 ? <p className="text-xs text-[#78716C]">Sin citas registradas.</p> :
                       clientAppts.map(a => (
                         <div key={a.id} className="flex justify-between items-center text-xs p-2 bg-[#F7F3EB]/20 rounded-lg">
@@ -1402,7 +1426,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Categories Panel */}
             {showCategoriesPanel && (
               <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 animate-fade-in">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Gestionar Categorias</h3>
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">Gestionar Categorias</h3>
                 <form onSubmit={handleSaveCategory} className="flex gap-2">
                   <input type="text" placeholder="Nombre de categoria" value={catName} onChange={e => setCatName(e.target.value)} className="flex-1 p-2 border rounded-lg text-xs" />
                   <button type="submit" disabled={submitting} className="px-4 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
@@ -1428,7 +1452,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Service Form */}
             {showSvcForm && (
               <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
                 <form onSubmit={handleSaveService} className="space-y-3">
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
@@ -1515,9 +1539,11 @@ export const AdminDashboard: React.FC = () => {
 
         {/* OFFERS */}
         {activeTab === 'offers' && (
-          <div className="space-y-6 md:grid md:grid-cols-12 md:gap-8 md:space-y-0 animate-fade-in text-left">
+          <div className="space-y-6 animate-fade-in text-left">
+            <h2 className="serif-title text-3xl text-[#3B0019]">Descuentos y Promociones</h2>
+            <div className="md:grid md:grid-cols-12 md:gap-8 space-y-6 md:space-y-0">
             <div className="md:col-span-5 space-y-4">
-              <h2 className="serif-title text-2xl text-[#3B0019]">{offId ? 'Editar Descuento' : 'Nuevo Descuento'}</h2>
+              <h3 className="serif-title text-base font-bold text-[#3B0019]">{offId ? 'Editar Descuento' : 'Nuevo Descuento'}</h3>
               <form onSubmit={handleSaveOffer} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" required value={offTitle} onChange={e => setOffTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                 <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><input type="text" value={offDesc} onChange={e => setOffDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
@@ -1540,7 +1566,7 @@ export const AdminDashboard: React.FC = () => {
               </form>
             </div>
             <div className="md:col-span-7 space-y-4">
-              <h3 className="serif-title text-xl text-[#3B0019] border-b pb-2">Descuentos ({offers.length})</h3>
+              <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">Descuentos ({offers.length})</h3>
               <input type="text" placeholder="Filtrar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full" />
               <div className="space-y-2">
                 {filterOffers().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin descuentos.</p> :
@@ -1578,6 +1604,7 @@ export const AdminDashboard: React.FC = () => {
                 }
               </div>
             </div>
+            </div>
           </div>
         )}
 
@@ -1589,7 +1616,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Lista de anuncios existentes */}
             {cmsItems.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.length})</h3>
+                <h3 className="serif-title text-base font-bold text-[#3B0019]">Anuncios publicados ({cmsItems.length})</h3>
                 <div className="space-y-2">
                   {cmsItems.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
@@ -1610,7 +1637,7 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveCMS} className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{editingCmsId ? 'Editar anuncio' : 'Subir nuevo anuncio'}</h3>
+              <h3 className="serif-title text-base font-bold text-[#3B0019]">{editingCmsId ? 'Editar anuncio' : 'Subir nuevo anuncio'}</h3>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {editingCmsId && '(dejar vacio = no cambiar)'}</label><input type="file" accept="image/*" onChange={e => setCmsFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Titulo</label><input type="text" value={cmsTitle} onChange={e => setCmsTitle(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
               <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion</label><textarea value={cmsDesc} onChange={e => setCmsDesc(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-20" /></div>

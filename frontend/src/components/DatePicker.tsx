@@ -4,6 +4,7 @@ interface DatePickerProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   availableDates?: Set<string>;
+  markedDates?: Set<string>;
   minDate?: string;
   className?: string;
   disabled?: boolean;
@@ -26,6 +27,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   selectedDate,
   onSelectDate,
   availableDates,
+  markedDates,
   minDate,
   className = '',
   disabled = false,
@@ -104,6 +106,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           const isToday = dateStr === todayStr;
           const isSelected = dateStr === selectedDate;
           const hasAvailability = availableDates ? availableDates.has(dateStr) : true;
+          const isMarked = markedDates?.has(dateStr);
 
           return (
             <button
@@ -112,7 +115,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               disabled={disabled || isPast || !hasAvailability}
               onClick={() => onSelectDate(dateStr)}
               className={`
-                w-8 h-8 rounded-full text-[11px] font-medium mx-auto flex items-center justify-center transition-all
+                relative w-8 h-8 rounded-full text-[11px] font-medium mx-auto flex items-center justify-center transition-all
                 ${isSelected
                   ? 'bg-[#5C0632] text-white shadow-md'
                   : isPast
@@ -125,6 +128,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               `}
             >
               {day}
+              {isMarked && (
+                <span className={`absolute bottom-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-[#8E1B54]'}`} />
+              )}
             </button>
           );
         })}
