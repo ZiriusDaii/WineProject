@@ -107,6 +107,7 @@ interface Category {
 export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [apptDateFilter, setApptDateFilter] = useState<'all' | 'today' | 'tomorrow'>('all');
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -438,7 +439,18 @@ export const AdminDashboard: React.FC = () => {
 
   // --- Helpers ---
   const paginate = (items: any[]) => { const s = (currentPage - 1) * itemsPerPage; return items.slice(s, s + itemsPerPage); };
-  const filterApps = () => appointments.filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filterApps = () => {
+    const now = new Date();
+    const todayStr = toDateLabel(now.toISOString());
+    const tomorrowStr = toDateLabel(new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString());
+    return appointments
+      .filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()))
+      .filter(a => {
+        if (apptDateFilter === 'all') return true;
+        const apptDay = toDateLabel(a.date);
+        return apptDateFilter === 'today' ? apptDay === todayStr : apptDay === tomorrowStr;
+      });
+  };
   const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const getManName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || '—';
@@ -556,6 +568,17 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra de Citas</h2>
+            <div className="flex gap-2">
+              {([['all', 'Todas'], ['today', 'Hoy'], ['tomorrow', 'Mañana']] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => { setApptDateFilter(value); setCurrentPage(1); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${apptDateFilter === value ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#78716C] border-[#EADEC9]/60 hover:border-[#8E1B54]/40'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
               <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
               {pagination(filterApps().length)}
