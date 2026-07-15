@@ -892,7 +892,7 @@ export default function App() {
 • Fecha: ${bookingDate} a las ${bookingTime}
 • Total: ${typeof total === 'number' ? `$${total.toLocaleString()}` : total}`;
 
-        const whatsappNumber = '+57 319 707 2921'.replace(/\D/g, '');
+        const whatsappNumber = '+57 314 862 2128'.replace(/\D/g, '');
         const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
         
         setTimeout(() => {
@@ -1701,14 +1701,28 @@ export default function App() {
                             return (
                               <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer hover-premium-card ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                                 {m.avatarPath || m.avatarUrl ? (
-                                  <img
-                                    src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
-                                    alt={m.name}
-                                    onClick={() => setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
-                                    className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
-                                  />
+                                  <div className="relative w-12 h-12 mx-auto">
+                                    <img
+                                      src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                                      alt={m.name}
+                                      className="w-12 h-12 rounded-full object-cover border border-[#EADEC9]"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null));
+                                      }}
+                                      className="absolute bottom-0 right-0 w-4 h-4 bg-[#5C0632] hover:bg-[#8E1B54] text-white rounded-full flex items-center justify-center border border-white shadow-xs transition-colors duration-150"
+                                      title="Ampliar foto"
+                                    >
+                                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 ) : (
-                                  <FallbackAvatar className="w-10 h-10 mx-auto" />
+                                  <FallbackAvatar className="w-12 h-12 mx-auto" />
                                 )}
                                 <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
                                 {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
@@ -1994,9 +2008,9 @@ export default function App() {
       <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-3 mt-auto">
         <span className="serif-title text-base text-[#3B0019] block">WineSpa</span>
         <div className="flex flex-wrap justify-center gap-x-8 gap-y-1.5 text-[10px] text-[#78716C]">
-          <span>Cc. Parque Fabricato • S1 local 104 • +57 319 707 2921</span>
+          <span>Cc. Parque Fabricato • S1 local 104 • +57 314 862 2128 / +57 319 482 3320</span>
         </div>
-        <p className="text-[10px] text-[#78716C]">Lunes a Viernes: 9:00 AM - 8:00 PM • Sábado y Domingo: 9:00 AM - 7:00 PM</p>
+        <p className="text-[10px] text-[#78716C]">Lunes a Domingo: 10:00 AM - 8:00 PM</p>
         <a href="https://www.instagram.com/wine.spa" target="_blank" rel="noopener noreferrer" className="inline-block text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">@wine.spa</a>
         <div className="flex justify-center gap-4 pt-1">
           <button onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
