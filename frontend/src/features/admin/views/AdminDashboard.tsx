@@ -843,7 +843,7 @@ export const AdminDashboard: React.FC = () => {
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {page.map(m => (
-                      <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3">
+                      <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3 hover-premium-card">
                         <div className="flex items-center gap-3">
                           {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
                           <div className="flex-1 min-w-0">
@@ -955,7 +955,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filterClients().length === 0 ? <p className="col-span-full text-center text-xs text-[#78716C] py-8">Sin clientes.</p> :
                 paginate(filterClients()).map(c => (
-                  <div key={c.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-2">
+                  <div key={c.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-2 hover-premium-card">
                     <h4 className="font-semibold text-sm text-[#44403C]">{c.name}</h4>
                     <p className="text-xs font-mono text-[#8E1B54]">{c.phone}</p>
                     <div className="flex justify-between text-[10px] text-[#78716C] pt-2 border-t border-[#EADEC9]/20">
@@ -1103,7 +1103,7 @@ export const AdminDashboard: React.FC = () => {
                   <>
                     <div className="space-y-2">
                       {page.map(s => (
-                        <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
+                        <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs hover-premium-card">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               {s.trending && <span className="text-[9px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}

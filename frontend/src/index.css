@@ -53,9 +53,68 @@ body {
 
 /* Smooth active state simulation for premium feel on touch devices */
 button, a {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
 }
 button:active {
   transform: scale(0.98);
 }
+
+/* Custom consistent transitions & animations */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseSkeleton {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgba(234, 222, 201, 0.25);
+  }
+  50% {
+    opacity: 0.6;
+    background-color: rgba(234, 222, 201, 0.45);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.animate-skeleton {
+  animation: pulseSkeleton 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity, background-color;
+}
+
+/* Premium Card hover style (lifts up slightly, subtle gold/burgundy glow shadow) */
+.hover-premium-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-premium-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(142, 27, 84, 0.3) !important;
+  box-shadow: 0 6px 16px rgba(92, 6, 50, 0.04);
+}
+.hover-premium-card:active {
+  transform: translateY(0);
+}
+
+/* Scroll Reveal classes */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+

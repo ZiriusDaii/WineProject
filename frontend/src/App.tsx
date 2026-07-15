@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AdminDashboard } from './features/admin/views/AdminDashboard'
 import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
@@ -121,6 +121,43 @@ export const FallbackAvatar: React.FC<{ className?: string }> = ({ className = "
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
   </svg>
 );
+
+export const ScrollReveal: React.FC<{ children: React.ReactNode; className?: string; id?: string }> = ({ children, className = "", id }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.05, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      if (ref.current) {
+        observer.unobserve(ref.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      id={id}
+      className={`scroll-reveal ${isVisible ? 'is-visible' : ''} ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 export default function App() {
   // PERSISTENCIA DE SESION
@@ -1214,9 +1251,10 @@ export default function App() {
             </div>
           )}
 
-          <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            <div className="md:col-span-6 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
+          <ScrollReveal className="max-w-7xl mx-auto px-6 pt-10 md:pt-20">
+            <section className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+              <div className="md:col-span-6 space-y-6 text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
                 <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
                 <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>
               </div>
@@ -1248,10 +1286,11 @@ export default function App() {
             <div className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square">
               <img src="/hero_1.jpg" alt="Trabajo de uñas WineSpa" className="w-full h-full object-cover" />
             </div>
-          </section>
+            </section>
+          </ScrollReveal>
 
           {/* Servicios Destacados — compacto en landing */}
-          <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
+          <ScrollReveal id="services" className="max-w-7xl mx-auto px-6 space-y-6">
             <div className="text-center space-y-1">
               <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Carta de Rituales</span>
               <h2 className="serif-title text-2xl text-[#3B0019] font-light">Servicios de Uñas & Cuidado Premium</h2>
@@ -1264,7 +1303,7 @@ export default function App() {
                   ? trending.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).slice(0, 3)
                   : [...services].sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 3);
                 return featured.map(s => (
-                  <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                  <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover-premium-card flex flex-col justify-between">
                     <div className="aspect-video relative overflow-hidden bg-neutral-100">
                       <img src={
                         s.imageUrl
@@ -1295,7 +1334,7 @@ export default function App() {
                 Ver Todos los Servicios →
               </button>
             </div>
-          </section>
+          </ScrollReveal>
         </div>
       )}
 
@@ -1331,7 +1370,7 @@ export default function App() {
                 });
               if (filtered.length === 0) return <p className="text-xs text-[#78716C] py-12 text-center col-span-full">Sin servicios que coincidan.</p>;
               return filtered.map(s => (
-                <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover-premium-card flex flex-col justify-between">
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
                     <img src={
                       s.imageUrl
@@ -1563,7 +1602,7 @@ export default function App() {
             </div>
 
             {/* ===== PASO 1 ===== */}
-            <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''}`}>
+            <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''} animate-fade-in`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
               <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
               {(() => {
@@ -1584,7 +1623,7 @@ export default function App() {
                         const serviceIdStr = String(s.id);
                         const isSelected = selectedServiceIds.includes(serviceIdStr);
                         return (
-                          <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+                          <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer hover-premium-card text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                             <div className="flex justify-between items-start">
                               <div className="flex items-center gap-1.5">
                                 {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
@@ -1619,7 +1658,7 @@ export default function App() {
             </section>
 
             {/* ===== PASO 2 ===== */}
-            <section className={`space-y-4 ${bookingWizardStep !== 2 ? 'hidden md:block' : ''}`}>
+            <section className={`space-y-4 ${bookingWizardStep !== 2 ? 'hidden md:block' : ''} animate-fade-in`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige la Fecha</h2>
               <DatePicker
                 selectedDate={bookingDate}
@@ -1638,7 +1677,7 @@ export default function App() {
             </section>
 
             {/* ===== PASO 3 ===== */}
-            <section className={`space-y-4 ${bookingWizardStep !== 3 ? 'hidden md:block' : ''}`}>
+            <section className={`space-y-4 ${bookingWizardStep !== 3 ? 'hidden md:block' : ''} animate-fade-in`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">3. Elige Manicurista y Hora</h2>
               {!bookingDate ? (
                 <p className="text-[10px] text-[#78716C]">Elegí primero una fecha.</p>
@@ -1660,7 +1699,7 @@ export default function App() {
                             const isSelected = selectedSpecialist === manicuristIdStr;
                             const shift = manicuristShifts[manicuristIdStr];
                             return (
-                              <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+                              <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer hover-premium-card ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
                                 {m.avatarPath || m.avatarUrl ? (
                                   <img
                                     src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
