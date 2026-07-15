@@ -119,6 +119,7 @@ export const AdminDashboard: React.FC = () => {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
   const [showManForm, setShowManForm] = useState(false);
+  const [showSvcForm, setShowSvcForm] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -288,7 +289,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
       const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
-      if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); loadData(); } else throw new Error();
+      if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); setShowSvcForm(false); loadData(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -296,7 +297,7 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Eliminar?')) return;
     try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
-  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
 
   // --- Offers ---
@@ -729,12 +730,12 @@ export const AdminDashboard: React.FC = () => {
                           {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm text-[#3B0019] truncate">{m.name}</h4>
-                            <p className="text-[10px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
+                            <p className="text-[11px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
                           </div>
                         </div>
                         {m.schedules && m.schedules.length > 0 && (
                           <div className="flex flex-wrap gap-1 pt-2 border-t border-[#EADEC9]/10">
-                            {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[9px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
+                            {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[10px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
                           </div>
                         )}
                         <button onClick={() => { editMan(m); setShowManForm(true); }} className="w-full py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
@@ -806,7 +807,13 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="serif-title text-3xl text-[#3B0019]">Servicios</h2>
               <div className="flex gap-2">
-                <button onClick={() => setShowCategoriesPanel(!showCategoriesPanel)} className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">
+                <button
+                  onClick={() => { setShowSvcForm(!showSvcForm); if (!showSvcForm) resetSvc(); }}
+                  className="px-3 py-2 bg-[#8E1B54] text-white rounded-xl text-[10px] font-semibold hover:bg-[#3B0019] transition-colors"
+                >
+                  {showSvcForm ? 'Cancelar' : '+ Nuevo Servicio'}
+                </button>
+                <button onClick={() => setShowCategoriesPanel(!showCategoriesPanel)} className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5 bg-white">
                   {showCategoriesPanel ? 'Ocultar Categorias' : 'Categorias'}
                 </button>
               </div>
@@ -839,34 +846,36 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             {/* Service Form */}
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs">
-              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
-              <form onSubmit={handleSaveService} className="space-y-3">
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Incluye</label><textarea value={svcIncludes} onChange={e => setSvcIncludes(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-16" /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label>
-                    <select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
-                      <option value="">Sin categoria</option>
-                      {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
+            {showSvcForm && (
+              <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">{svcId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+                <form onSubmit={handleSaveService} className="space-y-3">
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Incluye</label><textarea value={svcIncludes} onChange={e => setSvcIncludes(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-16" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label>
+                      <select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
+                        <option value="">Sin categoria</option>
+                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required min={1} value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   </div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required min={1} value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                </div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required min={0} value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
-                <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
-                  <input type="checkbox" checked={svcTrending} onChange={e => setSvcTrending(e.target.checked)} className="rounded" />
-                  Servicio en tendencia (aparece primero en el catalogo)
-                </label>
-                <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
-                  {svcId && <button type="button" onClick={resetSvc} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
-                </div>
-              </form>
-            </div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required min={0} value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
+                    <input type="checkbox" checked={svcTrending} onChange={e => setSvcTrending(e.target.checked)} className="rounded" />
+                    Servicio en tendencia (aparece primero en el catalogo)
+                  </label>
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{svcId ? 'Actualizar' : 'Crear'}</button>
+                  {<button type="button" onClick={() => { resetSvc(); setShowSvcForm(false); }} className="px-4 py-2.5 border rounded-xl text-xs">Cancelar</button>}
+                  </div>
+                </form>
+              </div>
+            )}
 
             {/* Service List */}
             <div className="space-y-3">
@@ -901,17 +910,17 @@ export const AdminDashboard: React.FC = () => {
                         <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              {s.trending && <span className="text-[8px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
-                              <span className="font-bold text-[#44403C] truncate">{s.name}</span>
+                              {s.trending && <span className="text-[9px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                              <span className="font-semibold text-sm text-[#3B0019] truncate">{s.name}</span>
                             </div>
                             <div className="flex gap-2 mt-0.5">
-                              {s.category && <span className="text-[9px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
-                              <span className="text-[9px] text-[#78716C]">{s.durationInMinutes || '?'} min</span>
+                              {s.category && <span className="text-[10px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
+                              <span className="text-[10px] text-[#78716C]">{s.durationInMinutes || '?'} min</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-bold text-[#8E1B54]">{priceFmt(s.price)}</span>
-                            <button onClick={() => editSvc(s)} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
+                            <span className="font-bold text-sm text-[#8E1B54]">{priceFmt(s.price)}</span>
+                            <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
                             <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
                           </div>
                         </div>
