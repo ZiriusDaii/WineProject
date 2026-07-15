@@ -134,6 +134,7 @@ export const AdminDashboard: React.FC = () => {
   const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
   const [showManForm, setShowManForm] = useState(false);
   const [showSvcForm, setShowSvcForm] = useState(false);
+  const [showShiftForm, setShowShiftForm] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,8 +146,8 @@ export const AdminDashboard: React.FC = () => {
   const [shiftTemplates, setShiftTemplates] = useState<{ id: string; name: string; startTime: string; endTime: string }[]>([]);
   const [weekSchedule, setWeekSchedule] = useState<{ manicuristId: string; shiftTemplateId: string }[]>([]);
   const initialWeek = getISOWeek(new Date());
-  const [scheduleWeek, setScheduleWeek] = useState(initialWeek.week);
-  const [scheduleYear, setScheduleYear] = useState(initialWeek.year);
+  const scheduleWeek = initialWeek.week;
+  const scheduleYear = initialWeek.year;
   const [shiftName, setShiftName] = useState('');
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
@@ -464,6 +465,7 @@ export const AdminDashboard: React.FC = () => {
   };
   const editShiftTemplate = (s: { id: string; name: string; startTime: string; endTime: string }) => {
     setEditingShiftId(s.id); setShiftName(s.name); setShiftStart(s.startTime); setShiftEnd(s.endTime);
+    setShowShiftForm(true);
   };
   const resetShiftForm = () => { setEditingShiftId(null); setShiftName(''); setShiftStart(''); setShiftEnd(''); };
   const handleAssignShift = async (manicuristId: string, shiftTemplateId: string) => {
@@ -475,13 +477,6 @@ export const AdminDashboard: React.FC = () => {
       });
       if (res.ok) fetchWeekSchedule();
     } catch { /* */ }
-  };
-  const changeScheduleWeek = (delta: number) => {
-    let w = scheduleWeek + delta;
-    let y = scheduleYear;
-    if (w < 1) { w = 52; y -= 1; }
-    if (w > 52) { w = 1; y += 1; }
-    setScheduleWeek(w); setScheduleYear(y);
   };
 
   // --- Client detail ---
@@ -729,27 +724,27 @@ export const AdminDashboard: React.FC = () => {
                   {stats.manicuristPerformance.length === 0 ? (
                     <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">Sin datos de rendimiento.</div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="flex justify-around items-end h-40 pt-4 px-2">
                       {stats.manicuristPerformance.map((p, i) => {
                         const maxCompleted = Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1);
                         const percent = (p.completedAppointments / maxCompleted) * 100;
                         return (
-                          <div key={i} className="flex flex-col space-y-1.5 p-2 rounded-xl hover:bg-[#F7F3EB]/20 transition-colors">
-                            <div className="flex justify-between items-center text-xs">
-                              <div className="flex items-center gap-2">
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
-                                  {i === 0 ? '★' : i + 1}
-                                </span>
-                                <span className="font-semibold text-[#44403C]">{p.name}</span>
-                              </div>
-                              <span className="font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
-                            </div>
-                            <div className="h-3 bg-[#EADEC9]/25 rounded-full overflow-hidden relative shadow-inner">
+                          <div key={i} className="flex flex-col items-center group relative w-16 sm:w-20">
+                            <span className="text-[10px] font-bold text-[#8E1B54] mb-1">
+                              {p.completedAppointments}
+                            </span>
+                            <div className="w-6 sm:w-8 bg-[#EADEC9]/20 rounded-t-lg overflow-hidden flex items-end h-20">
                               <div
-                                className="bg-gradient-to-r from-[#8E1B54] to-[#5C0632] h-full rounded-full transition-all duration-700 ease-out"
-                                style={{ width: `${animateBars ? percent : 0}%` }}
+                                className="bg-[#8E1B54] w-full rounded-t-lg transition-all duration-700 ease-out"
+                                style={{ height: `${animateBars ? percent : 0}%` }}
                               />
                             </div>
+                            <span className="text-[10px] font-semibold text-[#44403C] mt-2 text-center truncate w-full" title={p.name}>
+                              {p.name.split(' ')[0]}
+                            </span>
+                            <span className="text-[8px] text-[#A68F63] font-bold uppercase mt-0.5">
+                              {i === 0 ? '★ Top' : `#${i+1}`}
+                            </span>
                           </div>
                         );
                       })}
@@ -1017,77 +1012,182 @@ export const AdminDashboard: React.FC = () => {
         {/* SCHEDULE / TURNOS */}
         {activeTab === 'schedule' && (
           <div className="space-y-6 animate-fade-in text-left">
-            <h2 className="serif-title text-3xl text-[#3B0019]">Turnos</h2>
-
-            {/* Plantillas de turno */}
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <h3 className="text-xs font-bold text-[#3B0019] uppercase">{editingShiftId ? 'Editar turno' : 'Nuevo turno'}</h3>
-              <form onSubmit={handleSaveShiftTemplate} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-                <div className="sm:col-span-2">
-                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label>
-                  <input type="text" required placeholder="Ej: Turno Manana" value={shiftName} onChange={e => setShiftName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Desde</label>
-                  <input type="time" required value={shiftStart} onChange={e => setShiftStart(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Hasta</label>
-                  <input type="time" required value={shiftEnd} onChange={e => setShiftEnd(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
-                </div>
-                <div className="sm:col-span-4 flex gap-2">
-                  <button type="submit" disabled={submitting} className="flex-1 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">{editingShiftId ? 'Actualizar' : 'Crear turno'}</button>
-                  {editingShiftId && <button type="button" onClick={resetShiftForm} className="px-4 py-2 border rounded-xl text-xs">Cancelar</button>}
-                </div>
-              </form>
-              {shiftTemplates.length > 0 && (
-                <div className="space-y-1 pt-2 border-t border-[#EADEC9]/20">
-                  {shiftTemplates.map(s => (
-                    <div key={s.id} className="flex justify-between items-center text-xs py-1.5 px-2 rounded-lg bg-[#F7F3EB]/50">
-                      <span className="font-medium text-[#44403C]">{s.name} <span className="text-[#A68F63]">({s.startTime}-{s.endTime})</span></span>
-                      <div className="flex gap-2">
-                        <button onClick={() => editShiftTemplate(s)} className="text-[#A68F63] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-red-400 font-semibold">Eliminar</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {shiftTemplates.length === 0 && <p className="text-[10px] text-[#78716C]">Todavia no hay turnos creados.</p>}
+            <div className="flex items-center justify-between">
+              <h2 className="serif-title text-3xl text-[#3B0019]">Gestión de Turnos</h2>
+              <button
+                onClick={() => { setShowShiftForm(!showShiftForm); if (!showShiftForm) resetShiftForm(); }}
+                className="px-4 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
+              >
+                {showShiftForm ? 'Cancelar' : '+ Nuevo Turno'}
+              </button>
             </div>
 
-            {/* Asignacion semanal */}
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Asignar por semana</h3>
-                <div className="flex items-center gap-2 text-xs">
-                  <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63]">‹</button>
-                  <span className="font-semibold text-[#3B0019]">Semana {scheduleWeek} · {scheduleYear}</span>
-                  <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63]">›</button>
-                </div>
+            {/* Formulario collapsible para crear/editar plantillas */}
+            {showShiftForm && (
+              <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">
+                  {editingShiftId ? 'Editar Plantilla de Turno' : 'Nueva Plantilla de Turno'}
+                </h3>
+                <form onSubmit={async (e) => { await handleSaveShiftTemplate(e); setShowShiftForm(false); }} className="space-y-3">
+                  <div>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre de Turno</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Turno Mañana"
+                      value={shiftName}
+                      onChange={e => setShiftName(e.target.value)}
+                      className="w-full p-2 border rounded-lg text-xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Desde</label>
+                      <input
+                        type="time"
+                        required
+                        value={shiftStart}
+                        onChange={e => setShiftStart(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Hasta</label>
+                      <input
+                        type="time"
+                        required
+                        value={shiftEnd}
+                        onChange={e => setShiftEnd(e.target.value)}
+                        className="w-full p-2 border rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                      {editingShiftId ? 'Actualizar' : 'Crear Turno'}
+                    </button>
+                    {editingShiftId && (
+                      <button type="button" onClick={() => { resetShiftForm(); setShowShiftForm(false); }} className="px-4 py-2.5 border rounded-xl text-xs">
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-              {shiftTemplates.length === 0 ? (
-                <p className="text-[10px] text-[#78716C]">Cre&aacute; al menos un turno arriba para poder asignarlo.</p>
-              ) : (
-                <div className="space-y-2">
-                  {manicurists.map(m => {
-                    const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
-                    return (
-                      <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F7F3EB]/30">
-                        <span className="text-xs font-semibold text-[#44403C]">{m.name}</span>
-                        <select
-                          value={assigned?.shiftTemplateId || ''}
-                          onChange={e => handleAssignShift(String(m.id), e.target.value)}
-                          className="p-1.5 border rounded-lg text-xs bg-white"
-                        >
-                          <option value="">Sin turno</option>
-                          {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
-                        </select>
-                      </div>
-                    );
-                  })}
+            )}
+
+            {/* Split layout: Asignación a manicuristas (Izquierda) | Plantillas de Turno (Derecha) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Side: Manicurists shifts assignment with Search and Paging */}
+              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
+                  <div>
+                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Asignación de Horarios</h3>
+                    <p className="text-[10px] text-[#78716C] mt-0.5">Asigna el horario por defecto para cada especialista.</p>
+                  </div>
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    placeholder="Buscar manicurista..."
+                    value={searchQuery}
+                    onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    className="p-2 border rounded-lg text-xs w-full sm:w-48 bg-white"
+                  />
                 </div>
-              )}
+
+                {shiftTemplates.length === 0 ? (
+                  <div className="h-40 flex flex-col items-center justify-center text-xs text-[#78716C] space-y-2">
+                    <span>No hay turnos creados.</span>
+                    <button onClick={() => setShowShiftForm(true)} className="text-[#8E1B54] font-semibold underline">Crear el primer turno</button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(() => {
+                      const filtered = manicurists.filter(m =>
+                        (m.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+                      );
+                      const total = filtered.length;
+                      const startIndex = (currentPage - 1) * itemsPerPage;
+                      const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                      if (total === 0) {
+                        return <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">No se encontraron manicuristas.</div>;
+                      }
+
+                      return (
+                        <>
+                          <div className="space-y-2">
+                            {paginated.map(m => {
+                              const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
+                              return (
+                                <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F7F3EB]/25 hover:bg-[#F7F3EB]/50 transition-colors border border-[#EADEC9]/20">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-[#8E1B54]/10 text-[#8E1B54] font-bold flex items-center justify-center text-xs">
+                                      {m.avatarUrl ? (
+                                        <img src={m.avatarUrl} alt={m.name} className="w-full h-full rounded-full object-cover" />
+                                      ) : (
+                                        m.name.charAt(0)
+                                      )}
+                                    </div>
+                                    <div className="text-left">
+                                      <span className="text-xs font-semibold text-[#44403C] block">{m.name}</span>
+                                      <span className="text-[10px] text-[#A68F63] font-medium">@{m.username}</span>
+                                    </div>
+                                  </div>
+                                  <select
+                                    value={assigned?.shiftTemplateId || ''}
+                                    onChange={e => handleAssignShift(String(m.id), e.target.value)}
+                                    className="p-1.5 border border-[#EADEC9]/60 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#8E1B54] font-medium text-[#44403C]"
+                                  >
+                                    <option value="">Sin turno</option>
+                                    {shiftTemplates.map(s => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.name} ({s.startTime} - {s.endTime})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-end pt-2 border-t border-[#EADEC9]/10">
+                            {pagination(total)}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Side: List of Shift Templates */}
+              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
+                <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">Plantillas de Turnos</h3>
+                {shiftTemplates.length === 0 ? (
+                  <p className="text-xs text-[#78716C]">Todavía no hay turnos creados.</p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {shiftTemplates.map(s => (
+                      <div key={s.id} className="flex flex-col p-3 rounded-xl bg-[#F7F3EB]/20 border border-[#EADEC9]/20 space-y-2 hover:bg-[#F7F3EB]/40 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-semibold text-xs text-[#44403C] block">{s.name}</span>
+                            <span className="text-[10px] text-[#A68F63] font-semibold">{s.startTime} - {s.endTime}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => editShiftTemplate(s)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-bold transition-colors">
+                              Editar
+                            </button>
+                            <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-[10px] text-red-500 hover:text-red-700 font-bold transition-colors">
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

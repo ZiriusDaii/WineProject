@@ -882,30 +882,31 @@ export async function assignManicuristSchedule(
   res: Response,
 ): Promise<void> {
   try {
-    const { manicuristId, week, year, shiftTemplateId } = req.body as {
+    const { manicuristId, year, shiftTemplateId } = req.body as {
       manicuristId?: string;
       week?: number;
       year?: number;
       shiftTemplateId?: string | null;
     };
-    if (!manicuristId || !week || !year) {
-      res.status(400).json({ error: "Faltan campos requeridos: manicuristId, week, year" });
+    if (!manicuristId || !year) {
+      res.status(400).json({ error: "Faltan campos requeridos: manicuristId, year" });
       return;
     }
     if (!shiftTemplateId) {
       await prisma.manicuristSchedule.deleteMany({
-        where: { manicuristId, weekNumber: week, year },
+        where: { manicuristId, year },
       });
-      res.json({ message: "Turno removido para esa semana" });
+      res.json({ message: "Turno removido para todo el año" });
       return;
     }
-    const upserted = await prisma.manicuristSchedule.upsert({
-      where: { manicuristId_weekNumber_year: { manicuristId, weekNumber: week, year } },
+    const weeks = Array.from({ length: 53 }, (_, i) => i + 1);
+    const operations = weeks.map(w => prisma.manicuristSchedule.upsert({
+      where: { manicuristId_weekNumber_year: { manicuristId, weekNumber: w, year } },
       update: { shiftTemplateId },
-      create: { manicuristId, weekNumber: week, year, shiftTemplateId },
-      include: { shiftTemplate: true },
-    });
-    res.json(upserted);
+      create: { manicuristId, weekNumber: w, year, shiftTemplateId }
+    }));
+    await prisma.$transaction(operations);
+    res.json({ message: "Turno asignado para todo el año exitosamente" });
   } catch (error) {
     console.error("Error asignando turno:", error);
     res.status(500).json({ error: "Error interno del servidor" });
