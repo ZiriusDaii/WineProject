@@ -624,40 +624,283 @@ export const AdminDashboard: React.FC = () => {
         {errorMsg && <div className="mb-3 p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
 
         {/* METRICS */}
-        {activeTab === 'metrics' && stats && (
-          <div className="space-y-8 animate-fade-in text-left">
-            <h2 className="serif-title text-3xl text-[#3B0019]">Estadisticas</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Ganancias</span><h3 className="serif-title text-2xl text-[#3B0019]">${stats.totalEarnings.toLocaleString('es-CO')}</h3></div>
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Citas Totales</span><h3 className="serif-title text-2xl text-[#3B0019]">{stats.totalAppointments}</h3></div>
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Top Especialista</span><h3 className="serif-title text-lg text-[#8E1B54] truncate">{stats.topManicurist}</h3></div>
-            </div>
-            {stats.appointmentsByStatus && stats.appointmentsByStatus.length > 0 && (
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
-                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Por Estado</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  {stats.appointmentsByStatus.map(s => (
-                    <div key={s.status} className="text-center p-3 bg-[#F7F3EB]/30 rounded-xl">
-                      <span className="block text-2xl font-bold text-[#8E1B54]">{s.count}</span>
-                      <span className="text-[#78716C]">{STATUS_LABELS[s.status] || s.status}</span>
-                    </div>
-                  ))}
+        {activeTab === 'metrics' && stats && (() => {
+          const getEarningsLast7Days = () => {
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - i);
+              return d.toISOString().split('T')[0];
+            }).reverse();
+
+            const dailyEarnings = last7Days.reduce((acc, dateStr) => {
+              acc[dateStr] = 0;
+              return acc;
+            }, {} as Record<string, number>);
+
+            appointments.forEach(a => {
+              if (a.status === 'COMPLETED' || a.status === 'IN_PROGRESS') {
+                try {
+                  const dateStr = new Date(a.date).toISOString().split('T')[0];
+                  if (dateStr in dailyEarnings) {
+                    dailyEarnings[dateStr] += Number(a.totalPrice || 0);
+                  }
+                } catch (e) {}
+              }
+            });
+
+            return last7Days.map(dateStr => {
+              const dateObj = new Date(dateStr + 'T00:00:00');
+              const label = dateObj.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
+              return {
+                date: dateStr,
+                label: label.charAt(0).toUpperCase() + label.slice(1),
+                amount: dailyEarnings[dateStr]
+              };
+            });
+          };
+
+          const earningsData = getEarningsLast7Days();
+          const maxAmount = Math.max(...earningsData.map(d => d.amount), 50000);
+          const points = earningsData.map((d, index) => {
+            const x = (index / 6) * 440 + 30;
+            const y = 160 - (d.amount / maxAmount) * 120;
+            return { x, y, amount: d.amount, label: d.label };
+          });
+
+          const areaPath = points.length > 0 
+            ? `M 30 160 L ${points.map(p => `${p.x} ${p.y}`).join(' L ')} L ${points[points.length-1].x} 160 Z`
+            : '';
+          
+          const linePath = points.length > 0
+            ? `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}`
+            : '';
+
+          const statusColors: Record<string, string> = {
+            PENDING: '#A68F63',
+            IN_PROGRESS: '#8E1B54',
+            COMPLETED: '#10B981',
+            CANCELLED: '#EF4444',
+          };
+          const statusData = (stats.appointmentsByStatus || []).filter(s => s.count > 0);
+          const totalCount = statusData.reduce((sum, s) => sum + s.count, 0) || 1;
+          
+          let accumulatedPercent = 0;
+          const donutSegments = statusData.map(s => {
+            const percent = s.count / totalCount;
+            const strokeDash = percent * 314.16;
+            const strokeOffset = 314.16 - accumulatedPercent * 314.16;
+            accumulatedPercent += percent;
+            return {
+              ...s,
+              percent: Math.round(percent * 100),
+              color: statusColors[s.status] || '#78716C',
+              strokeDash,
+              strokeOffset
+            };
+          });
+
+          return (
+            <div className="space-y-8 animate-fade-in text-left">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-[#EADEC9]/30 pb-4">
+                <div>
+                  <h2 className="serif-title text-3xl text-[#3B0019]">Panel de Métricas</h2>
+                  <p className="text-xs text-[#78716C] mt-1">Monitoreo estratégico y rendimiento financiero en tiempo real.</p>
                 </div>
               </div>
-            )}
-            {stats.manicuristPerformance.length > 0 && (
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
-                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Rendimiento por Especialista</h3>
-                {stats.manicuristPerformance.map((p, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-xs"><span>{p.name}</span><span className="font-semibold text-[#8E1B54]">{p.completedAppointments} completadas</span></div>
-                    <div className="h-2 bg-[#EADEC9]/25 rounded-full"><div className="bg-[#8E1B54] h-full rounded-full" style={{ width: `${Math.min((p.completedAppointments / Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1)) * 100, 100)}%` }} /></div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-[#8E1B54]" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Ganancias Totales</span>
+                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">${stats.totalEarnings.toLocaleString('es-CO')}</h3>
+                      <span className="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Completado & En Progreso</span>
+                    </div>
+                    <div className="w-10 h-10 bg-[#8E1B54]/5 rounded-xl flex items-center justify-center text-[#8E1B54] group-hover:bg-[#8E1B54]/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-[#A68F63]" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Citas Registradas</span>
+                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">{stats.totalAppointments}</h3>
+                      <span className="text-[10px] text-[#78716C] block mt-1">Volumen total histórico</span>
+                    </div>
+                    <div className="w-10 h-10 bg-[#A68F63]/5 rounded-xl flex items-center justify-center text-[#A68F63] group-hover:bg-[#A68F63]/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Top Especialista</span>
+                      <h3 className="serif-title text-xl text-[#8E1B54] mt-2 font-bold truncate max-w-[160px]">{stats.topManicurist}</h3>
+                      <span className="text-[10px] text-amber-600 font-semibold block mt-1">★ Mayor número de completadas</span>
+                    </div>
+                    <div className="w-10 h-10 bg-amber-500/5 rounded-xl flex items-center justify-center text-amber-500 group-hover:bg-amber-500/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Evolución de Ingresos (Últimos 7 Días)</h3>
+                    <span className="text-[10px] bg-[#8E1B54]/5 text-[#8E1B54] px-2 py-0.5 rounded-full font-bold">Por fecha de cita</span>
+                  </div>
+                  
+                  <div className="relative">
+                    <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
+                      <defs>
+                        <linearGradient id="earningsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#8E1B54" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#8E1B54" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+                      <line x1="30" y1="30" x2="470" y2="30" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="95" x2="470" y2="95" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="160" x2="470" y2="160" stroke="#EADEC9" strokeWidth="1" />
+
+                      {areaPath && (
+                        <path d={areaPath} fill="url(#earningsAreaGrad)" />
+                      )}
+
+                      {linePath && (
+                        <path d={linePath} fill="none" stroke="#8E1B54" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      )}
+
+                      {points.map((p, idx) => (
+                        <g key={idx} className="group/dot">
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r="4.5"
+                            fill="#8E1B54"
+                            stroke="#FFFFFF"
+                            strokeWidth="2"
+                            className="cursor-pointer transition-all duration-150 group-hover/dot:r-6"
+                          />
+                          <text
+                            x={p.x}
+                            y={p.y - 10}
+                            textAnchor="middle"
+                            className="text-[9px] font-bold fill-[#8E1B54]"
+                          >
+                            {p.amount > 0 ? `$${(p.amount / 1000).toFixed(0)}k` : ''}
+                          </text>
+                          <text
+                            x={p.x}
+                            y="174"
+                            textAnchor="middle"
+                            className="text-[8px] font-semibold fill-[#78716C]"
+                          >
+                            {p.label}
+                          </text>
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
+                  <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">Distribución por Estado</h3>
+                  
+                  {statusData.length === 0 ? (
+                    <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">Sin datos de estado.</div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 lg:flex-col xl:flex-row py-2">
+                      <div className="relative w-32 h-32 flex-shrink-0">
+                        <svg viewBox="0 0 160 160" className="w-full h-full transform -rotate-90">
+                          <circle cx="80" cy="80" r="50" fill="transparent" stroke="#F5EFE6" strokeWidth="12" />
+                          {donutSegments.map((s, idx) => (
+                            <circle
+                              key={idx}
+                              cx="80"
+                              cy="80"
+                              r="50"
+                              fill="transparent"
+                              stroke={s.color}
+                              strokeWidth="12"
+                              strokeDasharray="314.16"
+                              strokeDashoffset={s.strokeOffset}
+                              className="transition-all duration-300"
+                            />
+                          ))}
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="serif-title text-2xl font-black text-[#3B0019] leading-none">{stats.totalAppointments}</span>
+                          <span className="text-[8px] uppercase tracking-widest text-[#A68F63] font-bold mt-1">Citas</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-left w-full">
+                        {donutSegments.map((s, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[10px] border-b border-[#EADEC9]/10 pb-1 last:border-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                              <span className="text-[#44403C] font-medium">{STATUS_LABELS[s.status] || s.status}</span>
+                            </div>
+                            <span className="font-bold text-[#8E1B54]">{s.count} ({s.percent}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {stats.manicuristPerformance.length > 0 && (
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
+                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
+                    <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    {stats.manicuristPerformance.map((p, i) => {
+                      const maxCompleted = Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1);
+                      const percent = (p.completedAppointments / maxCompleted) * 100;
+                      return (
+                        <div key={i} className="flex flex-col space-y-1.5 p-2 rounded-xl hover:bg-[#F7F3EB]/20 transition-colors">
+                          <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
+                                {i === 0 ? '★' : i + 1}
+                              </span>
+                              <span className="font-semibold text-[#44403C]">{p.name}</span>
+                            </div>
+                            <span className="font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
+                          </div>
+                          <div className="h-3 bg-[#EADEC9]/25 rounded-full overflow-hidden relative shadow-inner">
+                            <div
+                              className="bg-gradient-to-r from-[#8E1B54] to-[#5C0632] h-full rounded-full transition-all duration-500 ease-out"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* APPOINTMENTS */}
         {activeTab === 'appointments' && (
