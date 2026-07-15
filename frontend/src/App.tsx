@@ -1403,7 +1403,7 @@ export default function App() {
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
         <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-8">
+          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen md:overflow-y-auto pt-8">
             <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
               ← Volver
             </button>
