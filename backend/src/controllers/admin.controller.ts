@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
-import { getISOWeek } from "../lib/week.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -60,7 +59,7 @@ export async function getAllAppointments(
 ): Promise<void> {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 10));
     const skip = (page - 1) * limit;
     const search = (req.query.search as string)?.trim() || null;
 
@@ -882,9 +881,9 @@ export async function assignManicuristSchedule(
   res: Response,
 ): Promise<void> {
   try {
+    // El turno se aplica al año completo (defaults anuales), no por semana suelta.
     const { manicuristId, year, shiftTemplateId } = req.body as {
       manicuristId?: string;
-      week?: number;
       year?: number;
       shiftTemplateId?: string | null;
     };
@@ -912,5 +911,3 @@ export async function assignManicuristSchedule(
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
-
-export { getISOWeek };
