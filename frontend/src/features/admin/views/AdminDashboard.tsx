@@ -762,68 +762,72 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
-                    <div className="text-left">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
+                    <div className="text-left w-full sm:w-auto">
                       <h3 className="serif-title text-base font-bold text-[#3B0019]">Estadísticas Diarias</h3>
                       <p className="text-[10px] text-[#78716C] mt-0.5">Métricas de rendimiento por fecha de cita.</p>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex bg-[#F7F3EB] rounded-lg p-0.5 text-[10px] font-bold border border-[#EADEC9]/40">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
+                      {/* Toggle Metricas */}
+                      <div className="flex bg-[#F7F3EB] rounded-lg p-0.5 text-[11px] font-bold border border-[#EADEC9]/40">
                         <button
                           onClick={() => { setMetricsType('earnings'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
-                          className={`px-2 py-0.5 rounded transition-colors ${isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                          className={`px-3 py-1 rounded-md transition-colors ${isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
                         >
                           Ingresos ($)
                         </button>
                         <button
                           onClick={() => { setMetricsType('appointments'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
-                          className={`px-2 py-0.5 rounded transition-colors ${!isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                          className={`px-3 py-1 rounded-md transition-colors ${!isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
                         >
                           Citas (Cant.)
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => { setMetricsOffsetDays(prev => prev - 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
-                          className="w-6 h-6 flex items-center justify-center border border-[#EADEC9]/60 rounded-md text-[#A68F63] bg-white hover:bg-[#5C0632]/5 transition-all text-xs font-bold"
-                          title="Anterior"
-                        >
-                          ‹
-                        </button>
+                      {/* Date Navigation */}
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setMetricsOffsetDays(0); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
-                          className="px-2 py-1.5 border border-[#EADEC9]/60 rounded-md text-[8px] font-extrabold uppercase text-[#A68F63] bg-white hover:bg-[#5C0632]/5 leading-none"
+                          className="px-3.5 py-2 border border-[#EADEC9]/60 rounded-xl text-xs font-semibold text-[#8E1B54] bg-[#F7F3EB] hover:bg-[#8E1B54]/5 active:scale-95 transition-all animate-fade-in"
                         >
                           Hoy
                         </button>
-                        <button
-                          onClick={() => { setMetricsOffsetDays(prev => prev + 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
-                          className="w-6 h-6 flex items-center justify-center border border-[#EADEC9]/60 rounded-md text-[#A68F63] bg-white hover:bg-[#5C0632]/5 transition-all text-xs font-bold"
-                          title="Siguiente"
-                        >
-                          ›
-                        </button>
+                        <div className="flex items-center bg-white border border-[#EADEC9]/60 rounded-xl overflow-hidden shadow-xs">
+                          <button
+                            onClick={() => { setMetricsOffsetDays(prev => prev - 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                            className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold border-r border-[#EADEC9]/30"
+                            title="Anterior"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            onClick={() => { setMetricsOffsetDays(prev => prev + 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                            className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold"
+                            title="Siguiente"
+                          >
+                            ›
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="relative">
+                  <div className="relative overflow-visible py-4 pr-2">
                     <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
                       <line x1="30" y1="30" x2="470" y2="30" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
-                      <line x1="30" y1="85" x2="470" y2="85" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
-                      <line x1="30" y1="140" x2="470" y2="140" stroke="#EADEC9" strokeWidth="1" />
+                      <line x1="30" y1="80" x2="470" y2="80" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="130" x2="470" y2="130" stroke="#EADEC9" strokeWidth="1" />
 
                       {dailyMetrics.map((d, index) => {
                         const val = isEarnings ? d.earnings : d.appointments;
-                        const heightVal = (val / maxVal) * 100;
+                        const heightVal = (val / maxVal) * 90;
                         const x = index * 60 + 45;
                         return (
                           <g key={index} className="group/bar">
                             <rect
                               x={x}
-                              y={140 - (animateBars ? heightVal : 0)}
+                              y={130 - (animateBars ? heightVal : 0)}
                               width="24"
                               height={animateBars ? heightVal : 0}
                               rx="4"
@@ -833,17 +837,17 @@ export const AdminDashboard: React.FC = () => {
                             />
                             <text
                               x={x + 12}
-                              y={140 - (animateBars ? heightVal : 0) - 6}
+                              y={130 - (animateBars ? heightVal : 0) - 8}
                               textAnchor="middle"
-                              className="text-[8px] font-bold fill-[#8E1B54]"
+                              className="text-[10px] sm:text-[9px] font-extrabold fill-[#8E1B54]"
                             >
                               {val > 0 ? (isEarnings ? `$${val.toLocaleString('es-CO')}` : val) : ''}
                             </text>
                             <text
                               x={x + 12}
-                              y="154"
+                              y="152"
                               textAnchor="middle"
-                              className="text-[8px] font-semibold fill-[#78716C]"
+                              className="text-[12px] sm:text-[10px] font-bold fill-[#78716C]"
                             >
                               {d.label}
                             </text>
