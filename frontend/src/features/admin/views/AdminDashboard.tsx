@@ -135,6 +135,7 @@ export const AdminDashboard: React.FC = () => {
   const [showManForm, setShowManForm] = useState(false);
   const [showSvcForm, setShowSvcForm] = useState(false);
   const [showShiftForm, setShowShiftForm] = useState(false);
+  const [showTemplatesPanel, setShowTemplatesPanel] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
   const [metricsOffsetDays, setMetricsOffsetDays] = useState(0);
   const [metricsType, setMetricsType] = useState<'earnings' | 'appointments'>('earnings');
@@ -216,7 +217,7 @@ export const AdminDashboard: React.FC = () => {
       const timer = setTimeout(() => setAnimateBars(true), 150);
       return () => clearTimeout(timer);
     }
-  }, [activeTab]);
+  }, [activeTab, metricsOffsetDays, metricsType]);
 
   const doLogin = async () => {
     setSubmitting(true);
@@ -827,13 +828,15 @@ export const AdminDashboard: React.FC = () => {
                           <g key={index} className="group/bar">
                             <rect
                               x={x}
-                              y={130 - (animateBars ? heightVal : 0)}
                               width="24"
-                              height={animateBars ? heightVal : 0}
                               rx="4"
                               ry="4"
                               fill="#8E1B54"
                               className="transition-all duration-700 ease-out hover:fill-[#5C0632] cursor-pointer"
+                              style={{
+                                y: `${130 - (animateBars ? heightVal : 0)}px`,
+                                height: `${animateBars ? heightVal : 0}px`
+                              }}
                             />
                             <text
                               x={x + 12}
@@ -1143,14 +1146,25 @@ export const AdminDashboard: React.FC = () => {
         {/* SCHEDULE / TURNOS */}
         {activeTab === 'schedule' && (
           <div className="space-y-6 animate-fade-in text-left">
-            <div className="flex items-center justify-between">
-              <h2 className="serif-title text-3xl text-[#3B0019]">Gestión de Turnos</h2>
-              <button
-                onClick={() => { setShowShiftForm(!showShiftForm); if (!showShiftForm) resetShiftForm(); }}
-                className="px-4 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
-              >
-                {showShiftForm ? 'Cancelar' : '+ Nuevo Turno'}
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADEC9]/30 pb-4">
+              <div>
+                <h2 className="serif-title text-3xl text-[#3B0019]">Gestión de Turnos</h2>
+                <p className="text-xs text-[#78716C] mt-1">Administra los horarios por defecto y plantillas de turnos.</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => { setShowShiftForm(!showShiftForm); if (!showShiftForm) resetShiftForm(); }}
+                  className="px-3 py-2 bg-[#8E1B54] text-white rounded-xl text-[10px] font-semibold hover:bg-[#3B0019] transition-colors"
+                >
+                  {showShiftForm ? 'Cancelar' : '+ Nuevo Turno'}
+                </button>
+                <button
+                  onClick={() => setShowTemplatesPanel(!showTemplatesPanel)}
+                  className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5 bg-white transition-colors"
+                >
+                  {showTemplatesPanel ? 'Ocultar Plantillas' : 'Plantillas'}
+                </button>
+              </div>
             </div>
 
             {/* Formulario collapsible para crear/editar plantillas */}
@@ -1197,128 +1211,119 @@ export const AdminDashboard: React.FC = () => {
                     <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
                       {editingShiftId ? 'Actualizar' : 'Crear Turno'}
                     </button>
-                    {editingShiftId && (
-                      <button type="button" onClick={() => { resetShiftForm(); setShowShiftForm(false); }} className="px-4 py-2.5 border rounded-xl text-xs">
-                        Cancelar
-                      </button>
-                    )}
+                    <button type="button" onClick={() => { resetShiftForm(); setShowShiftForm(false); }} className="px-4 py-2.5 border rounded-xl text-xs">
+                      Cancelar
+                    </button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* Split layout: Asignación a manicuristas (Izquierda) | Plantillas de Turno (Derecha) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Side: Manicurists shifts assignment with Search and Paging */}
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
-                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
-                  <div>
-                    <h3 className="serif-title text-base font-bold text-[#3B0019]">Asignación de Horarios</h3>
-                    <p className="text-[10px] text-[#78716C] mt-0.5">Asigna el horario por defecto para cada especialista.</p>
-                  </div>
-                  {/* Search Input */}
-                  <input
-                    type="text"
-                    placeholder="Buscar manicurista..."
-                    value={searchQuery}
-                    onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    className="p-2 border rounded-lg text-xs w-full sm:w-48 bg-white"
-                  />
-                </div>
-
+            {/* Plantillas de Turno Panel (Collapsible like categories in services) */}
+            {showTemplatesPanel && (
+              <div className="bg-white border border-[#8E1B54]/25 rounded-2xl p-5 space-y-3 shadow-xs animate-fade-in">
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Gestionar Plantillas de Turnos</h3>
                 {shiftTemplates.length === 0 ? (
-                  <div className="h-40 flex flex-col items-center justify-center text-xs text-[#78716C] space-y-2">
-                    <span>No hay turnos creados.</span>
-                    <button onClick={() => setShowShiftForm(true)} className="text-[#8E1B54] font-semibold underline">Crear el primer turno</button>
-                  </div>
+                  <p className="text-xs text-[#78716C] py-2">Todavía no hay turnos creados.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {(() => {
-                      const filtered = manicurists.filter(m =>
-                        (m.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-                      );
-                      const total = filtered.length;
-                      const startIndex = (currentPage - 1) * itemsPerPage;
-                      const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
-
-                      if (total === 0) {
-                        return <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">No se encontraron manicuristas.</div>;
-                      }
-
-                      return (
-                        <>
-                          <div className="space-y-2">
-                            {paginated.map(m => {
-                              const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
-                              return (
-                                <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F7F3EB]/25 hover:bg-[#F7F3EB]/50 transition-colors border border-[#EADEC9]/20">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-[#8E1B54]/10 text-[#8E1B54] font-bold flex items-center justify-center text-xs">
-                                      {m.avatarUrl ? (
-                                        <img src={m.avatarUrl} alt={m.name} className="w-full h-full rounded-full object-cover" />
-                                      ) : (
-                                        m.name.charAt(0)
-                                      )}
-                                    </div>
-                                    <div className="text-left">
-                                      <span className="text-xs font-semibold text-[#44403C] block">{m.name}</span>
-                                      <span className="text-[10px] text-[#A68F63] font-medium">@{m.username}</span>
-                                    </div>
-                                  </div>
-                                  <select
-                                    value={assigned?.shiftTemplateId || ''}
-                                    onChange={e => handleAssignShift(String(m.id), e.target.value)}
-                                    className="p-1.5 border border-[#EADEC9]/60 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#8E1B54] font-medium text-[#44403C]"
-                                  >
-                                    <option value="">Sin turno</option>
-                                    {shiftTemplates.map(s => (
-                                      <option key={s.id} value={s.id}>
-                                        {s.name} ({s.startTime} - {s.endTime})
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex justify-end pt-2 border-t border-[#EADEC9]/10">
-                            {pagination(total)}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-
-              {/* Right Side: List of Shift Templates */}
-              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
-                <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">Plantillas de Turnos</h3>
-                {shiftTemplates.length === 0 ? (
-                  <p className="text-xs text-[#78716C]">Todavía no hay turnos creados.</p>
-                ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  <div className="space-y-1.5">
                     {shiftTemplates.map(s => (
-                      <div key={s.id} className="flex flex-col p-3 rounded-xl bg-[#F7F3EB]/20 border border-[#EADEC9]/20 space-y-2 hover:bg-[#F7F3EB]/40 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="font-semibold text-xs text-[#44403C] block">{s.name}</span>
-                            <span className="text-[10px] text-[#A68F63] font-semibold">{s.startTime} - {s.endTime}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => editShiftTemplate(s)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-bold transition-colors">
-                              Editar
-                            </button>
-                            <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-[10px] text-red-500 hover:text-red-700 font-bold transition-colors">
-                              Eliminar
-                            </button>
-                          </div>
+                      <div key={s.id} className="flex justify-between items-center text-xs py-2 px-3 rounded-xl bg-[#F7F3EB]/50 border border-[#EADEC9]/15">
+                        <div>
+                          <span className="font-semibold text-[#44403C]">{s.name}</span>
+                          <span className="ml-2 text-[10px] text-[#A68F63] font-bold">({s.startTime} - {s.endTime})</span>
+                        </div>
+                        <div className="flex gap-3">
+                          <button onClick={() => editShiftTemplate(s)} className="text-[#A68F63] font-semibold hover:text-[#8E1B54] transition-colors">Editar</button>
+                          <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-red-400 font-semibold hover:text-red-600 transition-colors">Eliminar</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Main Assignment Table (Full Width!) */}
+            <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
+                <div className="text-left w-full sm:w-auto">
+                  <h3 className="serif-title text-base font-bold text-[#3B0019]">Asignación de Horarios</h3>
+                  <p className="text-[10px] text-[#78716C] mt-0.5">Asigna el horario por defecto para cada especialista.</p>
+                </div>
+                {/* Search Input */}
+                <input
+                  type="text"
+                  placeholder="Buscar manicurista..."
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="p-2 border border-[#EADEC9]/60 rounded-lg text-xs w-full sm:w-48 bg-white focus:outline-none focus:ring-1 focus:ring-[#8E1B54]"
+                />
+              </div>
+
+              {shiftTemplates.length === 0 ? (
+                <div className="h-40 flex flex-col items-center justify-center text-xs text-[#78716C] space-y-2">
+                  <span>No hay turnos creados.</span>
+                  <button onClick={() => setShowShiftForm(true)} className="text-[#8E1B54] font-semibold underline">Crear el primer turno</button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    const filtered = manicurists.filter(m =>
+                      (m.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                    const total = filtered.length;
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const paginated = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                    if (total === 0) {
+                      return <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">No se encontraron manicuristas.</div>;
+                    }
+
+                    return (
+                      <>
+                        <div className="space-y-2.5">
+                          {paginated.map(m => {
+                            const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
+                            return (
+                              <div key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#F7F3EB]/25 hover:bg-[#F7F3EB]/50 transition-colors border border-[#EADEC9]/20">
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                  <div className="w-8 h-8 rounded-full bg-[#8E1B54]/10 text-[#8E1B54] font-bold flex items-center justify-center text-xs shrink-0">
+                                    {m.avatarUrl ? (
+                                      <img src={m.avatarUrl} alt={m.name} className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                      m.name.charAt(0)
+                                    )}
+                                  </div>
+                                  <div className="text-left">
+                                    <span className="text-xs font-semibold text-[#44403C] block">{m.name}</span>
+                                    <span className="text-[10px] text-[#A68F63] font-medium">@{m.username}</span>
+                                  </div>
+                                </div>
+                                <select
+                                  value={assigned?.shiftTemplateId || ''}
+                                  onChange={e => handleAssignShift(String(m.id), e.target.value)}
+                                  className="p-2 border border-[#EADEC9]/60 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#8E1B54] font-medium text-[#44403C] w-full sm:w-auto shadow-sm"
+                                >
+                                  <option value="">Sin turno</option>
+                                  {shiftTemplates.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.name} ({s.startTime} - {s.endTime})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-end pt-2 border-t border-[#EADEC9]/10">
+                          {pagination(total)}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         )}
