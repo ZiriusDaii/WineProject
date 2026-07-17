@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
 
@@ -613,15 +614,43 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
         <nav className="flex flex-col gap-1">
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }} className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${activeTab === t.id ? 'bg-[#5C0632] text-white' : 'text-[#78716C] hover:bg-[#EADEC9]/30'}`}>{t.label}</button>
-          ))}
+          {tabs.map(t => {
+            const isActive = activeTab === t.id;
+            return (
+              <motion.button
+                key={t.id}
+                onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }}
+                className={`relative px-4 py-3 rounded-xl text-xs font-semibold text-left transition-colors duration-250 cursor-pointer ${
+                  isActive ? 'text-white' : 'text-[#78716C] hover:text-[#5C0632]'
+                }`}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="adminActiveTabBg"
+                    className="absolute inset-0 bg-[#5C0632] rounded-xl -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                {t.label}
+              </motion.button>
+            );
+          })}
         </nav>
       </aside>
 
       <main className="flex-1 p-4 md:p-10 overflow-y-auto">
         {successMsg && <div className="mb-3 p-2.5 bg-green-50 text-green-700 text-xs rounded-xl border border-green-200">{successMsg}</div>}
         {errorMsg && <div className="mb-3 p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
+
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="space-y-8"
+        >
 
         {/* METRICS */}
         {activeTab === 'metrics' && stats && (
@@ -1237,6 +1266,7 @@ export const AdminDashboard: React.FC = () => {
             </form>
           </div>
         )}
+        </motion.div>
       </main>
     </div>
   );
