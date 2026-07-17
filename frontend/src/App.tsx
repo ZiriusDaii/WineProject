@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, useScroll, useTransform } from 'motion/react'
 import { AdminDashboard } from './features/admin/views/AdminDashboard'
 import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
@@ -121,6 +122,76 @@ export const FallbackAvatar: React.FC<{ className?: string }> = ({ className = "
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
   </svg>
 );
+
+// EXPERIMENTAL -- rama de testeo. Hero con parallax ligado al scroll (motion/react):
+// la imagen se desplaza y se atenua a medida que el usuario baja, el texto entra
+// escalonado al montar. Si se valida, migrar el patron a un componente reusable
+// en vez de dejarlo inline aca.
+const heroTextVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
+};
+const heroItemVariants = {
+  hidden: { opacity: 0, y: 28 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } },
+};
+
+const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  const imageY = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+  const imageOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.35]);
+  const textY = useTransform(scrollYProgress, [0, 1], [0, -40]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+
+  return (
+    <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center overflow-hidden">
+      <motion.div
+        className="md:col-span-6 space-y-6 text-left"
+        style={{ y: textY, opacity: textOpacity }}
+        variants={heroTextVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={heroItemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
+          <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
+          <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>
+        </motion.div>
+        <motion.h1 variants={heroItemVariants} className="serif-title text-5xl md:text-6xl leading-[1.1] text-[#3B0019] font-light tracking-tight">
+          El arte de <br />
+          <span className="italic font-normal text-[#8E1B54]">consentir</span> tus <br />
+          manos y pies.
+        </motion.h1>
+        <motion.p variants={heroItemVariants} className="text-[#57534E] text-xs leading-relaxed max-w-sm font-light">
+          Un spa boutique premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
+        </motion.p>
+        <motion.div variants={heroItemVariants} className="pt-2">
+          <button
+            onClick={onBook}
+            className="px-8 py-4 bg-[#5C0632] hover:bg-[#3B0019] text-white font-medium rounded-xl text-xs tracking-wider uppercase shadow-lg transition-all"
+          >
+            Reservar una Experiencia
+          </button>
+        </motion.div>
+      </motion.div>
+
+      <motion.div
+        className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square"
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <motion.img
+          src="/hero_1.jpg"
+          alt="Trabajo de uñas WineSpa"
+          className="w-full h-full object-cover"
+          style={{ y: imageY, scale: imageScale, opacity: imageOpacity }}
+        />
+      </motion.div>
+    </section>
+  );
+};
 
 export default function App() {
   // PERSISTENCIA DE SESION
@@ -1021,7 +1092,12 @@ export default function App() {
 
       {/* RENDER PORTAL DEL CLIENTE */}
       {view === 'clientPortal' && session && session.role === 'cliente' && (
-        <div className="max-w-4xl mx-auto px-6 py-12 flex-1 w-full space-y-10 animate-fade-in text-left">
+        <motion.div
+          className="max-w-4xl mx-auto px-6 py-12 flex-1 w-full space-y-10 text-left"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <header className="flex items-center gap-3">
             <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
             <div className="flex flex-col">
@@ -1178,22 +1254,41 @@ export default function App() {
               Agendar Nueva Cita
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
-        <div className="space-y-16 pb-16 animate-fade-in">
+        <motion.div
+          className="space-y-16 pb-16"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           {/* Banner CMS como hero visual */}
           {landingContent && landingContent.images && landingContent.images.length > 0 && (
             <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
               <div className="max-w-5xl mx-auto">
                 <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
-                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
-                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative overflow-hidden bg-neutral-900">
+                    <motion.img
+                      key={activeSlide}
+                      src={landingContent.images[activeSlide]}
+                      alt="Anuncio"
+                      className="w-full h-full object-cover"
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
                   </div>
-                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                  <motion.div
+                    key={activeSlide}
+                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10"
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+                  >
                     {landingContent.news && landingContent.news[activeSlide] ? (
                       <>
                         <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
@@ -1208,54 +1303,33 @@ export default function App() {
                         <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
           )}
 
-          <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            <div className="md:col-span-6 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
-                <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
-                <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>
-              </div>
-              <h1 className="serif-title text-5xl md:text-6xl leading-[1.1] text-[#3B0019] font-light tracking-tight">
-                El arte de <br />
-                <span className="italic font-normal text-[#8E1B54]">consentir</span> tus <br />
-                manos y pies.
-              </h1>
-              <p className="text-[#57534E] text-xs leading-relaxed max-w-sm font-light">
-                Un spa boutique premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
-              </p>
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    setBookingStep('selection');
-                    if (session && session.role === 'cliente') {
-                      setBookingPhone(session.phone || '');
-                      setBookingName(session.name || '');
-                    }
-                    setView('booking');
-                  }}
-                  className="px-8 py-4 bg-[#5C0632] hover:bg-[#3B0019] text-white font-medium rounded-xl text-xs tracking-wider uppercase shadow-lg transition-all"
-                >
-                  Reservar una Experiencia
-                </button>
-              </div>
-            </div>
-
-            <div className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square">
-              <img src="/hero_1.jpg" alt="Trabajo de uñas WineSpa" className="w-full h-full object-cover" />
-            </div>
-          </section>
+          <HeroScrollSection onBook={() => {
+            setBookingStep('selection');
+            if (session && session.role === 'cliente') {
+              setBookingPhone(session.phone || '');
+              setBookingName(session.name || '');
+            }
+            setView('booking');
+          }} />
 
           {/* Servicios Destacados — compacto en landing */}
           <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
-            <div className="text-center space-y-1">
+            <motion.div
+              className="text-center space-y-1"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            >
               <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Carta de Rituales</span>
               <h2 className="serif-title text-2xl text-[#3B0019] font-light">Servicios de Uñas & Cuidado Premium</h2>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {(() => {
@@ -1263,8 +1337,15 @@ export default function App() {
                 const featured = trending.length > 0
                   ? trending.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).slice(0, 3)
                   : [...services].sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 3);
-                return featured.map(s => (
-                  <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                return featured.map((s, i) => (
+                  <motion.div
+                    key={s.id}
+                    className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                    initial={{ opacity: 0, y: 32, scale: 0.96 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, amount: 0.4 }}
+                    transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  >
                     <div className="aspect-video relative overflow-hidden bg-neutral-100">
                       <img src={
                         s.imageUrl
@@ -1285,7 +1366,7 @@ export default function App() {
                         <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ));
               })()}
             </div>
@@ -1296,12 +1377,17 @@ export default function App() {
               </button>
             </div>
           </section>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA: Catálogo Completo de Servicios */}
       {view === 'servicesCatalog' && (
-        <div className="max-w-7xl mx-auto px-6 py-12 space-y-8 animate-fade-in text-left">
+        <motion.div
+          className="max-w-7xl mx-auto px-6 py-12 space-y-8 text-left"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <button onClick={() => setView('landing')} className="text-xs text-[#A68F63] hover:text-[#5C0632] font-semibold mb-2 inline-block">← Volver al Inicio</button>
@@ -1330,8 +1416,14 @@ export default function App() {
                   return (a.name || '').localeCompare(b.name || '');
                 });
               if (filtered.length === 0) return <p className="text-xs text-[#78716C] py-12 text-center col-span-full">Sin servicios que coincidan.</p>;
-              return filtered.map(s => (
-                <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+              return filtered.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: Math.min(i * 0.04, 0.3), ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
                     <img src={
                       s.imageUrl
@@ -1354,21 +1446,25 @@ export default function App() {
                       <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ));
             })()}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
-        <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
-            ← Volver
-          </button>
-
-          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-16">
+        <motion.div
+          className="flex-1 md:grid md:grid-cols-12 min-h-screen relative"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen md:overflow-y-auto pt-8">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
+              ← Volver
+            </button>
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
@@ -1530,6 +1626,9 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16 pb-24 md:pb-10">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
+              ← Volver
+            </button>
             {/* Wizard Progress — mobile only */}
             <div className="md:hidden flex items-center justify-center gap-3 pb-2">
               {[1, 2, 3].map((s) => (
@@ -1850,7 +1949,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
 
