@@ -193,6 +193,227 @@ const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
   );
 };
 
+const WineSpaExperienceSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
+  return (
+    <section className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-12 items-center text-left">
+      <div className="md:col-span-6 relative flex items-center justify-center min-h-[350px]">
+        {/* Collage de imágenes */}
+        <motion.div
+          className="w-2/3 aspect-square rounded-2xl overflow-hidden shadow-xl border border-[#EADEC9]/40 z-10 bg-neutral-100"
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <img src="/winespa_interior_1.jpg" alt="Interior WineSpa 1" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+        </motion.div>
+        <motion.div
+          className="absolute right-4 bottom-4 w-1/2 aspect-square rounded-2xl overflow-hidden shadow-2xl border border-white z-20 bg-neutral-100"
+          initial={{ opacity: 0, y: 30, x: 10 }}
+          whileInView={{ opacity: 1, y: 0, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <img src="/winespa_interior_2.jpg" alt="Interior WineSpa 2" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+        </motion.div>
+      </div>
+
+      <motion.div
+        className="md:col-span-6 space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">La Experiencia</span>
+        <h2 className="serif-title text-3xl md:text-4xl text-[#3B0019] font-light leading-tight">
+          Un Refugio Diseñado para tu <span className="italic font-normal text-[#8E1B54]">Bienestar</span>
+        </h2>
+        <p className="text-xs text-[#57534E] leading-relaxed font-light">
+          En WineSpa fusionamos la delicadeza del cuidado de manos y pies con el ritual relajante del vino. Creamos un ambiente exclusivo para desconectarte del día a día.
+        </p>
+
+        <div className="space-y-4 pt-2">
+          {[
+            {
+              title: "Nail Art & Cuidado Boutique",
+              desc: "Esmaltados semipermanentes y tradicionales con los más altos estándares de higiene y diseño de vanguardia."
+            },
+            {
+              title: "Cata & Copa de Cortesía",
+              desc: "Acompaña tu sesión con una copa de cortesía de vino premium o té de infusión en nuestro lounge."
+            },
+            {
+              title: "Espacio de Confort Acústico",
+              desc: "Aromas de lavanda, iluminación cálida y música relajante pensados para mimar tus sentidos."
+            }
+          ].map((item, idx) => (
+            <div key={idx} className="flex gap-4">
+              <span className="w-5 h-5 rounded-full bg-[#5C0632]/5 text-[#8E1B54] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                ✓
+              </span>
+              <div>
+                <h4 className="text-xs font-semibold text-[#3B0019]">{item.title}</h4>
+                <p className="text-[11px] text-[#78716C] font-light mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={onBook}
+            className="px-6 py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-102 active:scale-98"
+          >
+            Reservar Cita en Línea
+          </button>
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
+const TestimonialsSection: React.FC = () => {
+  const reviews = [
+    {
+      name: "Mariana Restrepo",
+      role: "Cliente Frecuente",
+      comment: "¡La mejor experiencia de spa que he tenido! La atención de las chicas es maravillosa, la manicura semipermanente me dura intacta por semanas y la copa de vino tinto de cortesía hace que sea el momento perfecto para relajarse.",
+      rating: 5
+    },
+    {
+      name: "Carolina Giraldo",
+      role: "Cliente Boutique",
+      comment: "El lugar es hermoso, huele delicioso y la música te transporta. Me encanta reservar con Ana, su dedicación al nail art es impresionante. Totalmente recomendado si buscas algo más que un simple esmaltado.",
+      rating: 5
+    },
+    {
+      name: "Valeria Gómez",
+      role: "Visitante Mensual",
+      comment: "Un concepto genial en Fabricato. Agendar por la página web es facilísimo y súper rápido. Poder ver los horarios reales de las manicuristas ahorra mucho tiempo. 10/10 en comodidad y servicio.",
+      rating: 5
+    }
+  ];
+
+  const [index, setIndex] = useState(0);
+
+  return (
+    <section className="bg-[#5C0632]/5 py-16 px-6">
+      <div className="max-w-4xl mx-auto space-y-8 text-center">
+        <div className="space-y-1">
+          <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Testimonios</span>
+          <h2 className="serif-title text-2xl md:text-3xl text-[#3B0019] font-light">Opiniones de Nuestras Clientes</h2>
+        </div>
+
+        <div className="relative min-h-[180px] flex items-center justify-center">
+          <motion.div
+            key={index}
+            className="bg-white border border-[#EADEC9]/30 p-8 rounded-3xl shadow-xs space-y-4 max-w-2xl text-left relative"
+            initial={{ opacity: 0, scale: 0.96, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.96, x: -20 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-xs font-bold text-[#3B0019]">{reviews[index].name}</h4>
+                <p className="text-[10px] text-[#A68F63]">{reviews[index].role}</p>
+              </div>
+              <div className="flex gap-0.5 text-amber-500 text-xs">
+                {Array.from({ length: reviews[index].rating }).map((_, i) => (
+                  <span key={i}>★</span>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-[#57534E] leading-relaxed font-light italic">
+              "{reviews[index].comment}"
+            </p>
+          </motion.div>
+        </div>
+
+        <div className="flex justify-center gap-2 mt-4">
+          {reviews.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setIndex(idx)}
+              className={`h-2 rounded-full transition-all ${index === idx ? 'bg-[#8E1B54] w-6' : 'bg-neutral-300 w-2'}`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-b border-[#EADEC9]/30 py-4 text-left">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex justify-between items-center text-[#3B0019] font-medium text-xs py-2 hover:text-[#8E1B54] transition-colors cursor-pointer"
+      >
+        <span>{question}</span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.25 }}
+          className="text-[#A68F63] text-sm font-bold"
+        >
+          ▾
+        </motion.span>
+      </button>
+      <motion.div
+        initial={false}
+        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="overflow-hidden"
+      >
+        <p className="text-[11px] text-[#78716C] leading-relaxed font-light pt-1 pb-3 pr-6">
+          {answer}
+        </p>
+      </motion.div>
+    </div>
+  );
+};
+
+const FaqSection: React.FC = () => {
+  const faqs = [
+    {
+      q: "¿Cómo funciona la copa de cortesía?",
+      a: "Todas nuestras experiencias de manicura y pedicure boutique incluyen una bebida de cortesía. Puedes elegir entre una copa de vino tinto, vino blanco, champaña o una infusión artesanal caliente o fría en nuestra barra de bar relax."
+    },
+    {
+      q: "¿Es necesario reservar cita previa?",
+      a: "Recomendamos agendar con anticipación para garantizar disponibilidad con tu manicurista preferida y en tu horario deseado. Sin embargo, si tenemos espacios libres, con gusto te atenderemos sin cita previa."
+    },
+    {
+      q: "¿Con cuánto tiempo puedo cancelar o reprogramar?",
+      a: "Entendemos que tus planes pueden cambiar. Puedes cancelar o reprogramar tu cita sin costo alguno hasta 4 horas antes de la hora acordada, contactándonos directamente o desde tu Portal de Cliente."
+    },
+    {
+      q: "¿Qué productos y marcas de esmalte utilizan?",
+      a: "En WineSpa cuidamos tu salud. Por eso utilizamos esmaltes e insumos libres de toxinas dañinas (marcas de esmaltado semipermanente de primera línea) y herramientas sanitizadas individualmente en autoclave para cada cliente."
+    }
+  ];
+
+  return (
+    <section className="max-w-3xl mx-auto px-6 py-12 space-y-6">
+      <div className="text-center space-y-1 mb-4">
+        <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Dudas Comunes</span>
+        <h2 className="serif-title text-2xl text-[#3B0019] font-light">Preguntas Frecuentes</h2>
+      </div>
+
+      <div className="divide-y divide-[#EADEC9]/20">
+        {faqs.map((faq, idx) => (
+          <FaqItem key={idx} question={faq.q} answer={faq.a} />
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export default function App() {
   // PERSISTENCIA DE SESION
   const [session, setSession] = useState<UserSession | null>(null);
@@ -261,6 +482,15 @@ export default function App() {
   const [bookingName, setBookingName] = useState('');
   const [bookingAge, setBookingAge] = useState('');
   const [bookingGender, setBookingGender] = useState('Femenino');
+
+  const handleGoToBooking = () => {
+    setBookingStep('selection');
+    if (session && session.role === 'cliente') {
+      setBookingPhone(session.phone || '');
+      setBookingName(session.name || '');
+    }
+    setView('booking');
+  };
 
   // Envío Cita
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1309,14 +1539,9 @@ export default function App() {
             </div>
           )}
 
-          <HeroScrollSection onBook={() => {
-            setBookingStep('selection');
-            if (session && session.role === 'cliente') {
-              setBookingPhone(session.phone || '');
-              setBookingName(session.name || '');
-            }
-            setView('booking');
-          }} />
+          <HeroScrollSection onBook={handleGoToBooking} />
+
+          <WineSpaExperienceSection onBook={handleGoToBooking} />
 
           {/* Servicios Destacados — compacto en landing */}
           <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
@@ -1377,6 +1602,10 @@ export default function App() {
               </button>
             </div>
           </section>
+
+          <TestimonialsSection />
+
+          <FaqSection />
         </motion.div>
       )}
 
