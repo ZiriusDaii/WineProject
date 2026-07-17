@@ -230,10 +230,6 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
               desc: "Esmaltados semipermanentes y tradicionales con los más altos estándares de higiene y diseño de vanguardia."
             },
             {
-              title: "Cata & Copa de Cortesía",
-              desc: "Acompaña tu sesión con una copa de cortesía de vino premium o té de infusión en nuestro lounge."
-            },
-            {
               title: "Espacio de Confort Acústico",
               desc: "Aromas de lavanda, iluminación cálida y música relajante pensados para mimar tus sentidos."
             }
@@ -263,202 +259,13 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
   );
 };
 
-const TestimonialsSection: React.FC = () => {
-  const defaultReviews = [
-    {
-      name: "Mariana Restrepo",
-      role: "Cliente Frecuente",
-      comment: "¡La mejor experiencia de spa que he tenido! La atención de las chicas es maravillosa, la manicura semipermanente me dura intacta por semanas y la copa de vino tinto de cortesía hace que sea el momento perfecto para relajarse.",
-      rating: 5
-    },
-    {
-      name: "Carolina Giraldo",
-      role: "Cliente Boutique",
-      comment: "El lugar es hermoso, huele delicioso y la música te transporta. Me encanta reservar con Ana, su dedicación al nail art es impresionante. Totalmente recomendado si buscas algo más que un simple esmaltado.",
-      rating: 5
-    },
-    {
-      name: "Valeria Gómez",
-      role: "Visitante Mensual",
-      comment: "Un concepto genial en Fabricato. Agendar por la página web es facilísimo y súper rápido. Poder ver los horarios reales de las manicuristas ahorra mucho tiempo. 10/10 en comodidad y servicio.",
-      rating: 5
-    }
-  ];
-
-  // Load custom reviews from localStorage
-  const [customReviews, setCustomReviews] = useState<any[]>(() => {
-    try {
-      const stored = localStorage.getItem('winespa_custom_reviews');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const allReviews = [...defaultReviews, ...customReviews];
-  const [index, setIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newRating, setNewRating] = useState(5);
-  const [newComment, setNewComment] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newComment.trim()) return;
-
-    const newReview = {
-      name: newName,
-      role: "Cliente Verificado",
-      comment: newComment,
-      rating: newRating
-    };
-
-    const updated = [newReview, ...customReviews];
-    setCustomReviews(updated);
-    localStorage.setItem('winespa_custom_reviews', JSON.stringify(updated));
-
-    // Reset form
-    setNewName('');
-    setNewRating(5);
-    setNewComment('');
-    setIsModalOpen(false);
-    
-    // Switch to the newly submitted review immediately
-    setIndex(allReviews.length);
-  };
-
-  return (
-    <section className="bg-[#5C0632]/5 py-16 px-6">
-      <div className="max-w-4xl mx-auto space-y-8 text-center">
-        <div className="space-y-1">
-          <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Testimonios</span>
-          <h2 className="serif-title text-2xl md:text-3xl text-[#3B0019] font-light">Opiniones de Nuestras Clientes</h2>
-        </div>
-
-        <div className="relative min-h-[180px] flex items-center justify-center">
-          <motion.div
-            key={index}
-            className="bg-white border border-[#EADEC9]/30 p-8 rounded-3xl shadow-xs space-y-4 max-w-2xl text-left relative cursor-grab active:cursor-grabbing select-none"
-            initial={{ opacity: 0, scale: 0.96, x: 20 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.96, x: -20 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.6}
-            onDragEnd={(_, info) => {
-              const swipe = info.offset.x;
-              if (swipe < -80) {
-                setIndex((index + 1) % allReviews.length);
-              } else if (swipe > 80) {
-                setIndex((index - 1 + allReviews.length) % allReviews.length);
-              }
-            }}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="text-xs font-bold text-[#3B0019]">{allReviews[index]?.name || 'Invitado'}</h4>
-                <p className="text-[10px] text-[#A68F63]">{allReviews[index]?.role || 'Cliente'}</p>
-              </div>
-              <div className="flex gap-0.5 text-amber-500 text-xs">
-                {Array.from({ length: allReviews[index]?.rating || 5 }).map((_, i) => (
-                  <span key={i}>★</span>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-[#57534E] leading-relaxed font-light italic">
-              "{allReviews[index]?.comment}"
-            </p>
-          </motion.div>
-        </div>
-
-        <div className="flex justify-center gap-2 mt-4">
-          {allReviews.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setIndex(idx)}
-              className={`h-2 rounded-full transition-all cursor-pointer ${index === idx ? 'bg-[#8E1B54] w-6' : 'bg-neutral-300 w-2'}`}
-            />
-          ))}
-        </div>
-
-        {/* Botón Dejar Opinión */}
-        <div className="pt-4">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-5 py-2.5 border border-[#8E1B54]/40 hover:bg-[#8E1B54]/5 text-[#8E1B54] text-[11px] font-bold rounded-xl transition-all cursor-pointer"
-          >
-            + Escribir mi Opinión
-          </button>
-        </div>
-
-        {/* Modal de Nueva Opinión */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="absolute inset-0" onClick={() => setIsModalOpen(false)}></div>
-            <div className="bg-[#FDFBF7] w-full max-w-sm rounded-3xl p-6 relative z-10 border border-[#EADEC9]/60 shadow-2xl space-y-4 text-left animate-scale-in">
-              <div className="flex justify-between items-center pb-2 border-b border-[#EADEC9]/20">
-                <span className="serif-title text-base text-[#3B0019]">Dejar mi Reseña</span>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="w-6 h-6 bg-neutral-200/50 rounded-full text-xs">✕</button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Tu Nombre</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={35}
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Ej: Sofía Martínez"
-                    className="w-full p-2.5 border border-[#EADEC9]/60 rounded-xl text-xs bg-white"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Calificación</label>
-                  <div className="flex gap-1.5 text-lg">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        type="button"
-                        key={star}
-                        onClick={() => setNewRating(star)}
-                        className={`transition-colors cursor-pointer ${star <= newRating ? 'text-amber-500' : 'text-neutral-300'}`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Tu Opinión / Experiencia</label>
-                  <textarea
-                    required
-                    maxLength={200}
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Cuéntanos cómo fue tu ritual en WineSpa..."
-                    rows={3}
-                    className="w-full p-2.5 border border-[#EADEC9]/60 rounded-xl text-xs bg-white resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
-                >
-                  Enviar Reseña Real
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-};
+// TestimonialsSection deshabilitada a proposito: la version anterior mostraba
+// 3 clientas inventadas (nombre y cita falsos) como si fueran reales, y un
+// boton "Enviar Resena Real" que en realidad solo guardaba en el localStorage
+// del propio navegador -- nadie mas lo veia nunca. Pendiente real: un modelo
+// de Review en el backend, restringido a clientes autenticados con una cita
+// COMPLETED, con moderacion antes de publicarse. Hasta que exista eso, la
+// seccion no se renderiza (ver mas abajo en el JSX de la landing).
 
 const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -496,21 +303,9 @@ const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, ans
 const FaqSection: React.FC = () => {
   const faqs = [
     {
-      q: "¿Cómo funciona la copa de cortesía?",
-      a: "Todas nuestras experiencias de manicura y pedicure boutique incluyen una bebida de cortesía. Puedes elegir entre una copa de vino tinto, vino blanco, champaña o una infusión artesanal caliente o fría en nuestra barra de bar relax."
-    },
-    {
       q: "¿Es necesario reservar cita previa?",
       a: "Recomendamos agendar con anticipación para garantizar disponibilidad con tu manicurista preferida y en tu horario deseado. Sin embargo, si tenemos espacios libres, con gusto te atenderemos sin cita previa."
     },
-    {
-      q: "¿Con cuánto tiempo puedo cancelar o reprogramar?",
-      a: "Entendemos que tus planes pueden cambiar. Puedes cancelar o reprogramar tu cita sin costo alguno hasta 4 horas antes de la hora acordada, contactándonos directamente o desde tu Portal de Cliente."
-    },
-    {
-      q: "¿Qué productos y marcas de esmalte utilizan?",
-      a: "En WineSpa cuidamos tu salud. Por eso utilizamos esmaltes e insumos libres de toxinas dañinas (marcas de esmaltado semipermanente de primera línea) y herramientas sanitizadas individualmente en autoclave para cada cliente."
-    }
   ];
 
   return (
@@ -873,7 +668,7 @@ export default function App() {
           ],
           news: [
             { title: 'Inauguración El Poblado', description: 'Disfruta de nuestras nuevas estaciones boutique con aromaterapia.' },
-            { title: 'Ritual de Bienvenida', description: 'Por cualquier manicura semipermanente te obsequiamos una copa de vino Malbec.' }
+            { title: 'Ritual de Bienvenida', description: 'Conocé nuestros tratamientos de manicura y pedicura boutique.' }
           ]
         });
       }
@@ -1741,7 +1536,7 @@ export default function App() {
             </div>
           </section>
 
-          <TestimonialsSection />
+          {/* TestimonialsSection deshabilitada -- ver comentario junto a su definicion */}
 
           <FaqSection />
         </motion.div>
