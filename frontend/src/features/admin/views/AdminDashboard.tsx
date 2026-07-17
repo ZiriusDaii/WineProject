@@ -1231,12 +1231,125 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6 max-w-2xl animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">CMS / Landing</h2>
 
+            {/* HERO & EXPERIENCE EDITORS */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">Imágenes de la Página Principal</h3>
+              
+              {/* HERO IMAGE EDITOR */}
+              <div className="border-b border-[#EADEC9]/25 pb-4 space-y-2">
+                <p className="text-xs font-semibold text-[#44403C]">Imagen del Banner Principal (Hero)</p>
+                {(() => {
+                  const heroItem = cmsItems.find((item: any) => item.type === 'HERO');
+                  return (
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={heroItem?.imageUrl?.startsWith('/uploads') ? `${API}${heroItem.imageUrl}` : (heroItem?.imageUrl || '/hero_1.jpg')}
+                        alt="Hero preview"
+                        className="w-20 h-16 rounded-lg object-cover border shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setSubmitting(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append('image', file);
+                              const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+                              if (!uRes.ok) throw new Error();
+                              const data = await uRes.json();
+                              
+                              const payload = {
+                                id: heroItem?.id || null,
+                                type: 'HERO',
+                                title: 'Hero Image',
+                                imageUrl: data.imageUrl,
+                                isActive: true
+                              };
+                              const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+                              if (r.ok) {
+                                setSuccessMsg('Imagen del Hero actualizada.');
+                                fetchCMS();
+                              } else throw new Error();
+                            } catch {
+                              setErrorMsg('Error al actualizar imagen del Hero.');
+                            } finally {
+                              setSubmitting(false);
+                            }
+                          }}
+                          className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-[#5C0632]/10 file:text-[#5C0632] hover:file:bg-[#5C0632]/20"
+                        />
+                        <p className="text-[9px] text-[#78716C]">Sube un archivo para cambiar la imagen principal (se recomienda horizontal/cuadrada).</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* EXPERIENCE IMAGE EDITOR */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-[#44403C]">Imagen de Sección "La Experiencia"</p>
+                {(() => {
+                  const expItem = cmsItems.find((item: any) => item.type === 'EXPERIENCE');
+                  return (
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={expItem?.imageUrl?.startsWith('/uploads') ? `${API}${expItem.imageUrl}` : (expItem?.imageUrl || '/winespa_interior_1.jpg')}
+                        alt="Experience preview"
+                        className="w-20 h-16 rounded-lg object-cover border shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setSubmitting(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append('image', file);
+                              const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+                              if (!uRes.ok) throw new Error();
+                              const data = await uRes.json();
+                              
+                              const payload = {
+                                id: expItem?.id || null,
+                                type: 'EXPERIENCE',
+                                title: 'Experience Image',
+                                imageUrl: data.imageUrl,
+                                isActive: true
+                              };
+                              const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+                              if (r.ok) {
+                                setSuccessMsg('Imagen de La Experiencia actualizada.');
+                                fetchCMS();
+                              } else throw new Error();
+                            } catch {
+                              setErrorMsg('Error al actualizar imagen de La Experiencia.');
+                            } finally {
+                              setSubmitting(false);
+                            }
+                          }}
+                          className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-[#5C0632]/10 file:text-[#5C0632] hover:file:bg-[#5C0632]/20"
+                        />
+                        <p className="text-[9px] text-[#78716C]">Sube un archivo para cambiar la imagen de "La Experiencia" (se recomienda relación de aspecto 4:3 o 16:9).</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
             {/* Lista de anuncios existentes */}
-            {cmsItems.length > 0 && (
+            {cmsItems.filter((item: any) => item.type === 'CAROUSEL').length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.length})</h3>
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.filter((item: any) => item.type === 'CAROUSEL').length})</h3>
                 <div className="space-y-2">
-                  {cmsItems.map((item: any) => (
+                  {cmsItems.filter((item: any) => item.type === 'CAROUSEL').map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
                       <img src={item.imageUrl?.startsWith('/uploads') ? `${API}${item.imageUrl}` : item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
                       <div className="flex-1 min-w-0">

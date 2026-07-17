@@ -136,7 +136,7 @@ const heroItemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } },
 };
 
-const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
+const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = ({ heroImage, onBook }) => {
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   const imageY = useTransform(scrollYProgress, [0, 1], [0, 120]);
@@ -177,13 +177,13 @@ const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
       </motion.div>
 
       <motion.div
-        className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square"
+        className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] md:aspect-square"
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
         <motion.img
-          src="/hero_1.jpg"
+          src={heroImage}
           alt="Trabajo de uñas WineSpa"
           className="w-full h-full object-cover"
           style={{ y: imageY, scale: imageScale, opacity: imageOpacity }}
@@ -193,18 +193,18 @@ const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
   );
 };
 
-const WineSpaExperienceSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
+const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () => void }> = ({ experienceImage, onBook }) => {
   return (
     <section className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-12 items-center text-left">
       <div className="md:col-span-6">
         <motion.div
-          className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg border border-[#EADEC9]/40 bg-neutral-100"
+          className="aspect-[4/3] md:aspect-video w-full rounded-2xl overflow-hidden shadow-lg border border-[#EADEC9]/40 bg-neutral-100"
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
-          <img src="/winespa_interior_1.jpg" alt="Interior de Wine Nails Spa" className="w-full h-full object-cover hover:scale-103 transition-transform duration-700 ease-out" />
+          <img src={experienceImage} alt="Interior de Wine Nails Spa" className="w-full h-full object-cover hover:scale-103 transition-transform duration-700 ease-out" />
         </motion.div>
       </div>
 
@@ -578,6 +578,10 @@ export default function App() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [manicuristShifts, setManicuristShifts] = useState<Record<string, { startTime: string; endTime: string } | null>>({});
 
+  // Estados para Imágenes Dinámicas del Home/Landing
+  const [heroImage, setHeroImage] = useState('/hero_1.jpg');
+  const [experienceImage, setExperienceImage] = useState('/winespa_interior_1.jpg');
+
   // Control de Modales Booking
   const [isBookingOpen, setIsBookingOpen] = useState(false); // Móvil
 
@@ -833,6 +837,23 @@ export default function App() {
         const landingRes = await fetch(`${API_URL}/api/landing/content`);
         if (!landingRes.ok) throw new Error();
         const items: { type: string; title: string; description?: string | null; imageUrl: string; order?: number }[] = await landingRes.json();
+        
+        // Extract Hero Image
+        const heroItem = items.find((i) => i.type === 'HERO');
+        if (heroItem) {
+          setHeroImage(heroItem.imageUrl.startsWith('/uploads') ? `${API_URL}${heroItem.imageUrl}` : heroItem.imageUrl);
+        } else {
+          setHeroImage('/hero_1.jpg');
+        }
+
+        // Extract Experience Image
+        const expItem = items.find((i) => i.type === 'EXPERIENCE');
+        if (expItem) {
+          setExperienceImage(expItem.imageUrl.startsWith('/uploads') ? `${API_URL}${expItem.imageUrl}` : expItem.imageUrl);
+        } else {
+          setExperienceImage('/winespa_interior_1.jpg');
+        }
+
         const carousel = items
           .filter((i) => i.type === 'CAROUSEL')
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -842,6 +863,8 @@ export default function App() {
           news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
         });
       } catch {
+        setHeroImage('/hero_1.jpg');
+        setExperienceImage('/winespa_interior_1.jpg');
         setLandingContent({
           images: [
             '/hero_1.jpg',
@@ -1654,9 +1677,9 @@ export default function App() {
             </div>
           )}
 
-          <HeroScrollSection onBook={handleGoToBooking} />
+          <HeroScrollSection heroImage={heroImage} onBook={handleGoToBooking} />
 
-          <WineSpaExperienceSection onBook={handleGoToBooking} />
+          <WineSpaExperienceSection experienceImage={experienceImage} onBook={handleGoToBooking} />
 
           {/* Servicios Destacados — compacto en landing */}
           <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
@@ -2212,13 +2235,25 @@ export default function App() {
             )}
 
             <div className="p-4 pt-2">
-              <button
-                onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }}
-                disabled={selectedServiceIds.length === 0}
-                className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs"
-              >
-                Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
-              </button>
+              {bookingWizardStep === 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setBookingWizardStep(2)}
+                  disabled={selectedServiceIds.length === 0}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Continuar: Fecha y Hora
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { if (selectedServiceIds.length > 0 && selectedSpecialist && bookingDate && bookingTime) { setBookingStep('selection'); setIsBookingOpen(true); } }}
+                  disabled={selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
+                </button>
+              )}
             </div>
           </div>
 
