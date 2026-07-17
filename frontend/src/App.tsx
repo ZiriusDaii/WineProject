@@ -274,7 +274,7 @@ const WineSpaExperienceSection: React.FC<{ onBook: () => void }> = ({ onBook }) 
 };
 
 const TestimonialsSection: React.FC = () => {
-  const reviews = [
+  const defaultReviews = [
     {
       name: "Mariana Restrepo",
       role: "Cliente Frecuente",
@@ -295,7 +295,47 @@ const TestimonialsSection: React.FC = () => {
     }
   ];
 
+  // Load custom reviews from localStorage
+  const [customReviews, setCustomReviews] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('winespa_custom_reviews');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const allReviews = [...defaultReviews, ...customReviews];
   const [index, setIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newComment.trim()) return;
+
+    const newReview = {
+      name: newName,
+      role: "Cliente Verificado",
+      comment: newComment,
+      rating: newRating
+    };
+
+    const updated = [newReview, ...customReviews];
+    setCustomReviews(updated);
+    localStorage.setItem('winespa_custom_reviews', JSON.stringify(updated));
+
+    // Reset form
+    setNewName('');
+    setNewRating(5);
+    setNewComment('');
+    setIsModalOpen(false);
+    
+    // Switch to the newly submitted review immediately
+    setIndex(allReviews.length);
+  };
 
   return (
     <section className="bg-[#5C0632]/5 py-16 px-6">
@@ -316,30 +356,104 @@ const TestimonialsSection: React.FC = () => {
           >
             <div className="flex justify-between items-center">
               <div>
-                <h4 className="text-xs font-bold text-[#3B0019]">{reviews[index].name}</h4>
-                <p className="text-[10px] text-[#A68F63]">{reviews[index].role}</p>
+                <h4 className="text-xs font-bold text-[#3B0019]">{allReviews[index]?.name || 'Invitado'}</h4>
+                <p className="text-[10px] text-[#A68F63]">{allReviews[index]?.role || 'Cliente'}</p>
               </div>
               <div className="flex gap-0.5 text-amber-500 text-xs">
-                {Array.from({ length: reviews[index].rating }).map((_, i) => (
+                {Array.from({ length: allReviews[index]?.rating || 5 }).map((_, i) => (
                   <span key={i}>★</span>
                 ))}
               </div>
             </div>
             <p className="text-xs text-[#57534E] leading-relaxed font-light italic">
-              "{reviews[index].comment}"
+              "{allReviews[index]?.comment}"
             </p>
           </motion.div>
         </div>
 
         <div className="flex justify-center gap-2 mt-4">
-          {reviews.map((_, idx) => (
+          {allReviews.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setIndex(idx)}
-              className={`h-2 rounded-full transition-all ${index === idx ? 'bg-[#8E1B54] w-6' : 'bg-neutral-300 w-2'}`}
+              className={`h-2 rounded-full transition-all cursor-pointer ${index === idx ? 'bg-[#8E1B54] w-6' : 'bg-neutral-300 w-2'}`}
             />
           ))}
         </div>
+
+        {/* Botón Dejar Opinión */}
+        <div className="pt-4">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-5 py-2.5 border border-[#8E1B54]/40 hover:bg-[#8E1B54]/5 text-[#8E1B54] text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+          >
+            + Escribir mi Opinión
+          </button>
+        </div>
+
+        {/* Modal de Nueva Opinión */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+            <div className="absolute inset-0" onClick={() => setIsModalOpen(false)}></div>
+            <div className="bg-[#FDFBF7] w-full max-w-sm rounded-3xl p-6 relative z-10 border border-[#EADEC9]/60 shadow-2xl space-y-4 text-left animate-scale-in">
+              <div className="flex justify-between items-center pb-2 border-b border-[#EADEC9]/20">
+                <span className="serif-title text-base text-[#3B0019]">Dejar mi Reseña</span>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-6 h-6 bg-neutral-200/50 rounded-full text-xs">✕</button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Tu Nombre</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={35}
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Ej: Sofía Martínez"
+                    className="w-full p-2.5 border border-[#EADEC9]/60 rounded-xl text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Calificación</label>
+                  <div className="flex gap-1.5 text-lg">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setNewRating(star)}
+                        className={`transition-colors cursor-pointer ${star <= newRating ? 'text-amber-500' : 'text-neutral-300'}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-[#A68F63] block">Tu Opinión / Experiencia</label>
+                  <textarea
+                    required
+                    maxLength={200}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Cuéntanos cómo fue tu ritual en WineSpa..."
+                    rows={3}
+                    className="w-full p-2.5 border border-[#EADEC9]/60 rounded-xl text-xs bg-white resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
+                >
+                  Enviar Reseña Real
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
