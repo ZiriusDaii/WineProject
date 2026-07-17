@@ -196,25 +196,15 @@ const HeroScrollSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
 const WineSpaExperienceSection: React.FC<{ onBook: () => void }> = ({ onBook }) => {
   return (
     <section className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-12 items-center text-left">
-      <div className="md:col-span-6 relative flex items-center justify-center min-h-[350px]">
-        {/* Collage de imágenes */}
+      <div className="md:col-span-6">
         <motion.div
-          className="w-2/3 aspect-square rounded-2xl overflow-hidden shadow-xl border border-[#EADEC9]/40 z-10 bg-neutral-100"
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          className="aspect-video w-full rounded-2xl overflow-hidden shadow-lg border border-[#EADEC9]/40 bg-neutral-100"
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
-          <img src="/winespa_interior_1.jpg" alt="Interior WineSpa 1" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-        </motion.div>
-        <motion.div
-          className="absolute right-4 bottom-4 w-1/2 aspect-square rounded-2xl overflow-hidden shadow-2xl border border-white z-20 bg-neutral-100"
-          initial={{ opacity: 0, y: 30, x: 10 }}
-          whileInView={{ opacity: 1, y: 0, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <img src="/winespa_interior_2.jpg" alt="Interior WineSpa 2" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+          <img src="/winespa_interior_1.jpg" alt="Interior de Wine Nails Spa" className="w-full h-full object-cover hover:scale-103 transition-transform duration-700 ease-out" />
         </motion.div>
       </div>
 
@@ -263,7 +253,7 @@ const WineSpaExperienceSection: React.FC<{ onBook: () => void }> = ({ onBook }) 
         <div className="pt-2">
           <button
             onClick={onBook}
-            className="px-6 py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-102 active:scale-98"
+            className="px-6 py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-102 active:scale-98 cursor-pointer"
           >
             Reservar Cita en Línea
           </button>
@@ -348,11 +338,22 @@ const TestimonialsSection: React.FC = () => {
         <div className="relative min-h-[180px] flex items-center justify-center">
           <motion.div
             key={index}
-            className="bg-white border border-[#EADEC9]/30 p-8 rounded-3xl shadow-xs space-y-4 max-w-2xl text-left relative"
+            className="bg-white border border-[#EADEC9]/30 p-8 rounded-3xl shadow-xs space-y-4 max-w-2xl text-left relative cursor-grab active:cursor-grabbing select-none"
             initial={{ opacity: 0, scale: 0.96, x: 20 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.96, x: -20 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.6}
+            onDragEnd={(_, info) => {
+              const swipe = info.offset.x;
+              if (swipe < -80) {
+                setIndex((index + 1) % allReviews.length);
+              } else if (swipe > 80) {
+                setIndex((index - 1 + allReviews.length) % allReviews.length);
+              }
+            }}
           >
             <div className="flex justify-between items-center">
               <div>
