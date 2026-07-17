@@ -8,3 +8,5 @@ vault/
 CLAUDE.md
 scratch/
 .agents/
+.claude/skills/
+skills-lock.json
