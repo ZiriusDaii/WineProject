@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -268,25 +269,44 @@ export const StylistAgenda: React.FC = () => {
 
       {/* TABS DE NAVEGACIÓN MÓVIL */}
       <div className="md:hidden flex gap-2 pt-4">
-        <button 
-          onClick={() => setActiveMobileTab('calendar')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg ${activeMobileTab === 'calendar' ? 'bg-[#5C0632] text-white' : 'bg-[#EADEC9]/20 text-[#78716C]'}`}
-        >
-          🗓️ Mi Calendario
-        </button>
-        <button 
-          onClick={() => setActiveMobileTab('profile')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg ${activeMobileTab === 'profile' ? 'bg-[#5C0632] text-white' : 'bg-[#EADEC9]/20 text-[#78716C]'}`}
-        >
-          👤 Mi Perfil
-        </button>
+        {[
+          { id: 'calendar', label: '🗓️ Mi Calendario' },
+          { id: 'profile', label: '👤 Mi Perfil' }
+        ].map((t) => {
+          const isActive = activeMobileTab === t.id;
+          return (
+            <motion.button
+              key={t.id}
+              onClick={() => setActiveMobileTab(t.id as 'calendar' | 'profile')}
+              className={`relative flex-1 py-3 text-xs font-semibold rounded-xl transition-colors duration-250 cursor-pointer ${
+                isActive ? 'text-white' : 'text-[#78716C]'
+              }`}
+              whileTap={{ scale: 0.98 }}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activeStylistTabBg"
+                  className="absolute inset-0 bg-[#5C0632] rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              {t.label}
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* DISEÑO HÍBRIDO */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-8 pt-6">
         
         {/* CALENDARIO Y TAREAS */}
-        <div className={`md:col-span-7 space-y-6 ${activeMobileTab === 'calendar' ? 'block' : 'hidden md:block'}`}>
+        <motion.div
+          key={`calendar-${activeMobileTab}`}
+          className={`md:col-span-7 space-y-6 ${activeMobileTab === 'calendar' ? 'block' : 'hidden md:block'}`}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs text-left">
             <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2 mb-4">
               <button type="button" onClick={goToPreviousMonth} disabled={loading} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40 disabled:opacity-40">‹</button>
@@ -392,10 +412,16 @@ export const StylistAgenda: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* PERFIL */}
-        <div className={`md:col-span-5 space-y-6 ${activeMobileTab === 'profile' ? 'block' : 'hidden md:block'}`}>
+        <motion.div
+          key={`profile-${activeMobileTab}`}
+          className={`md:col-span-5 space-y-6 ${activeMobileTab === 'profile' ? 'block' : 'hidden md:block'}`}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs text-left">
             <h3 className="serif-title text-lg text-[#3B0019] border-b border-[#EADEC9]/25 pb-2 mb-4">Mi Perfil Profesional</h3>
 
@@ -460,7 +486,7 @@ export const StylistAgenda: React.FC = () => {
               </button>
             </form>
           </div>
-        </div>
+        </motion.div>
 
       </div>
 
