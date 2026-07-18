@@ -139,9 +139,15 @@ Pendiente:
 Antes de habilitar `migrate deploy` contra esa base, una sola vez:
 
 ```bash
-# Contra una COPIA descartable de esa base, nunca la real:
-DATABASE_URL="<copia-de-la-base-existente>" npx prisma migrate status
-# si el schema coincide con 0_init (sin diffs), recien ahi:
+# Contra una COPIA descartable de esa base, nunca la real -- `migrate status`
+# solo compara contra la tabla _prisma_migrations (que esa base no tiene), no
+# valida el schema real. `migrate diff` si compara la base contra schema.prisma:
+DATABASE_URL="<copia-de-la-base-existente>" npx prisma migrate diff \
+  --from-config-datasource \
+  --to-schema prisma/schema.prisma \
+  --script
+# Seguir solo si no genera ningun SQL (sin diferencias). Si genera algo, la
+# base real diverge del schema y hay que investigar antes de continuar.
 DATABASE_URL="<la-base-real>" npx prisma migrate resolve --applied 0_init
 ```
 
