@@ -53,6 +53,19 @@ async function findUserByPhone(
   return candidates.length === 1 ? candidates[0] : null;
 }
 
+// Para el chequeo de duplicados en el registro. findUserByPhone resuelve una
+// identidad y por eso falla cerrado (null) ante un sufijo ambiguo -- correcto
+// para login, donde no hay a que cuenta loguear si hay mas de una candidata.
+// Pero para registro esa ambiguedad NO significa "numero libre": si hay 2+
+// cuentas que terminan en los mismos 10 digitos, el numero ya esta tomado
+// igual, y crear una cuenta nueva mas seria un tercer duplicado.
+async function phoneIsTaken(phone: string): Promise<boolean> {
+  const normalized = normalizePhone(phone);
+  if (await prisma.user.count({ where: { phone: normalized } })) return true;
+  if (normalized.length !== 10) return false;
+  return (await prisma.user.count({ where: { phone: { endsWith: normalized } } })) > 0;
+}
+
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
 // 0=Domingo..6=Sabado.
 const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
@@ -338,6 +351,13 @@ export async function createClient(
       res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono", clientId: existing.id });
       return;
     }
+    if (await phoneIsTaken(phone)) {
+      // Sufijo ambiguo (2+ cuentas terminan en los mismos 10 digitos): no hay
+      // una identidad segura a la que recuperar la sesion, pero el numero
+      // igual esta tomado -- se bloquea el registro sin devolver clientId.
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+      return;
+    }
 
     const client = await prisma.user.create({
       data: {
@@ -407,7 +427,7 @@ export async function createAppointment(
     const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
     const parsedDate = new Date(date!);
 
-    if (parsedDate.getTime() < Date.now()) {
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.getTime() < Date.now()) {
       res.status(400).json({ error: "No es posible agendar una cita en una fecha u hora pasada" });
       return;
     }
@@ -515,7 +535,7 @@ export async function updateAppointment(
       const targetDate = date ? new Date(date) : existing.date;
       const targetManicuristId = manicuristId ?? existing.manicuristId;
 
-      if (date && targetDate.getTime() < Date.now()) {
+      if (date && (Number.isNaN(targetDate.getTime()) || targetDate.getTime() < Date.now())) {
         res.status(400).json({ error: "No es posible reprogramar una cita a una fecha u hora pasada" });
         return;
       }
