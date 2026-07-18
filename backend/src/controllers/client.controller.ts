@@ -26,6 +26,33 @@ const normalizePhone = (phone: string) => {
   return digits.length > 10 ? digits.slice(-10) : digits;
 };
 
+// Busca por telefono normalizado: primero exacto, y solo si eso falla y el
+// numero tiene los 10 digitos completos de un celular colombiano, intenta un
+// match por sufijo (recupera cuentas viejas guardadas con prefijo de pais).
+// Nunca hace match por sufijo con menos de 10 digitos -- un input de 7 podria
+// coincidir con el final de varios celulares distintos, y `findFirst` daria
+// acceso a la cuenta equivocada. Si el sufijo matchea a mas de una cuenta
+// (coincidencia real, aunque rarisima), tambien se trata como "no encontrado"
+// en vez de elegir una al azar.
+async function findUserByPhone(
+  phone: string,
+  where: Record<string, unknown>,
+  select?: Record<string, boolean>,
+): Promise<any | null> {
+  const normalized = normalizePhone(phone);
+
+  const exact = await prisma.user.findFirst({ where: { phone: normalized, ...where }, select });
+  if (exact) return exact;
+
+  if (normalized.length !== 10) return null;
+
+  const candidates = await prisma.user.findMany({
+    where: { phone: { endsWith: normalized }, ...where },
+    select,
+  });
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
 // 0=Domingo..6=Sabado.
 const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
@@ -235,19 +262,14 @@ export async function authClient(
 
     // Solo cuentas de tipo CLIENTE: un telefono de staff (admin/manicurista)
     // no debe autenticar ni prellenar datos en el flujo de clientes.
-    // endsWith (no equals) para que cuentas viejas guardadas con prefijo de
-    // pais u otro formato sigan encontrandose con el numero normalizado.
-    const user = await prisma.user.findFirst({
-      where: { phone: { endsWith: normalizePhone(phone) }, role: "CLIENTE" },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        age: true,
-        gender: true,
-        role: true,
-        createdAt: true,
-      },
+    const user = await findUserByPhone(phone, { role: "CLIENTE" }, {
+      id: true,
+      name: true,
+      phone: true,
+      age: true,
+      gender: true,
+      role: true,
+      createdAt: true,
     });
 
     if (!user) {
@@ -311,9 +333,7 @@ export async function createClient(
     }
 
     const normalizedPhone = normalizePhone(phone);
-    const existing = await prisma.user.findFirst({
-      where: { phone: { endsWith: normalizedPhone } },
-    });
+    const existing = await findUserByPhone(phone, {}, { id: true });
     if (existing) {
       res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono", clientId: existing.id });
       return;
