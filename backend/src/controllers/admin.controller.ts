@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
-import { normalizePhone, isValidPhone } from "./client.controller.js";
+import { normalizePhone, isValidPhone, phoneIsTaken } from "./client.controller.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -338,6 +338,15 @@ export async function updateManicuristStatus(
         return;
       }
 
+      // Sin esto, actualizar a "3001234567" cuando ya existe un registro
+      // legacy "573001234567" para el mismo numero real pasaba el indice
+      // unico de la BD sin problema (son strings distintos) y dejaba dos
+      // cuentas logicamente duplicadas para el mismo telefono.
+      if (await phoneIsTaken(phone, id)) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+        return;
+      }
+
       const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
       const updated = await prisma.user.update({
@@ -369,6 +378,11 @@ export async function updateManicuristStatus(
         res.status(400).json({
           error: "Faltan campos requeridos: phone, username, password, name",
         });
+        return;
+      }
+
+      if (await phoneIsTaken(phone)) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
         return;
       }
 

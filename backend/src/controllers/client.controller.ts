@@ -60,11 +60,14 @@ async function findUserByPhone(
 // Pero para registro esa ambiguedad NO significa "numero libre": si hay 2+
 // cuentas que terminan en los mismos 10 digitos, el numero ya esta tomado
 // igual, y crear una cuenta nueva mas seria un tercer duplicado.
-async function phoneIsTaken(phone: string): Promise<boolean> {
+// excludeId: para actualizar un registro a su propio telefono ya normalizado
+// sin que el chequeo se auto-rechace como "ya tomado".
+export async function phoneIsTaken(phone: string, excludeId?: string): Promise<boolean> {
   const normalized = normalizePhone(phone);
-  if (await prisma.user.count({ where: { phone: normalized } })) return true;
+  const notSelf = excludeId ? { id: { not: excludeId } } : {};
+  if (await prisma.user.count({ where: { phone: normalized, ...notSelf } })) return true;
   if (normalized.length !== 10) return false;
-  return (await prisma.user.count({ where: { phone: { endsWith: normalized } } })) > 0;
+  return (await prisma.user.count({ where: { phone: { endsWith: normalized }, ...notSelf } })) > 0;
 }
 
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
