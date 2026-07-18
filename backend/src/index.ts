@@ -38,7 +38,10 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos, intente de nuevo mas tarde" },
 });
 app.use("/api/auth", authLimiter);
-app.use("/api/clients/auth", authLimiter);
+// Cubre /api/clients (registro) y /api/clients/auth (login) por igual: ambas
+// responden distinto segun si un telefono ya tiene cuenta (exists/409), asi
+// que las dos son un oraculo para enumerar clientes por telefono a fuerza bruta.
+app.use("/api/clients", authLimiter);
 
 app.use("/uploads", express.static(path.resolve("uploads"), { index: false }));
 
