@@ -778,15 +778,17 @@ export default function App() {
         if (!clientRes.ok) {
           const errData = await clientRes.json().catch(() => null);
           // El numero ya tiene cuenta (caso tipico: cliente antiguo cuyo
-          // telefono quedo guardado en otro formato). En vez de solo mostrar
-          // el error, lo logueamos -- con sus datos reales, no con el nombre
-          // que se acaba de escribir en el formulario de registro, que puede
-          // no coincidir con el dueño real de esa cuenta.
-          if (clientRes.status === 409 && errData?.clientId) {
-            const existingClient = await fetchClientByPhone(phoneInput);
+          // telefono quedo guardado en otro formato). Solo recuperamos la
+          // sesion si esa cuenta es realmente de tipo CLIENTE (fetchClientByPhone
+          // lo confirma) -- si el numero en realidad es de un admin/manicurista,
+          // no hay cuenta de cliente valida a la que loguear, y mostramos el error.
+          const existingClient = clientRes.status === 409 && errData?.clientId
+            ? await fetchClientByPhone(phoneInput)
+            : null;
+          if (existingClient) {
             const user: UserSession = {
-              id: String(errData.clientId),
-              name: existingClient?.name || 'Cliente',
+              id: existingClient.id,
+              name: existingClient.name,
               role: 'cliente',
               phone: phoneInput
             };
@@ -1011,13 +1013,15 @@ export default function App() {
       if (!clientRes.ok) {
         const errData = await clientRes.json().catch(() => null);
         // Numero ya registrado (cliente antiguo guardado en otro formato de
-        // telefono): reservamos igual usando el id que devuelve el backend,
-        // con el nombre real de esa cuenta -- no el que se acaba de escribir
-        // en el formulario, que puede no ser el dueño real del numero.
+        // telefono): reservamos igual, pero solo si esa cuenta es realmente
+        // de tipo CLIENTE. Si el numero en realidad es de un admin/manicurista,
+        // no hay cuenta de cliente valida y mostramos el error tal cual.
         if (clientRes.status === 409 && errData?.clientId) {
           const existingClient = await fetchClientByPhone(bookingPhone);
-          await createAppointment(String(errData.clientId), existingClient?.name || bookingName);
-          return;
+          if (existingClient) {
+            await createAppointment(existingClient.id, existingClient.name);
+            return;
+          }
         }
         throw new Error(errData?.error || 'Error al registrar.');
       }
