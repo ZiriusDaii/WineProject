@@ -706,6 +706,27 @@ export default function App() {
     setter(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''));
   };
 
+  // Trae los datos reales de una cuenta existente por telefono. Se usa al
+  // recuperarnos de un 409 en el registro, para no quedarnos con el nombre
+  // que se acaba de escribir (que puede no ser el dueño real del numero).
+  const fetchClientByPhone = async (phone: string): Promise<{ id: string; name: string } | null> => {
+    try {
+      const res = await fetch(`${API_URL}/api/clients/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      const client = data.client || data;
+      if (res.ok && (data.exists || data.client) && (client.id || client._id)) {
+        return { id: String(client.id || client._id), name: client.name || 'Cliente' };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleClientAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput || phoneInput.length < 7) {
@@ -758,11 +779,14 @@ export default function App() {
           const errData = await clientRes.json().catch(() => null);
           // El numero ya tiene cuenta (caso tipico: cliente antiguo cuyo
           // telefono quedo guardado en otro formato). En vez de solo mostrar
-          // el error, lo logueamos con el id que el backend ya nos dio.
+          // el error, lo logueamos -- con sus datos reales, no con el nombre
+          // que se acaba de escribir en el formulario de registro, que puede
+          // no coincidir con el dueño real de esa cuenta.
           if (clientRes.status === 409 && errData?.clientId) {
+            const existingClient = await fetchClientByPhone(phoneInput);
             const user: UserSession = {
               id: String(errData.clientId),
-              name: clientNameInput || 'Cliente',
+              name: existingClient?.name || 'Cliente',
               role: 'cliente',
               phone: phoneInput
             };
@@ -988,9 +1012,11 @@ export default function App() {
         const errData = await clientRes.json().catch(() => null);
         // Numero ya registrado (cliente antiguo guardado en otro formato de
         // telefono): reservamos igual usando el id que devuelve el backend,
-        // en vez de dejar al usuario atascado en un error.
+        // con el nombre real de esa cuenta -- no el que se acaba de escribir
+        // en el formulario, que puede no ser el dueño real del numero.
         if (clientRes.status === 409 && errData?.clientId) {
-          await createAppointment(String(errData.clientId), bookingName);
+          const existingClient = await fetchClientByPhone(bookingPhone);
+          await createAppointment(String(errData.clientId), existingClient?.name || bookingName);
           return;
         }
         throw new Error(errData?.error || 'Error al registrar.');
