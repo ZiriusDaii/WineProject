@@ -369,6 +369,11 @@ export async function createAppointment(
     const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
     const parsedDate = new Date(date!);
 
+    if (parsedDate.getTime() < Date.now()) {
+      res.status(400).json({ error: "No es posible agendar una cita en una fecha u hora pasada" });
+      return;
+    }
+
     if (!isWithinBusinessHours(parsedDate, totalDuration)) {
       res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
       return;
@@ -466,6 +471,11 @@ export async function updateAppointment(
     if (date || manicuristId) {
       const targetDate = date ? new Date(date) : existing.date;
       const targetManicuristId = manicuristId ?? existing.manicuristId;
+
+      if (date && targetDate.getTime() < Date.now()) {
+        res.status(400).json({ error: "No es posible reprogramar una cita a una fecha u hora pasada" });
+        return;
+      }
 
       if (!isWithinBusinessHours(targetDate, existing.totalDuration)) {
         res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
