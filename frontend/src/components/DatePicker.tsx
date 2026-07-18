@@ -23,7 +23,7 @@ const toDateKey = (year: number, month: number, day: number) => {
   return `${year}-${m}-${d}`;
 };
 
-export const DatePicker: React.FC<DatePickerProps> = ({
+export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   selectedDate,
   onSelectDate,
   availableDates,
@@ -150,4 +150,4 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -83,6 +83,7 @@ const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
 };
 
 const SLOT_STEP_MINUTES = 30;
+const PER_PAGE = 5;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -298,6 +299,123 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
   );
 });
 
+// Extraidos y memoizados a proposito: antes vivian como IIFEs inline dentro
+// del wizard de reserva, y como App.tsx es un solo componente gigante con
+// todo el estado arriba, cualquier cambio (ej. tipear en el input de telefono
+// del drawer de confirmacion, que no tiene nada que ver con esto) volvia a
+// filtrar/ordenar/paginar y re-renderizar estas grillas enteras. Medido con
+// el profiler: hasta 900ms por tecla. Con memo, solo se re-renderizan cuando
+// sus propios props cambian.
+const ServiceSelectionGrid: React.FC<{
+  services: Service[];
+  svcSearch: string;
+  setSvcSearch: (v: string) => void;
+  svcPage: number;
+  setSvcPage: React.Dispatch<React.SetStateAction<number>>;
+  selectedServiceIds: string[];
+  onToggleService: (id: string) => void;
+}> = React.memo(({ services, svcSearch, setSvcSearch, svcPage, setSvcPage, selectedServiceIds, onToggleService }) => {
+  const filtered = services
+    .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
+    .sort((a, b) => {
+      if ((a as any).trending && !(b as any).trending) return -1;
+      if (!(a as any).trending && (b as any).trending) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  const total = filtered.length;
+  const start = (svcPage - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  return (
+    <>
+      <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {page.map(s => {
+          const serviceIdStr = String(s.id);
+          const isSelected = selectedServiceIds.includes(serviceIdStr);
+          return (
+            <div key={s.id} onClick={() => onToggleService(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-1.5">
+                  {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                  <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
+                </div>
+                <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+              </div>
+              <div className="flex gap-2 mt-0.5">
+                <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
+                {s.shortDescription && <span className="text-[9px] text-[#78716C] italic truncate">{s.shortDescription}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {total > PER_PAGE && (
+        <div className="flex items-center justify-center gap-3 text-xs pt-2">
+          <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
+          <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+        </div>
+      )}
+    </>
+  );
+});
+
+const ManicuristSelectionGrid: React.FC<{
+  manicurists: Manicurist[];
+  manSearch: string;
+  setManSearch: (v: string) => void;
+  manPage: number;
+  setManPage: React.Dispatch<React.SetStateAction<number>>;
+  selectedSpecialist: string | null;
+  onSelectSpecialist: (id: string) => void;
+  manicuristShifts: Record<string, { startTime: string; endTime: string } | null>;
+  onZoomAvatar: (url: string | null) => void;
+}> = React.memo(({ manicurists, manSearch, setManSearch, manPage, setManPage, selectedSpecialist, onSelectSpecialist, manicuristShifts, onZoomAvatar }) => {
+  const filtered = manicurists
+    .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const total = filtered.length;
+  const start = (manPage - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  return (
+    <>
+      <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {page.map(m => {
+          const manicuristIdStr = String(m.id);
+          const isSelected = selectedSpecialist === manicuristIdStr;
+          const shift = manicuristShifts[manicuristIdStr];
+          return (
+            <div key={m.id} onClick={() => onSelectSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+              {m.avatarPath || m.avatarUrl ? (
+                <img
+                  src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                  alt={m.name}
+                  onClick={() => onZoomAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
+                  className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
+                />
+              ) : (
+                <FallbackAvatar className="w-10 h-10 mx-auto" />
+              )}
+              <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
+              {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
+            </div>
+          );
+        })}
+      </div>
+      {total > PER_PAGE && (
+        <div className="flex items-center justify-center gap-3 text-xs pt-2">
+          <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
+          <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+        </div>
+      )}
+    </>
+  );
+});
+
 export default function App() {
   // PERSISTENCIA DE SESION
   const [session, setSession] = useState<UserSession | null>(null);
@@ -361,7 +479,6 @@ export default function App() {
   const [manSearch, setManSearch] = useState('');
   const [svcPage, setSvcPage] = useState(1);
   const [manPage, setManPage] = useState(1);
-  const PER_PAGE = 5;
   const [showDiscount, setShowDiscount] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(true);
 
@@ -1254,7 +1371,9 @@ export default function App() {
     return apptServices.map(s => s.name).join(', ');
   };
 
-  const handleServiceToggle = (idStr: string) => {
+  // useCallback: se pasa a ServiceSelectionGrid (memoizado) como onToggleService --
+  // sin esto, una funcion nueva en cada render de App invalidaria el memo.
+  const handleServiceToggle = useCallback((idStr: string) => {
     setSelectedServiceIds(prev => {
       if (prev.includes(idStr)) return prev.filter(x => x !== idStr);
 
@@ -1269,7 +1388,20 @@ export default function App() {
 
       return [...withoutSameCategory, idStr];
     });
-  };
+  }, [services]);
+
+  // Igual, para ManicuristSelectionGrid (memoizado).
+  const handleSelectSpecialist = useCallback((idStr: string) => {
+    setSelectedSpecialist(idStr);
+    setBookingTime('');
+  }, []);
+
+  // Igual, para el DatePicker (memoizado) del paso 2 del wizard.
+  const handleSelectBookingDate = useCallback((d: string) => {
+    setBookingDate(d);
+    setBookingTime('');
+    setSelectedSpecialist(null);
+  }, []);
 
   const activeSpecialistDetails = manicurists.find(m => String(m.id) === String(selectedSpecialist));
 
@@ -1939,51 +2071,15 @@ export default function App() {
             {/* ===== PASO 1 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
-              <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
-              {(() => {
-                const filtered = services
-                  .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
-                  .sort((a, b) => {
-                    if ((a as any).trending && !(b as any).trending) return -1;
-                    if (!(a as any).trending && (b as any).trending) return 1;
-                    return (a.name || '').localeCompare(b.name || '');
-                  });
-                const total = filtered.length;
-                const start = (svcPage - 1) * PER_PAGE;
-                const page = filtered.slice(start, start + PER_PAGE);
-                return (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {page.map(s => {
-                        const serviceIdStr = String(s.id);
-                        const isSelected = selectedServiceIds.includes(serviceIdStr);
-                        return (
-                          <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                            <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-1.5">
-                                {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
-                                <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
-                              </div>
-                              <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                            </div>
-                            <div className="flex gap-2 mt-0.5">
-                              <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
-                              {s.shortDescription && <span className="text-[9px] text-[#78716C] italic truncate">{s.shortDescription}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {total > PER_PAGE && (
-                      <div className="flex items-center justify-center gap-3 text-xs pt-2">
-                        <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
-                        <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
-                        <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              <ServiceSelectionGrid
+                services={services}
+                svcSearch={svcSearch}
+                setSvcSearch={setSvcSearch}
+                svcPage={svcPage}
+                setSvcPage={setSvcPage}
+                selectedServiceIds={selectedServiceIds}
+                onToggleService={handleServiceToggle}
+              />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-end">
                 <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
@@ -1997,7 +2093,7 @@ export default function App() {
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige la Fecha</h2>
               <DatePicker
                 selectedDate={bookingDate}
-                onSelectDate={(d) => { setBookingDate(d); setBookingTime(''); setSelectedSpecialist(null); }}
+                onSelectDate={handleSelectBookingDate}
                 className="max-w-[280px]"
               />
               {/* Navegación wizard — mobile only */}
@@ -2018,49 +2114,17 @@ export default function App() {
                 <p className="text-[10px] text-[#78716C]">Elegí primero una fecha.</p>
               ) : (
                 <>
-                  <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
-                  {(() => {
-                    const filtered = manicurists
-                      .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
-                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                    const total = filtered.length;
-                    const start = (manPage - 1) * PER_PAGE;
-                    const page = filtered.slice(start, start + PER_PAGE);
-                    return (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {page.map(m => {
-                            const manicuristIdStr = String(m.id);
-                            const isSelected = selectedSpecialist === manicuristIdStr;
-                            const shift = manicuristShifts[manicuristIdStr];
-                            return (
-                              <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                                {m.avatarPath || m.avatarUrl ? (
-                                  <img
-                                    src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
-                                    alt={m.name}
-                                    onClick={() => setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
-                                    className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
-                                  />
-                                ) : (
-                                  <FallbackAvatar className="w-10 h-10 mx-auto" />
-                                )}
-                                <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
-                                {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {total > PER_PAGE && (
-                          <div className="flex items-center justify-center gap-3 text-xs pt-2">
-                            <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
-                            <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
-                            <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                  <ManicuristSelectionGrid
+                    manicurists={manicurists}
+                    manSearch={manSearch}
+                    setManSearch={setManSearch}
+                    manPage={manPage}
+                    setManPage={setManPage}
+                    selectedSpecialist={selectedSpecialist}
+                    onSelectSpecialist={handleSelectSpecialist}
+                    manicuristShifts={manicuristShifts}
+                    onZoomAvatar={setZoomedAvatar}
+                  />
 
                   {!selectedSpecialist ? (
                     <p className="text-[10px] text-[#78716C]">Elegí una manicurista para ver sus horarios disponibles.</p>
