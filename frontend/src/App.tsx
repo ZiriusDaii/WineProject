@@ -762,6 +762,14 @@ export default function App() {
     setter(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''));
   };
 
+  // min/max en un <input type="number"> no bloquea lo que se escribe a mano
+  // (algunos navegadores mobile dejan tipear -5 o 120 igual). Sanitiza a solo
+  // digitos y clampea al mismo rango 0-100 que valida el backend.
+  const handleAgeInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    setter(digits ? String(Math.min(100, Math.max(0, parseInt(digits, 10)))) : '');
+  };
+
   // Trae los datos reales de una cuenta existente por telefono. Se usa al
   // recuperarnos de un 409 en el registro, para no quedarnos con el nombre
   // que se acaba de escribir (que puede no ser el dueño real del numero).
@@ -1839,7 +1847,7 @@ export default function App() {
                         <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
                           <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
                           <div className="grid grid-cols-2 gap-3">
-                            <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
+                            <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="p-2.5 border rounded-xl text-xs" />
                             <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
                               <option value="Femenino">Femenino</option>
                               <option value="Masculino">Masculino</option>
@@ -2184,7 +2192,7 @@ export default function App() {
                     {bookingStep === 'register' && (
                       <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
                         <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
+                        <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="w-full p-2.5 border rounded-xl text-xs" />
                         {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
                         <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
                       </form>
@@ -2255,7 +2263,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Edad</label>
-                        <input type="number" required min={0} max={100} value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                        <input type="number" required min={0} max={100} value={clientAgeInput} onChange={handleAgeInputChange(setClientAgeInput)} className="w-full p-2 border rounded-lg text-xs" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Género</label>
