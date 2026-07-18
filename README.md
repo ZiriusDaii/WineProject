@@ -134,7 +134,7 @@ Pendiente:
 
 ### ⚠️ Antes de correr `migrate deploy` contra una base ya existente
 
-`0_init` es un baseline generado a partir del `schema.prisma` actual, aplicado hasta ahora solo contra bases de desarrollo que **nunca** tuvieron historial de migraciones (se manejaban con `db push`). Si en algún momento hay una base real (staging/prod) que también viene de `db push`, correrle `migrate deploy` a ciegas va a intentar crear tablas/tipos que ya existen y falla.
+`0_init` es un baseline generado a partir del `schema.prisma` actual, aplicado hasta ahora solo contra la base de desarrollo de esta rama (ya baselineada). El backend ahora corre `prisma migrate deploy` automáticamente al arrancar (ver Dockerfile) -- **cualquier base persistente creada antes con `db push`, incluidos volúmenes locales de Docker ya existentes, staging o producción**, va a fallar al arrancar (intenta crear tablas/tipos que ya existen) si no se baseline primero. Esto no es solo un tema de staging/prod: si alguien más tiene un volumen de Postgres local de antes de que existieran migraciones, también le va a pasar la primera vez que levante esta rama.
 
 Antes de habilitar `migrate deploy` contra esa base, una sola vez:
 
