@@ -104,6 +104,13 @@ const minutesToTime = (mins: number) => {
 // timestamp real y leemos los componentes en UTC.
 const COLOMBIA_OFFSET_MS = 5 * 60 * 60 * 1000;
 const nowInColombia = () => new Date(Date.now() - COLOMBIA_OFFSET_MS);
+// "Hoy" en Colombia como YYYY-MM-DD, para pasarle a DatePicker (que por su
+// cuenta usaria la hora local del NAVEGADOR) y mantenerlo consistente con el
+// corte de horarios de getAvailableSlots, ya calculado en hora Colombia.
+const colombiaTodayKey = () => {
+  const d = nowInColombia();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+};
 
 // Genera los horarios candidatos para una fecha (YYYY-MM-DD), respetando el
 // horario del local, el turno de la manicurista (si tiene uno asignado) y
@@ -1631,6 +1638,7 @@ export default function App() {
                                 selectedDate={newDateInput}
                                 onSelectDate={(d) => { setNewDateInput(d); setNewTimeInput(''); }}
                                 className="max-w-[260px] mt-1"
+                                todayKey={colombiaTodayKey()}
                               />
                             </div>
                             {newDateInput && (
@@ -2166,6 +2174,7 @@ export default function App() {
                 selectedDate={bookingDate}
                 onSelectDate={handleSelectBookingDate}
                 className="max-w-[280px]"
+                todayKey={colombiaTodayKey()}
               />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
@@ -2326,23 +2335,29 @@ export default function App() {
                   <button type="button" onClick={() => setIsBookingOpen(false)} className="w-7 h-7 bg-neutral-200/50 rounded-full text-xs">✕</button>
                 </div>
 
-                {/* Codigo descuento movil */}
-                {discountPercent ? (
-                  <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>
-                ) : showDiscount ? (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
-                      <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
-                    </div>
-                    <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
-                    ¿Tienes un codigo de descuento?
-                  </button>
+                {/* Codigo descuento movil -- oculto en success: la seleccion/descuento
+                    ya se limpiaron (ver createAppointment), mostrarlo aca leeria
+                    ese estado vacio ("Total: $0") justo arriba del mensaje de exito. */}
+                {bookingStep !== 'success' && (
+                  <>
+                    {discountPercent ? (
+                      <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>
+                    ) : showDiscount ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
+                          <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
+                        </div>
+                        <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                        ¿Tienes un codigo de descuento?
+                      </button>
+                    )}
+                    {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
+                  </>
                 )}
-                {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
 
                 {session && session.role === 'cliente' ? (
                   <div className="space-y-3 text-xs">
