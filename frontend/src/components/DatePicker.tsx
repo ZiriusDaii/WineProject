@@ -43,8 +43,11 @@ export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   todayKey,
   allowPast = false,
 }) => {
-  const today = useMemo(() => new Date(), []);
-  const todayStr = todayKey || toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  // Sin memo: si el picker queda montado cruzando la medianoche (una
+  // pestana de admin abierta toda la noche, por ejemplo), congelar "hoy" en
+  // el primer render dejaria "Hoy", el minimo y el resaltado de hoy mal.
+  const today = new Date();
+  const todayStr = todayKey ?? toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
   // La vista inicial arranca en el mes de `selectedDate` cuando ya hay una
   // fecha elegida (ej. el admin reabre el calendario en un dia ya marcado),
