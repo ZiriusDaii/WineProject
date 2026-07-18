@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
+import { normalizePhone } from "./client.controller.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -334,7 +335,7 @@ export async function updateManicuristStatus(
       const updated = await prisma.user.update({
         where: { id },
         data: {
-          phone,
+          phone: normalizePhone(phone),
           username,
           ...(hashedPassword !== undefined && { password: hashedPassword }),
           name,
@@ -367,7 +368,7 @@ export async function updateManicuristStatus(
 
       const created = await prisma.user.create({
         data: {
-          phone,
+          phone: normalizePhone(phone),
           username,
           password: hashedPassword,
           name,

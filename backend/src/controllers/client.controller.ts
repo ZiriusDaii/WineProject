@@ -21,7 +21,7 @@ const isOwner = (req: AuthRequest, ownerId: string) =>
 // frontend limitara el input a 10 digitos limpios. Normalizamos a los
 // ultimos 10 digitos para que un cliente antiguo pueda seguir encontrando
 // su cuenta con el input actual.
-const normalizePhone = (phone: string) => {
+export const normalizePhone = (phone: string) => {
   const digits = phone.replace(/\D/g, "");
   return digits.length > 10 ? digits.slice(-10) : digits;
 };
