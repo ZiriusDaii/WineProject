@@ -1082,6 +1082,25 @@ export default function App() {
         setCreatedAppointment(apptData);
         setBookingStep('success');
 
+        // Limpiamos la seleccion del wizard ya mismo (no solo tras el
+        // resetBooking() del flujo logueado, que corre recien a los 2200ms):
+        // si el invitado cierra la pantalla de exito sin usar "Ver mi cita",
+        // volveria a ver el mismo servicio/especialista/horario ya elegidos
+        // -- y ese horario, recien tomado, ahora falla como solapado.
+        setSelectedServiceIds([]);
+        setSelectedSpecialist(null);
+        setBookingDate('');
+        setBookingTime('');
+        setDiscountCode('');
+        setDiscountPercent(null);
+        setDiscountTitle(null);
+        setDiscountError(null);
+        setBookingWizardStep(1);
+        setSvcSearch('');
+        setManSearch('');
+        setSvcPage(1);
+        setManPage(1);
+
         if (session && session.role === 'cliente') {
           // Ya estaba logueado: lo llevamos directo a ver la cita en su perfil.
           setTimeout(() => {
