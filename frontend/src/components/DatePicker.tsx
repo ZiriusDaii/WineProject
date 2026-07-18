@@ -76,7 +76,11 @@ export const DatePicker: React.FC<DatePickerProps> = React.memo(({
     const [ty, tm] = todayStr.split('-').map(Number);
     setViewYear(ty);
     setViewMonth(tm - 1);
-    onSelectDate(todayStr);
+    // "Hoy" navegaba el calendario Y seleccionaba la fecha sin chequear las
+    // mismas restricciones que bloquean el boton de cada dia (minDate,
+    // availableDates) -- podia seleccionar un dia sin disponibilidad real.
+    const isBlocked = (!!minDateStr && todayStr < minDateStr) || (availableDates ? !availableDates.has(todayStr) : false);
+    if (!isBlocked) onSelectDate(todayStr);
   };
 
   const days: (number | null)[] = [];
