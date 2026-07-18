@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface DatePickerProps {
   selectedDate: string;
@@ -48,6 +48,24 @@ export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   // el primer render dejaria "Hoy", el minimo y el resaltado de hoy mal.
   const today = new Date();
   const todayStr = todayKey ?? toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  // Leer `new Date()` fresco en cada render no alcanza si el picker esta
+  // inactivo (nada mas lo re-renderiza) justo cuando pasa la medianoche --
+  // este timer se auto-reprograma para forzar un re-render en ese momento.
+  const [, forceMidnightRefresh] = useState(0);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNextMidnight = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+      timer = setTimeout(() => {
+        forceMidnightRefresh(n => n + 1);
+        scheduleNextMidnight();
+      }, nextMidnight.getTime() - now.getTime());
+    };
+    scheduleNextMidnight();
+    return () => clearTimeout(timer);
+  }, []);
 
   // La vista inicial arranca en el mes de `selectedDate` cuando ya hay una
   // fecha elegida (ej. el admin reabre el calendario en un dia ya marcado),
