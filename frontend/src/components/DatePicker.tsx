@@ -8,6 +8,15 @@ interface DatePickerProps {
   minDate?: string;
   className?: string;
   disabled?: boolean;
+  // "Hoy" en la zona del negocio (YYYY-MM-DD), cuando el llamador ya la sabe
+  // (ej. el admin puede estar conectado desde otro huso horario) -- sin esto
+  // se usa la hora local del navegador, que es lo correcto para el flujo de
+  // reserva (el cliente esta fisicamente donde reserva).
+  todayKey?: string;
+  // Para vistas donde se necesita poder abrir/marcar fechas pasadas (ej. el
+  // calendario del admin, para ver citas que ya ocurrieron) en vez del
+  // comportamiento por defecto de deshabilitarlas.
+  allowPast?: boolean;
 }
 
 const MONTHS = [
@@ -31,13 +40,24 @@ export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   minDate,
   className = '',
   disabled = false,
+  todayKey,
+  allowPast = false,
 }) => {
   const today = useMemo(() => new Date(), []);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const todayStr = todayKey || toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const minDateStr = minDate || toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-  const todayStr = toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  // La vista inicial arranca en el mes de `selectedDate` cuando ya hay una
+  // fecha elegida (ej. el admin reabre el calendario en un dia ya marcado),
+  // en vez de siempre el mes de "hoy" del navegador.
+  const [initialYear, initialMonth] = useMemo(() => {
+    const source = selectedDate || todayStr;
+    const [y, m] = source.split('-').map(Number);
+    return y && m ? [y, m - 1] : [today.getFullYear(), today.getMonth()];
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [viewYear, setViewYear] = useState(initialYear);
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+
+  const minDateStr = allowPast ? '' : (minDate || todayStr);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
@@ -53,8 +73,9 @@ export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   };
 
   const goToday = () => {
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
+    const [ty, tm] = todayStr.split('-').map(Number);
+    setViewYear(ty);
+    setViewMonth(tm - 1);
     onSelectDate(todayStr);
   };
 

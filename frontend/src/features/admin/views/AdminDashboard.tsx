@@ -1139,6 +1139,8 @@ export const AdminDashboard: React.FC = () => {
                   selectedDate={calendarDate}
                   onSelectDate={setCalendarDate}
                   markedDates={new Set(appointments.map(a => (a.date || '').slice(0, 10)))}
+                  todayKey={toLocalDateKey(new Date())}
+                  allowPast
                 />
               </div>
               <div className="md:col-span-7 space-y-3">
