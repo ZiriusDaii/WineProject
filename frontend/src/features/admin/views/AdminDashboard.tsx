@@ -598,7 +598,7 @@ export const AdminDashboard: React.FC = () => {
   // no existe, la tabla se veria vacia sin explicacion hasta que alguien haga
   // click en "Anterior". Clampeamos apenas eso pasa, para cualquier pestana.
   useEffect(() => {
-    let total = 0;
+    let total: number;
     if (activeTab === 'appointments') total = filteredApps.length;
     else if (activeTab === 'clients') total = filterClients().length;
     else if (activeTab === 'offers') total = filterOffers().length;
