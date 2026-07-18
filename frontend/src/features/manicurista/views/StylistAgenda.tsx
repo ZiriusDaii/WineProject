@@ -278,7 +278,7 @@ export const StylistAgenda: React.FC = () => {
             <motion.button
               key={t.id}
               onClick={() => setActiveMobileTab(t.id as 'calendar' | 'profile')}
-              className={`relative flex-1 py-3 text-xs font-semibold rounded-xl transition-colors duration-250 cursor-pointer ${
+              className={`relative isolate flex-1 py-3 text-xs font-semibold rounded-xl transition-colors duration-250 cursor-pointer ${
                 isActive ? 'text-white' : 'text-[#78716C]'
               }`}
               whileTap={{ scale: 0.98 }}

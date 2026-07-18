@@ -1474,7 +1474,7 @@ export default function App() {
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
         <Suspense fallback={<PanelLoadingFallback />}>
-          <AdminDashboard />
+          <AdminDashboard key={session.id} />
         </Suspense>
       </div>
     );
@@ -1488,7 +1488,7 @@ export default function App() {
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
         <Suspense fallback={<PanelLoadingFallback />}>
-          <StylistAgenda />
+          <StylistAgenda key={session.id} />
         </Suspense>
       </div>
     );

@@ -92,12 +92,17 @@ interface Offer {
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
 const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
-// Fecha local del negocio (Colombia), NO conversion UTC real: `toISOString()`
-// sobre un `new Date()` real cruza al dia siguiente entre ~19:00 y medianoche
-// hora local, desalineando estas llaves con las de las citas (que guardan la
-// hora local del negocio disfrazada de UTC -- ver comentarios en App.tsx).
-const toLocalDateKey = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Fecha del negocio (Colombia, UTC-5 fijo, sin horario de verano) -- ni
+// `toISOString()` real (cruza de dia entre ~19:00 y medianoche hora Colombia)
+// ni la hora local del NAVEGADOR (un admin viajando o conectandose desde otro
+// huso daria un dia distinto) sirven aca. Restamos el offset fijo sobre el
+// timestamp real y leemos los componentes en UTC, para que de el mismo
+// resultado sin importar en que zona horaria este el navegador.
+const COLOMBIA_OFFSET_MS = 5 * 60 * 60 * 1000;
+const toLocalDateKey = (d: Date) => {
+  const co = new Date(d.getTime() - COLOMBIA_OFFSET_MS);
+  return `${co.getUTCFullYear()}-${String(co.getUTCMonth() + 1).padStart(2, '0')}-${String(co.getUTCDate()).padStart(2, '0')}`;
+};
 
 // Misma semana ISO 8601 que backend/src/lib/week.ts -- necesaria para saber
 // que semana/anio corresponde al turno que se esta editando.
@@ -247,25 +252,24 @@ export const AdminDashboard: React.FC = () => {
     finally { setSubmitting(false); }
   };
 
-  const fetchStats = async (): Promise<Stats> => {
-    let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
+  // Si el fetch falla, dejamos las stats actuales tal como estan en vez de
+  // pisarlas con el objeto en cero -- eso se veia como si de golpe no hubiera
+  // ganancias/citas, cuando en realidad solo fallo la actualizacion.
+  const fetchStats = async (): Promise<void> => {
     try {
       const stRes = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
-      if (stRes.ok) {
-        const r = await stRes.json();
-        sData2 = {
-          totalEarnings: r.totalEarnings ?? 0,
-          totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
-          topManicurist: r.manicuristPerformance?.[0]?.name || '-',
-          manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
-            name: p.name, completedAppointments: p.completedAppointments ?? 0,
-          })),
-          appointmentsByStatus: r.appointmentsByStatus || [],
-        };
-      }
-    } catch { /* */ }
-    setStats(sData2);
-    return sData2;
+      if (!stRes.ok) return;
+      const r = await stRes.json();
+      setStats({
+        totalEarnings: r.totalEarnings ?? 0,
+        totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
+        topManicurist: r.manicuristPerformance?.[0]?.name || '-',
+        manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
+          name: p.name, completedAppointments: p.completedAppointments ?? 0,
+        })),
+        appointmentsByStatus: r.appointmentsByStatus || [],
+      });
+    } catch { /* dejamos las stats actuales, ver comentario arriba */ }
   };
 
   const loadData = async () => {
@@ -681,7 +685,7 @@ export const AdminDashboard: React.FC = () => {
               <motion.button
                 key={t.id}
                 onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }}
-                className={`relative px-4 py-3 rounded-xl text-xs font-semibold text-left transition-colors duration-250 cursor-pointer ${
+                className={`relative isolate px-4 py-3 rounded-xl text-xs font-semibold text-left transition-colors duration-250 cursor-pointer ${
                   isActive ? 'text-white' : 'text-[#78716C] hover:text-[#5C0632]'
                 }`}
                 whileHover={{ x: 4 }}
@@ -740,10 +744,12 @@ export const AdminDashboard: React.FC = () => {
           });
 
           const getDailyMetrics = () => {
+            // Aritmetica en milisegundos, no con setDate/getDate locales -- esos
+            // mutan segun el calendario del navegador, que puede no coincidir con
+            // Colombia. toLocalDateKey ya hace la conversion de zona una sola vez.
             const dates = Array.from({ length: 7 }, (_, i) => {
-              const d = new Date();
-              d.setDate(d.getDate() - (6 - i) + metricsOffsetDays);
-              return toLocalDateKey(d);
+              const offsetDays = i - 6 + metricsOffsetDays;
+              return toLocalDateKey(new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000));
             });
 
             const dailyData = dates.reduce((acc, dateStr) => {
