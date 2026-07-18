@@ -92,6 +92,13 @@ interface Offer {
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
 const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
+// Fecha local del negocio (Colombia), NO conversion UTC real: `toISOString()`
+// sobre un `new Date()` real cruza al dia siguiente entre ~19:00 y medianoche
+// hora local, desalineando estas llaves con las de las citas (que guardan la
+// hora local del negocio disfrazada de UTC -- ver comentarios en App.tsx).
+const toLocalDateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 // Misma semana ISO 8601 que backend/src/lib/week.ts -- necesaria para saber
 // que semana/anio corresponde al turno que se esta editando.
 function getISOWeek(date: Date): { week: number; year: number } {
@@ -130,6 +137,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsTruncated, setAppointmentsTruncated] = useState(false);
   const [manicurists, setManicurists] = useState<Manicurist[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>([]);
@@ -143,7 +151,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
+  const [calendarDate, setCalendarDate] = useState(toLocalDateKey(new Date()));
   const itemsPerPage = 5;
 
   // Turnos
@@ -239,6 +247,27 @@ export const AdminDashboard: React.FC = () => {
     finally { setSubmitting(false); }
   };
 
+  const fetchStats = async (): Promise<Stats> => {
+    let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
+    try {
+      const stRes = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
+      if (stRes.ok) {
+        const r = await stRes.json();
+        sData2 = {
+          totalEarnings: r.totalEarnings ?? 0,
+          totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
+          topManicurist: r.manicuristPerformance?.[0]?.name || '-',
+          manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
+            name: p.name, completedAppointments: p.completedAppointments ?? 0,
+          })),
+          appointmentsByStatus: r.appointmentsByStatus || [],
+        };
+      }
+    } catch { /* */ }
+    setStats(sData2);
+    return sData2;
+  };
+
   const loadData = async () => {
     setLoading(true);
     const h = authHeaders();
@@ -276,27 +305,19 @@ export const AdminDashboard: React.FC = () => {
       let appts: Appointment[] = [];
       try {
         const aRes = await fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h });
-        if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
+        if (aRes.ok) {
+          const p = await aRes.json();
+          appts = p?.data ?? (Array.isArray(p) ? p : []);
+          // El fetch tiene un tope de 1000: si el total real lo supera, la
+          // Pizarra de Citas y el Panel de Metricas quedarian truncados en
+          // silencio. Mejor avisar que el dato esta incompleto que fingir
+          // que es todo lo que hay.
+          setAppointmentsTruncated(typeof p?.totalCount === 'number' && p.totalCount > appts.length);
+        }
       } catch { /* */ }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
-      let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
-      try {
-        const stRes = await fetch(`${API}/api/admin/stats`, { headers: h });
-        if (stRes.ok) {
-          const r = await stRes.json();
-          sData2 = {
-            totalEarnings: r.totalEarnings ?? 0,
-            totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
-            topManicurist: r.manicuristPerformance?.[0]?.name || '-',
-            manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
-              name: p.name, completedAppointments: p.completedAppointments ?? 0,
-            })),
-            appointmentsByStatus: r.appointmentsByStatus || [],
-          };
-        }
-      } catch { /* */ }
-      setStats(sData2);
+      await fetchStats();
       if (activeTab === 'metrics') {
         setAnimateBars(false);
         setTimeout(() => setAnimateBars(true), 150);
@@ -314,6 +335,7 @@ export const AdminDashboard: React.FC = () => {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: status as any } : a));
         setSuccessMsg(`Cita ${STATUS_LABELS[status]?.toLowerCase() || status}.`);
         setTimeout(() => setSuccessMsg(null), 2000);
+        fetchStats();
       }
     } catch { /* */ }
   };
@@ -552,8 +574,8 @@ export const AdminDashboard: React.FC = () => {
   const paginate = (items: any[]) => { const s = (currentPage - 1) * itemsPerPage; return items.slice(s, s + itemsPerPage); };
   const filterApps = () => {
     const now = new Date();
-    const todayStr = toDateLabel(now.toISOString());
-    const tomorrowStr = toDateLabel(new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString());
+    const todayStr = toLocalDateKey(now);
+    const tomorrowStr = toLocalDateKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
     return appointments
       .filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()))
       .filter(a => {
@@ -570,6 +592,26 @@ export const AdminDashboard: React.FC = () => {
   const svcNames = (ss: ServiceItem[]) => ss.map(s => s.name).join(', ') || '—';
   const clear = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
   const filteredApps = useMemo(() => filterApps(), [appointments, searchQuery, apptDateFilter, apptManicuristFilter, apptStatusFilter, manicurists]);
+
+  // Si un filtro (o un cambio de datos, ej. una cita cancelada en otra pestana)
+  // reduce la lista visible y `currentPage` queda apuntando a una pagina que ya
+  // no existe, la tabla se veria vacia sin explicacion hasta que alguien haga
+  // click en "Anterior". Clampeamos apenas eso pasa, para cualquier pestana.
+  useEffect(() => {
+    let total = 0;
+    if (activeTab === 'appointments') total = filteredApps.length;
+    else if (activeTab === 'clients') total = filterClients().length;
+    else if (activeTab === 'offers') total = filterOffers().length;
+    else if (activeTab === 'manicurists') {
+      total = manicurists.filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.username || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
+    } else if (activeTab === 'services') {
+      total = servicesCatalog.filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
+    } else {
+      return;
+    }
+    const maxPage = Math.max(1, Math.ceil(total / itemsPerPage));
+    if (currentPage > maxPage) setCurrentPage(maxPage);
+  }, [activeTab, filteredApps, clients, offers, manicurists, servicesCatalog, searchQuery, currentPage]);
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
@@ -701,7 +743,7 @@ export const AdminDashboard: React.FC = () => {
             const dates = Array.from({ length: 7 }, (_, i) => {
               const d = new Date();
               d.setDate(d.getDate() - (6 - i) + metricsOffsetDays);
-              return d.toISOString().split('T')[0];
+              return toLocalDateKey(d);
             });
 
             const dailyData = dates.reduce((acc, dateStr) => {
@@ -748,6 +790,12 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-xs text-[#78716C] mt-1">Monitoreo estratégico y rendimiento financiero en tiempo real.</p>
                 </div>
               </div>
+
+              {appointmentsTruncated && (
+                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Hay más de 1000 citas registradas -- estas métricas solo reflejan las primeras 1000.
+                </p>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
@@ -918,7 +966,7 @@ export const AdminDashboard: React.FC = () => {
                               fill="transparent"
                               stroke={s.color}
                               strokeWidth="12"
-                              strokeDasharray="314.16"
+                              strokeDasharray={`${s.strokeDash} 314.16`}
                               strokeDashoffset={s.strokeOffset}
                               className="transition-all duration-300"
                             />
@@ -978,6 +1026,11 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra de Citas</h2>
+            {appointmentsTruncated && (
+              <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Hay más de 1000 citas registradas -- esta lista solo muestra las primeras 1000. Usá los filtros de fecha para acotar la búsqueda.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {([['all', 'Todas'], ['today', 'Hoy'], ['tomorrow', 'Mañana']] as const).map(([value, label]) => (
                 <button
