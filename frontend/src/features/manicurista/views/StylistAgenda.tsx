@@ -301,7 +301,7 @@ export const StylistAgenda: React.FC = () => {
         
         {/* CALENDARIO Y TAREAS */}
         <motion.div
-          key={`calendar-${activeMobileTab}`}
+          key="calendar"
           className={`md:col-span-7 space-y-6 ${activeMobileTab === 'calendar' ? 'block' : 'hidden md:block'}`}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -416,7 +416,7 @@ export const StylistAgenda: React.FC = () => {
 
         {/* PERFIL */}
         <motion.div
-          key={`profile-${activeMobileTab}`}
+          key="profile"
           className={`md:col-span-5 space-y-6 ${activeMobileTab === 'profile' ? 'block' : 'hidden md:block'}`}
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
