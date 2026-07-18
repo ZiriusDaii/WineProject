@@ -1362,6 +1362,12 @@ export default function App() {
         setTimeout(() => {
           window.open(whatsappUrl, '_blank');
         }, 1800);
+      } else if (apptRes.status === 401) {
+        // A diferencia de listar/cancelar/reprogramar, un 401 aca dejaba la
+        // sesion "activa" en pantalla sin forma de reintentar con exito --
+        // el token vencido no se arregla solo reenviando el mismo request.
+        if (session) handleLogout();
+        throw new Error('Tu sesión expiró, iniciá sesión de nuevo.');
       } else {
         const errData = await apptRes.json().catch(() => null);
         throw new Error(errData?.error || 'Error en el servidor al registrar cita.');
@@ -2015,7 +2021,23 @@ export default function App() {
               )}
               {discountError && <p className="text-[10px] text-red-600 bg-red-50 p-1.5 rounded-lg">{discountError}</p>}
 
-              {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
+              {bookingStep === 'success' ? (
+                // Chequeado antes que "seleccion completa": createAppointment
+                // limpia selectedServiceIds/selectedSpecialist/bookingDate/
+                // bookingTime apenas confirma (evita reofrecer un horario ya
+                // tomado), asi que si este mensaje quedara *dentro* de la
+                // rama de "seleccion completa" nunca se llegaria a mostrar --
+                // caeria directo en el placeholder de "Completa servicios...".
+                <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
+                  <p className="font-bold text-base">Cita Agendada</p>
+                  <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
+                  {!session && (
+                    <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                      Ver mi cita
+                    </button>
+                  )}
+                </div>
+              ) : selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                 <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
                   Completa servicios, especialista y fecha para continuar.
                 </p>
@@ -2061,18 +2083,6 @@ export default function App() {
                             {isSubmitting ? 'Procesando...' : 'Registrarse & Confirmar'}
                           </button>
                         </form>
-                      )}
-
-                      {bookingStep === 'success' && (
-                        <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
-                          <p className="font-bold text-base">Cita Agendada</p>
-                          <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
-                          {!session && (
-                            <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
-                              Ver mi cita
-                            </button>
-                          )}
-                        </div>
                       )}
                     </>
                   )}
