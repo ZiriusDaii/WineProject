@@ -259,71 +259,6 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
   );
 };
 
-// TestimonialsSection deshabilitada a proposito: la version anterior mostraba
-// 3 clientas inventadas (nombre y cita falsos) como si fueran reales, y un
-// boton "Enviar Resena Real" que en realidad solo guardaba en el localStorage
-// del propio navegador -- nadie mas lo veia nunca. Pendiente real: un modelo
-// de Review en el backend, restringido a clientes autenticados con una cita
-// COMPLETED, con moderacion antes de publicarse. Hasta que exista eso, la
-// seccion no se renderiza (ver mas abajo en el JSX de la landing).
-
-const FaqItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border-b border-[#EADEC9]/30 py-4 text-left">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center text-[#3B0019] font-medium text-xs py-2 hover:text-[#8E1B54] transition-colors cursor-pointer"
-      >
-        <span>{question}</span>
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="text-[#A68F63] text-sm font-bold"
-        >
-          ▾
-        </motion.span>
-      </button>
-      <motion.div
-        initial={false}
-        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="overflow-hidden"
-      >
-        <p className="text-[11px] text-[#78716C] leading-relaxed font-light pt-1 pb-3 pr-6">
-          {answer}
-        </p>
-      </motion.div>
-    </div>
-  );
-};
-
-const FaqSection: React.FC = () => {
-  const faqs = [
-    {
-      q: "¿Es necesario reservar cita previa?",
-      a: "Recomendamos agendar con anticipación para garantizar disponibilidad con tu manicurista preferida y en tu horario deseado. Sin embargo, si tenemos espacios libres, con gusto te atenderemos sin cita previa."
-    },
-  ];
-
-  return (
-    <section className="max-w-3xl mx-auto px-6 py-12 space-y-6">
-      <div className="text-center space-y-1 mb-4">
-        <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Dudas Comunes</span>
-        <h2 className="serif-title text-2xl text-[#3B0019] font-light">Preguntas Frecuentes</h2>
-      </div>
-
-      <div className="divide-y divide-[#EADEC9]/20">
-        {faqs.map((faq, idx) => (
-          <FaqItem key={idx} question={faq.q} answer={faq.a} />
-        ))}
-      </div>
-    </section>
-  );
-};
-
 export default function App() {
   // PERSISTENCIA DE SESION
   const [session, setSession] = useState<UserSession | null>(null);
@@ -819,7 +754,30 @@ export default function App() {
           })
         });
 
-        if (!clientRes.ok) throw new Error('Error al registrar tu cuenta.');
+        if (!clientRes.ok) {
+          const errData = await clientRes.json().catch(() => null);
+          // El numero ya tiene cuenta (caso tipico: cliente antiguo cuyo
+          // telefono quedo guardado en otro formato). En vez de solo mostrar
+          // el error, lo logueamos con el id que el backend ya nos dio.
+          if (clientRes.status === 409 && errData?.clientId) {
+            const user: UserSession = {
+              id: String(errData.clientId),
+              name: clientNameInput || 'Cliente',
+              role: 'cliente',
+              phone: phoneInput
+            };
+            setSession(user);
+            localStorage.setItem('winespa_session', JSON.stringify(user));
+            setIsLoginOpen(false);
+            setPhoneInput('');
+            setClientNameInput('');
+            setClientAgeInput('');
+            setShowClientRegister(false);
+            setView('clientPortal');
+            return;
+          }
+          throw new Error(errData?.error || 'Error al registrar tu cuenta.');
+        }
 
         const clientData = await clientRes.json();
         const user: UserSession = {
@@ -1028,6 +986,13 @@ export default function App() {
 
       if (!clientRes.ok) {
         const errData = await clientRes.json().catch(() => null);
+        // Numero ya registrado (cliente antiguo guardado en otro formato de
+        // telefono): reservamos igual usando el id que devuelve el backend,
+        // en vez de dejar al usuario atascado en un error.
+        if (clientRes.status === 409 && errData?.clientId) {
+          await createAppointment(String(errData.clientId), bookingName);
+          return;
+        }
         throw new Error(errData?.error || 'Error al registrar.');
       }
 
@@ -1433,17 +1398,29 @@ export default function App() {
             <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
               <div className="max-w-5xl mx-auto">
                 <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
-                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative overflow-hidden bg-neutral-900">
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative overflow-hidden bg-neutral-900 cursor-grab active:cursor-grabbing">
                     <motion.img
                       key={activeSlide}
                       src={landingContent.images[activeSlide]}
                       alt="Anuncio"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover select-none"
                       initial={{ opacity: 0, scale: 1.05 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.6}
+                      onDragEnd={(_, info) => {
+                        const swipe = info.offset.x;
+                        const count = landingContent.images.length;
+                        if (swipe < -80) {
+                          setActiveSlide((activeSlide + 1) % count);
+                        } else if (swipe > 80) {
+                          setActiveSlide((activeSlide - 1 + count) % count);
+                        }
+                      }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent pointer-events-none" />
                   </div>
                   <motion.div
                     key={activeSlide}
@@ -1535,10 +1512,6 @@ export default function App() {
               </button>
             </div>
           </section>
-
-          {/* TestimonialsSection deshabilitada -- ver comentario junto a su definicion */}
-
-          <FaqSection />
         </motion.div>
       )}
 
