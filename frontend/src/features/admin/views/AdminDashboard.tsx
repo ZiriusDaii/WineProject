@@ -262,7 +262,7 @@ export const AdminDashboard: React.FC = () => {
   const fetchStats = async (): Promise<void> => {
     try {
       const stRes = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
-      if (!stRes.ok) return;
+      if (!stRes.ok) { setLoadError(true); return; }
       const r = await stRes.json();
       setStats({
         totalEarnings: r.totalEarnings ?? 0,
@@ -273,7 +273,7 @@ export const AdminDashboard: React.FC = () => {
         })),
         appointmentsByStatus: r.appointmentsByStatus || [],
       });
-    } catch { /* dejamos las stats actuales, ver comentario arriba */ }
+    } catch { setLoadError(true); /* dejamos las stats actuales, ver comentario arriba */ }
   };
 
   const loadData = async () => {
@@ -323,8 +323,13 @@ export const AdminDashboard: React.FC = () => {
           // silencio. Mejor avisar que el dato esta incompleto que fingir
           // que es todo lo que hay.
           setAppointmentsTruncated(typeof p?.totalCount === 'number' && p.totalCount > appts.length);
+        } else {
+          // Antes esto dejaba `appts` en [] en silencio -- la Pizarra de
+          // Citas mostraba "Sin citas" (dato falso), indistinguible de que
+          // de verdad no hubiera ninguna.
+          setLoadError(true);
         }
-      } catch { /* */ }
+      } catch { setLoadError(true); }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
       await fetchStats();
@@ -740,12 +745,16 @@ export const AdminDashboard: React.FC = () => {
           const statusData = (stats.appointmentsByStatus || []).filter(s => s.count > 0);
           const totalCount = statusData.reduce((sum, s) => sum + s.count, 0) || 1;
           
-          let accumulatedPercent = 0;
+          // r=50 en el <circle> de abajo -- circunferencia exacta, no el
+          // literal "314.16" (aproximacion a 2 decimales de 2*pi*50) usado
+          // antes en tres lugares distintos que tenian que coincidir.
+          const DONUT_CIRCUMFERENCE = 2 * Math.PI * 50;
+          let accumulatedLength = 0;
           const donutSegments = statusData.map(s => {
             const percent = s.count / totalCount;
-            const strokeDash = percent * 314.16;
-            const strokeOffset = 314.16 - accumulatedPercent * 314.16;
-            accumulatedPercent += percent;
+            const strokeDash = percent * DONUT_CIRCUMFERENCE;
+            const strokeOffset = -accumulatedLength;
+            accumulatedLength += strokeDash;
             return {
               ...s,
               percent: Math.round(percent * 100),
@@ -987,7 +996,7 @@ export const AdminDashboard: React.FC = () => {
                               fill="transparent"
                               stroke={s.color}
                               strokeWidth="12"
-                              strokeDasharray={`${s.strokeDash} 314.16`}
+                              strokeDasharray={`${s.strokeDash} ${DONUT_CIRCUMFERENCE}`}
                               strokeDashoffset={s.strokeOffset}
                               className="transition-all duration-300"
                             />
