@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
 import { DatePicker } from './components/DatePicker'
@@ -172,7 +172,7 @@ const heroItemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } },
 };
 
-const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = ({ heroImage, onBook }) => {
+const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = React.memo(({ heroImage, onBook }) => {
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   // prefers-reduced-motion: en vez de saltarnos los hooks (rompe las reglas de
@@ -230,9 +230,9 @@ const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = (
       </motion.div>
     </section>
   );
-};
+});
 
-const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () => void }> = ({ experienceImage, onBook }) => {
+const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () => void }> = React.memo(({ experienceImage, onBook }) => {
   return (
     <section className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-12 items-center text-left">
       <div className="md:col-span-6">
@@ -296,7 +296,7 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
       </motion.div>
     </section>
   );
-};
+});
 
 export default function App() {
   // PERSISTENCIA DE SESION
@@ -372,14 +372,17 @@ export default function App() {
   const [bookingAge, setBookingAge] = useState('');
   const [bookingGender, setBookingGender] = useState('Femenino');
 
-  const handleGoToBooking = () => {
+  // useCallback: se pasa como prop `onBook` a HeroScrollSection/WineSpaExperienceSection,
+  // que estan memoizados -- sin esto, una funcion nueva en cada render de App
+  // (ej. cada tecla en el input de telefono) invalidaria el memo igual.
+  const handleGoToBooking = useCallback(() => {
     setBookingStep('selection');
     if (session && session.role === 'cliente') {
       setBookingPhone(session.phone || '');
       setBookingName(session.name || '');
     }
     setView('booking');
-  };
+  }, [session]);
 
   // Envío Cita
   const [isSubmitting, setIsSubmitting] = useState(false);
