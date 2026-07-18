@@ -98,6 +98,13 @@ const minutesToTime = (mins: number) => {
   return `${h}:${m}`;
 };
 
+// Colombia es UTC-5 fijo, sin horario de verano -- no la hora local del
+// NAVEGADOR (alguien reservando desde otro huso veria horarios ya pasados
+// como disponibles, u ocultos horarios validos). Restamos el offset fijo del
+// timestamp real y leemos los componentes en UTC.
+const COLOMBIA_OFFSET_MS = 5 * 60 * 60 * 1000;
+const nowInColombia = () => new Date(Date.now() - COLOMBIA_OFFSET_MS);
+
 // Genera los horarios candidatos para una fecha (YYYY-MM-DD), respetando el
 // horario del local, el turno de la manicurista (si tiene uno asignado) y
 // descartando los que se solapan con `busy` (rangos en minutos desde
@@ -124,9 +131,9 @@ const getAvailableSlots = (
     closeMin = Math.min(closeMin, timeToMinutes(shift.endTime));
   }
 
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const nowMin = dateStr === todayStr ? now.getHours() * 60 + now.getMinutes() : -1;
+  const now = nowInColombia();
+  const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+  const nowMin = dateStr === todayStr ? now.getUTCHours() * 60 + now.getUTCMinutes() : -1;
 
   const slots: string[] = [];
   for (let start = openMin; start + durationMinutes <= closeMin; start += SLOT_STEP_MINUTES) {
@@ -697,7 +704,7 @@ export default function App() {
     setLoadingRescheduleSlots(true);
     Promise.all([
       fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
-        .then(res => res.ok ? res.json() : []) as Promise<{ date: string; totalDuration: number }[]>,
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status'))) as Promise<{ date: string; totalDuration: number }[]>,
       fetch(`${API_URL}/api/manicurists?date=${newDateInput}`)
         .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status'))) as Promise<any[]>,
     ])
