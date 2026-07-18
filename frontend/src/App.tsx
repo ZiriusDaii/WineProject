@@ -83,17 +83,38 @@ const minutesToTime = (mins: number) => {
 };
 
 // Genera los horarios candidatos para una fecha (YYYY-MM-DD), respetando el
-// horario del local y descartando los que se solapan con `busy` (rangos en
-// minutos desde medianoche, ya filtrados a la manicurista/fecha elegida).
-const getAvailableSlots = (dateStr: string, durationMinutes: number, busy: { start: number; end: number }[]): string[] => {
+// horario del local, el turno de la manicurista (si tiene uno asignado) y
+// descartando los que se solapan con `busy` (rangos en minutos desde
+// medianoche, ya filtrados a la manicurista/fecha elegida) o que ya pasaron
+// si la fecha es hoy. Debe reflejar exactamente las mismas reglas que el
+// backend (isWithinBusinessHours / isWithinManicuristShift en
+// client.controller.ts) -- si un horario no pasaria esas validaciones, no
+// tiene que aparecer aca como opcion; el usuario no deberia enterarse del
+// rechazo recien al confirmar.
+const getAvailableSlots = (
+  dateStr: string,
+  durationMinutes: number,
+  busy: { start: number; end: number }[],
+  shift?: { startTime: string; endTime: string } | null,
+): string[] => {
   if (!dateStr || !durationMinutes) return [];
   const dayOfWeek = new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
   const hours = BUSINESS_HOURS[dayOfWeek];
   if (!hours) return [];
-  const openMin = timeToMinutes(hours.open);
-  const closeMin = timeToMinutes(hours.close);
+  let openMin = timeToMinutes(hours.open);
+  let closeMin = timeToMinutes(hours.close);
+  if (shift) {
+    openMin = Math.max(openMin, timeToMinutes(shift.startTime));
+    closeMin = Math.min(closeMin, timeToMinutes(shift.endTime));
+  }
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const nowMin = dateStr === todayStr ? now.getHours() * 60 + now.getMinutes() : -1;
+
   const slots: string[] = [];
   for (let start = openMin; start + durationMinutes <= closeMin; start += SLOT_STEP_MINUTES) {
+    if (start < nowMin) continue;
     const end = start + durationMinutes;
     const overlaps = busy.some((b) => start < b.end && b.start < end);
     if (!overlaps) slots.push(minutesToTime(start));
@@ -441,9 +462,9 @@ export default function App() {
     return () => { cancelled = true; };
   }, [bookingDate]);
 
-  // Recalcula los horarios disponibles (dentro del horario del local, sin
-  // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
-  // servicios elegidos.
+  // Recalcula los horarios disponibles (dentro del horario del local y del
+  // turno de la manicurista, sin choques con citas ya agendadas ni horarios
+  // ya pasados hoy) cada vez que cambian fecha, especialista o servicios elegidos.
   useEffect(() => {
     const totalDuration = services
       .filter(s => selectedServiceIds.includes(String(s.id)))
@@ -464,7 +485,7 @@ export default function App() {
           const start = timeToMinutes(toTimeLabel(a.date));
           return { start, end: start + a.totalDuration };
         });
-        const slots = getAvailableSlots(bookingDate, totalDuration, busy);
+        const slots = getAvailableSlots(bookingDate, totalDuration, busy, manicuristShifts[selectedSpecialist]);
         setAvailableSlots(slots);
         if (bookingTime && !slots.includes(bookingTime)) setBookingTime('');
       })
@@ -472,7 +493,7 @@ export default function App() {
       .finally(() => { if (!cancelled) setLoadingSlots(false); });
 
     return () => { cancelled = true; };
-  }, [bookingDate, selectedSpecialist, selectedServiceIds, services]);
+  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts]);
 
   // Mismo calculo de horarios disponibles, para reprogramar una cita existente.
   // Excluye la propia cita (excludeId) para no chocar contra su propio horario actual.
@@ -487,15 +508,20 @@ export default function App() {
 
     let cancelled = false;
     setLoadingRescheduleSlots(true);
-    fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((occupied: { date: string; totalDuration: number }[]) => {
+    Promise.all([
+      fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
+        .then(res => res.ok ? res.json() : []) as Promise<{ date: string; totalDuration: number }[]>,
+      fetch(`${API_URL}/api/manicurists?date=${newDateInput}`)
+        .then(res => res.ok ? res.json() : []) as Promise<any[]>,
+    ])
+      .then(([occupied, manicuristsData]) => {
         if (cancelled) return;
         const busy = occupied.map(a => {
           const start = timeToMinutes(toTimeLabel(a.date));
           return { start, end: start + a.totalDuration };
         });
-        const slots = getAvailableSlots(newDateInput, totalDuration, busy);
+        const shift = (manicuristsData || []).find(m => String(m.id) === String(editingAppt.manicuristId))?.shift || null;
+        const slots = getAvailableSlots(newDateInput, totalDuration, busy, shift);
         setRescheduleSlots(slots);
         if (newTimeInput && !slots.includes(newTimeInput)) setNewTimeInput('');
       })
