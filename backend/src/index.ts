@@ -18,7 +18,19 @@ app.set("trust proxy", 1);
 // puerto/dominio y carga imagenes de /uploads via <img>, el default
 // same-origin de helmet las bloquea.
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(",") ?? true }));
+
+const corsOrigin = process.env.CORS_ORIGIN?.split(",");
+if (!corsOrigin && process.env.NODE_ENV === "production") {
+  // Sin CORS_ORIGIN, `origin: true` refleja cualquier origen -- combinado con
+  // que el login de cliente es solo por telefono (sin password/OTP), un sitio
+  // hostil que sepa el numero de un cliente podria llamar /api/clients/auth
+  // desde el navegador de cualquiera y leer su token + historial de citas.
+  // Mejor no arrancar que arrancar mal configurado en produccion.
+  throw new Error(
+    "CORS_ORIGIN es obligatorio con NODE_ENV=production (ver backend/.env.example)",
+  );
+}
+app.use(cors({ origin: corsOrigin ?? true }));
 app.use(express.json({ limit: "1mb" }));
 
 const globalLimiter = rateLimit({

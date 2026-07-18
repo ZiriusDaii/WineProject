@@ -26,14 +26,15 @@ const normalizePhone = (phone: string) => {
   return digits.length > 10 ? digits.slice(-10) : digits;
 };
 
-// Busca por telefono normalizado: primero exacto, y solo si eso falla y el
-// numero tiene los 10 digitos completos de un celular colombiano, intenta un
-// match por sufijo (recupera cuentas viejas guardadas con prefijo de pais).
-// Nunca hace match por sufijo con menos de 10 digitos -- un input de 7 podria
-// coincidir con el final de varios celulares distintos, y `findFirst` daria
-// acceso a la cuenta equivocada. Si el sufijo matchea a mas de una cuenta
-// (coincidencia real, aunque rarisima), tambien se trata como "no encontrado"
-// en vez de elegir una al azar.
+// Busca por telefono normalizado. Con menos de 10 digitos, solo exacto (un
+// input de 7 podria coincidir con el final de varios celulares distintos por
+// sufijo, asi que ese modo esta descartado del todo). Con los 10 digitos
+// completos de un celular colombiano, se buscan TODAS las cuentas que
+// terminen en esos digitos -- exacta o con prefijo de pais viejo -- en una
+// sola pasada: si hay una sola, esa es la cuenta; si hay mas de una (incluso
+// si una de ellas matcheaba exacto), no hay forma segura de saber cual es la
+// correcta y se trata como "no encontrado" en vez de preferir la exacta a
+// ciegas y esconder que existe otra cuenta ambigua para el mismo numero.
 async function findUserByPhone(
   phone: string,
   where: Record<string, unknown>,
@@ -41,10 +42,9 @@ async function findUserByPhone(
 ): Promise<any | null> {
   const normalized = normalizePhone(phone);
 
-  const exact = await prisma.user.findFirst({ where: { phone: normalized, ...where }, select });
-  if (exact) return exact;
-
-  if (normalized.length !== 10) return null;
+  if (normalized.length !== 10) {
+    return prisma.user.findFirst({ where: { phone: normalized, ...where }, select });
+  }
 
   const candidates = await prisma.user.findMany({
     where: { phone: { endsWith: normalized }, ...where },
