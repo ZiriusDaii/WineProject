@@ -12,4 +12,7 @@ RUN DATABASE_URL="postgresql://user:pass@localhost:5432/db" npx prisma generate 
 # ponytail: single-stage, la imagen incluye devDependencies (prisma CLI, typescript).
 # Pasar a build multi-stage si el tamaño de imagen llega a importar.
 EXPOSE 3000
-CMD ["node", "dist/src/index.js"]
+# Aplica migraciones pendientes antes de arrancar -- evita el paso manual de
+# correr `prisma migrate deploy` aparte cada vez que se levanta un container
+# nuevo. Es idempotente (prisma la sabe correr de nuevo sin duplicar nada).
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
