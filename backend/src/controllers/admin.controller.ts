@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
-import { normalizePhone } from "./client.controller.js";
+import { normalizePhone, isValidPhone } from "./client.controller.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -319,6 +319,14 @@ export async function updateManicuristStatus(
 
     if (age != null && (age < 0 || age > 100)) {
       res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
+      return;
+    }
+
+    // normalizePhone puede devolver vacio o un valor corto de mas con un
+    // input malformado (ej. "abc" -> ""); sin este chequeo eso se guardaba
+    // tal cual, en vez de rechazarlo como el registro de clientes ya hace.
+    if (phone && !isValidPhone(normalizePhone(phone))) {
+      res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
       return;
     }
 
