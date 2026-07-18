@@ -1,10 +1,11 @@
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { Prisma } from "../../prisma/generated/client.js";
 import { getISOWeek } from "../lib/week.js";
 import { signToken } from "../lib/jwt.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
-const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
+export const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 
 // El "login" de cliente sigue siendo solo por telefono (sin password/OTP,
 // decision consciente por ahora -- ver conversacion). Este token no prueba
@@ -372,6 +373,14 @@ export async function createClient(
 
     res.status(201).json({ ...client, token: signClientToken(client.id) });
   } catch (error) {
+    // El chequeo de "ya existe" de arriba es raceable: dos requests casi
+    // simultaneas pueden pasar ambas el preflight antes de que cualquiera
+    // inserte, y la segunda insercion choca contra users_phone_key. Sin esto
+    // llegaba al 500 generico en vez del mismo 409 que el chequeo normal.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+      return;
+    }
     console.error("Error creando cliente:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
