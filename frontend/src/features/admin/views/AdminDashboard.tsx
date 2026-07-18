@@ -211,6 +211,12 @@ export const AdminDashboard: React.FC = () => {
   const [cmsTitle, setCmsTitle] = useState('');
   const [cmsDesc, setCmsDesc] = useState('');
   const [cmsItems, setCmsItems] = useState<any[]>([]);
+  // Si fetchCMS falla, cmsItems queda vacio o stale -- los editores de Hero/
+  // Experience usan `cmsItems.find(...)?.id` para decidir si actualizan el
+  // registro existente o crean uno nuevo. Sin este flag, subir una imagen en
+  // ese momento crearia un HERO/EXPERIENCE duplicado en vez de actualizar.
+  const [cmsLoading, setCmsLoading] = useState(false);
+  const [cmsError, setCmsError] = useState(false);
   const [editingCmsId, setEditingCmsId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -537,10 +543,13 @@ export const AdminDashboard: React.FC = () => {
 
   // --- CMS ---
   const fetchCMS = async () => {
+    setCmsLoading(true);
+    setCmsError(false);
     try {
       const res = await fetch(`${API}/api/landing/content`);
-      if (res.ok) setCmsItems(await res.json());
-    } catch { /* */ }
+      if (res.ok) { setCmsItems(await res.json()); } else { setCmsError(true); }
+    } catch { setCmsError(true); }
+    finally { setCmsLoading(false); }
   };
   const handleDeleteCMS = async (id: string) => {
     if (!confirm('Eliminar este anuncio?')) return;
@@ -1622,7 +1631,13 @@ export const AdminDashboard: React.FC = () => {
             {/* HERO & EXPERIENCE EDITORS */}
             <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-4">
               <h3 className="text-xs font-bold text-[#3B0019] uppercase">Imágenes de la Página Principal</h3>
-              
+              {cmsError && (
+                <div className="p-2.5 bg-amber-50 text-amber-700 text-[11px] rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+                  <span>No se pudo cargar el contenido actual -- subir una imagen ahora podria crear un registro duplicado en vez de actualizar el existente.</span>
+                  <button onClick={fetchCMS} className="underline font-semibold shrink-0">Reintentar</button>
+                </div>
+              )}
+
               {/* HERO IMAGE EDITOR */}
               <div className="border-b border-[#EADEC9]/25 pb-4 space-y-2">
                 <p className="text-xs font-semibold text-[#44403C]">Imagen del Banner Principal (Hero)</p>
@@ -1639,6 +1654,7 @@ export const AdminDashboard: React.FC = () => {
                         <input
                           type="file"
                           accept="image/*"
+                          disabled={cmsLoading || cmsError || submitting}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
@@ -1649,7 +1665,7 @@ export const AdminDashboard: React.FC = () => {
                               const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
                               if (!uRes.ok) throw new Error();
                               const data = await uRes.json();
-                              
+
                               const payload = {
                                 id: heroItem?.id || null,
                                 type: 'HERO',
@@ -1693,6 +1709,7 @@ export const AdminDashboard: React.FC = () => {
                         <input
                           type="file"
                           accept="image/*"
+                          disabled={cmsLoading || cmsError || submitting}
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
@@ -1703,7 +1720,7 @@ export const AdminDashboard: React.FC = () => {
                               const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
                               if (!uRes.ok) throw new Error();
                               const data = await uRes.json();
-                              
+
                               const payload = {
                                 id: expItem?.id || null,
                                 type: 'EXPERIENCE',
