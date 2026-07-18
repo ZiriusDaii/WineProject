@@ -38,12 +38,11 @@ const authLimiter = rateLimit({
   message: { error: "Demasiados intentos, intente de nuevo mas tarde" },
 });
 app.use("/api/auth", authLimiter);
-// Solo los dos endpoints de auth de cliente, no todo /api/clients -- ese
-// prefijo tambien cubre GET /api/clients/:clientId/appointments, que un
-// cliente real puede llamar mas de 10 veces por minuto en uso normal
-// (recarga el portal, cancela, reprograma...). Registro y login si
-// responden distinto segun si el telefono ya tiene cuenta (exists/409),
-// asi que ambos son un oraculo para enumerar clientes a fuerza bruta.
+// Solo registro y login de cliente, no todo /api/clients (ese prefijo tambien
+// cubre GET /api/clients/:clientId/appointments, que un cliente real puede
+// llamar mas de 10 veces por minuto en uso normal). Los dos POST si responden
+// distinto segun si el telefono ya tiene cuenta (exists/409), asi que ambos
+// son un oraculo para enumerar clientes a fuerza bruta.
 app.post("/api/clients", authLimiter);
 app.post("/api/clients/auth", authLimiter);
 

@@ -95,7 +95,7 @@ Implementado:
 - **JWT**: login de staff y de cliente (por telefono, sin password/OTP -- ver "Pendiente") devuelven token. Endpoints admin/manicurista requieren `Authorization: Bearer <token>` via rol; las rutas de citas del cliente (`/appointments`, `/clients/:id/appointments`) exigen que el token pertenezca al dueño del recurso (401 sin token, 403 si es de otro cliente). Catálogo, ofertas y el chequeo de disponibilidad por fecha/manicurista siguen públicos, sin auth.
 - **bcrypt**: contraseñas hasheadas con salt 10.
 - **Helmet**: headers de seguridad (CSP, X-Frame-Options, HSTS, etc).
-- **Rate limiting**: 200 req/min global, 10 req/min en `/api/auth` y en todo `/api/clients` (login y registro comparten limite -- ambos revelan si un telefono ya tiene cuenta).
+- **Rate limiting**: 200 req/min global, 10 req/min en `/api/auth` y en `POST /api/clients` + `POST /api/clients/auth` (registro y login de cliente -- ambos revelan si un telefono ya tiene cuenta, no el resto de `/api/clients/*`).
 - **CORS**: restrictivo por `CORS_ORIGIN`.
 - **Uploads**: extensión forzada a `.jpg`, sin preservar la original (previene XSS).
 - **Validación**: precios >= 0, duración > 0, descuentos 1-100, roles validados en runtime, fechas de citas no pueden quedar en el pasado.
@@ -131,6 +131,21 @@ Pendiente:
 
 - **CI** (`.github/workflows/ci.yml`): typecheck backend contra Postgres efímero + lint/typecheck frontend. Corre en cada PR a `develop`.
 - **CD** (`.github/workflows/cd.yml`): build del frontend e imagen Docker del backend en cada push a `staging`. Sin deploy automático todavía.
+
+### ⚠️ Antes de correr `migrate deploy` contra una base ya existente
+
+`0_init` es un baseline generado a partir del `schema.prisma` actual, aplicado hasta ahora solo contra bases de desarrollo que **nunca** tuvieron historial de migraciones (se manejaban con `db push`). Si en algún momento hay una base real (staging/prod) que también viene de `db push`, correrle `migrate deploy` a ciegas va a intentar crear tablas/tipos que ya existen y falla.
+
+Antes de habilitar `migrate deploy` contra esa base, una sola vez:
+
+```bash
+# Contra una COPIA descartable de esa base, nunca la real:
+DATABASE_URL="<copia-de-la-base-existente>" npx prisma migrate status
+# si el schema coincide con 0_init (sin diffs), recien ahi:
+DATABASE_URL="<la-base-real>" npx prisma migrate resolve --applied 0_init
+```
+
+Después de ese baseline único, `migrate deploy` funciona normal ahí en adelante.
 
 ## Flujo de trabajo (Git-Flow)
 
