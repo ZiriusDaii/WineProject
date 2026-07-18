@@ -219,6 +219,10 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [unauthorized, setUnauthorized] = useState(false);
+  // Antes, si manicuristas/servicios fallaban al cargar, el dashboard
+  // simplemente se veia vacio -- indistinguible de "no hay datos", cuando en
+  // realidad el fetch fallo. Esto lo hace visible con un banner y reintento.
+  const [loadError, setLoadError] = useState(false);
   const [adminLoginUser, setAdminLoginUser] = useState('');
   const [adminLoginPass, setAdminLoginPass] = useState('');
 
@@ -274,6 +278,7 @@ export const AdminDashboard: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(false);
     const h = authHeaders();
     try {
       const [mRes, sRes, cRes, oRes] = await Promise.all([
@@ -286,6 +291,7 @@ export const AdminDashboard: React.FC = () => {
       if (mRes.status === 401 || cRes?.status === 401 || oRes?.status === 401) {
         setUnauthorized(true); setLoading(false); return;
       }
+      if (!mRes.ok || !sRes.ok) setLoadError(true);
       const mData = mRes.ok ? await mRes.json() : [];
       const sData = sRes.ok ? await sRes.json() : [];
       const cPayload = cRes?.ok ? await cRes.json() : null;
@@ -326,7 +332,7 @@ export const AdminDashboard: React.FC = () => {
         setAnimateBars(false);
         setTimeout(() => setAnimateBars(true), 150);
       }
-    } catch { /* */ }
+    } catch { setLoadError(true); }
     finally { setLoading(false); }
   };
 
@@ -708,6 +714,12 @@ export const AdminDashboard: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 overflow-y-auto">
         {successMsg && <div className="mb-3 p-2.5 bg-green-50 text-green-700 text-xs rounded-xl border border-green-200">{successMsg}</div>}
         {errorMsg && <div className="mb-3 p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
+        {loadError && (
+          <div className="mb-3 p-2.5 bg-amber-50 text-amber-700 text-xs rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+            <span>No se pudo cargar toda la informacion (puede faltar datos en este panel).</span>
+            <button onClick={loadData} className="underline font-semibold shrink-0">Reintentar</button>
+          </div>
+        )}
 
         <motion.div
           key={activeTab}
@@ -759,7 +771,10 @@ export const AdminDashboard: React.FC = () => {
 
             appointments.forEach(a => {
               try {
-                const dateStr = new Date(a.date).toISOString().split('T')[0];
+                // toDateLabel (slice directo), no new Date(...).toISOString() --
+                // mismo criterio que las llaves de `dates` arriba (toLocalDateKey),
+                // en vez de dos formas distintas de llegar (con suerte) al mismo valor.
+                const dateStr = toDateLabel(a.date);
                 if (dateStr in dailyData) {
                   dailyData[dateStr].appointments += 1;
                   if (a.status === 'COMPLETED' || a.status === 'IN_PROGRESS') {
