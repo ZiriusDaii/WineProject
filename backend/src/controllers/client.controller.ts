@@ -4,6 +4,16 @@ import { getISOWeek } from "../lib/week.js";
 
 const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 
+// Cuentas viejas pueden tener el numero guardado con prefijo de pais (57),
+// un cero inicial u otros caracteres si se registraron antes de que el
+// frontend limitara el input a 10 digitos limpios. Normalizamos a los
+// ultimos 10 digitos para que un cliente antiguo pueda seguir encontrando
+// su cuenta con el input actual.
+const normalizePhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length > 10 ? digits.slice(-10) : digits;
+};
+
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
 // 0=Domingo..6=Sabado.
 const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
@@ -213,8 +223,10 @@ export async function authClient(
 
     // Solo cuentas de tipo CLIENTE: un telefono de staff (admin/manicurista)
     // no debe autenticar ni prellenar datos en el flujo de clientes.
+    // endsWith (no equals) para que cuentas viejas guardadas con prefijo de
+    // pais u otro formato sigan encontrandose con el numero normalizado.
     const user = await prisma.user.findFirst({
-      where: { phone, role: "CLIENTE" },
+      where: { phone: { endsWith: normalizePhone(phone) }, role: "CLIENTE" },
       select: {
         id: true,
         name: true,
@@ -285,15 +297,18 @@ export async function createClient(
       return;
     }
 
-    const existing = await prisma.user.findUnique({ where: { phone } });
+    const normalizedPhone = normalizePhone(phone);
+    const existing = await prisma.user.findFirst({
+      where: { phone: { endsWith: normalizedPhone } },
+    });
     if (existing) {
-      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono", clientId: existing.id });
       return;
     }
 
     const client = await prisma.user.create({
       data: {
-        phone,
+        phone: normalizedPhone,
         name,
         age: age ?? null,
         gender: gender ?? null,
