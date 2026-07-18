@@ -48,8 +48,8 @@ Si preferís correr el backend con `npm run dev` para tener hot-reload:
 cd backend
 cp .env.example .env   # editalo con tus credenciales si no usas las default
 npm install
-npx prisma db push
-npm run dev            # http://localhost:3000
+npm run db:migrate:deploy   # aplica las migraciones (prisma migrate deploy)
+npm run dev                 # http://localhost:3000
 ```
 
 Ojo: si Docker ya está corriendo en el puerto 3000, paralo primero (`docker compose stop backend`).
@@ -92,18 +92,20 @@ Para producción, creá un `.env` en la raíz con valores reales y pisará estos
 ## Seguridad
 
 Implementado:
-- **JWT**: login de staff devuelve token. Endpoints admin y manicurista requieren `Authorization: Bearer <token>`. Rutas públicas (catálogo, booking) sin cambios.
+- **JWT**: login de staff y de cliente (por telefono, sin password/OTP -- ver "Pendiente") devuelven token. Endpoints admin/manicurista requieren `Authorization: Bearer <token>` via rol; las rutas de citas del cliente (`/appointments`, `/clients/:id/appointments`) exigen que el token pertenezca al dueño del recurso (401 sin token, 403 si es de otro cliente). Catálogo, ofertas y el chequeo de disponibilidad por fecha/manicurista siguen públicos, sin auth.
 - **bcrypt**: contraseñas hasheadas con salt 10.
 - **Helmet**: headers de seguridad (CSP, X-Frame-Options, HSTS, etc).
-- **Rate limiting**: 200 req/min global, 10 req/min en login y auth de clientes.
+- **Rate limiting**: 200 req/min global, 10 req/min en `/api/auth` y en todo `/api/clients` (login y registro comparten limite -- ambos revelan si un telefono ya tiene cuenta).
 - **CORS**: restrictivo por `CORS_ORIGIN`.
 - **Uploads**: extensión forzada a `.jpg`, sin preservar la original (previene XSS).
-- **Validación**: precios >= 0, duración > 0, descuentos 1-100, roles validados en runtime.
+- **Validación**: precios >= 0, duración > 0, descuentos 1-100, roles validados en runtime, fechas de citas no pueden quedar en el pasado.
 - **Credenciales**: fuera del repo (`.env` en `.gitignore`), Docker Compose usa defaults para dev.
+- **Migraciones**: `prisma migrate`, versionadas en `backend/prisma/migrations/`. Ver sección CI/CD.
 
 Pendiente:
-- `http://localhost:3000` hardcodeado en ~25 `fetch` del frontend — no rompe en dev, pero hay que mover a variable de entorno antes de producción.
+- El login de cliente es solo por telefono, sin password ni OTP -- cualquiera que sepa el numero de un cliente puede autenticarse como el (decision de alcance consciente, no un descuido). El token emitido evita que un tercero sin ese numero toque las citas de otro, pero no verifica identidad real.
 - Sin índices de BD en `Appointment.date`, `manicuristId`, `status`, `User.role` — no crítico con el volumen actual.
+- `DATABASE_URL` sin `sslmode=require` documentado para cuando la BD no este en la misma red privada que el backend (ver `backend/.env.example`).
 
 ## Scripts
 
@@ -113,7 +115,8 @@ Pendiente:
 | `npm run dev` | Servidor con hot-reload (`tsx watch`) |
 | `npm run build` | Compila TypeScript a `dist/` |
 | `npm start` | Corre el build compilado |
-| `npm run db:push` | Aplica `schema.prisma` a la BD |
+| `npm run db:migrate -- <nombre>` | Crea y aplica una migracion nueva a partir de cambios en `schema.prisma` |
+| `npm run db:migrate:deploy` | Aplica migraciones pendientes sin prompts (lo que corren CI y el Dockerfile) |
 | `npm run db:studio` | Prisma Studio (UI para datos) |
 | `npx tsx prisma/seed.ts` | Carga datos iniciales |
 
