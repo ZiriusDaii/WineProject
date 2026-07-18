@@ -668,10 +668,11 @@ export default function App() {
         setPortalToast({ msg: 'Cita cancelada con exito.', ok: true });
         fetchClientAppointments();
       } else {
-        setClientAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
+        const errData = await res.json().catch(() => null);
+        setPortalToast({ msg: errData?.error || 'No se pudo cancelar la cita.', ok: false });
       }
     } catch {
-      setClientAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
+      setPortalToast({ msg: 'Error de conexion al cancelar.', ok: false });
     }
   };
 
