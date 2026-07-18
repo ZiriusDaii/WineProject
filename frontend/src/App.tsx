@@ -114,7 +114,7 @@ const getAvailableSlots = (
 
   const slots: string[] = [];
   for (let start = openMin; start + durationMinutes <= closeMin; start += SLOT_STEP_MINUTES) {
-    if (start < nowMin) continue;
+    if (start <= nowMin) continue;
     const end = start + durationMinutes;
     const overlaps = busy.some((b) => start < b.end && b.start < end);
     if (!overlaps) slots.push(minutesToTime(start));
@@ -328,6 +328,7 @@ export default function App() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [manicuristShifts, setManicuristShifts] = useState<Record<string, { startTime: string; endTime: string } | null>>({});
+  const [shiftsDate, setShiftsDate] = useState<string | null>(null);
 
   // Estados para Imágenes Dinámicas del Home/Landing
   const [heroImage, setHeroImage] = useState('/hero_1.jpg');
@@ -445,20 +446,27 @@ export default function App() {
   useEffect(() => { setPortalToast(null); }, [view]);
 
   // Trae el turno asignado (si existe) a cada manicurista para la fecha elegida,
-  // para mostrarlo como dato al elegir manicurista (no filtra a nadie: sin turno
-  // asignado se interpreta como "sin restriccion", el backend hace lo mismo).
+  // para mostrarlo como dato al elegir manicurista y para restringir los horarios
+  // disponibles a ese turno (sin turno asignado si es "sin restriccion", el
+  // backend hace lo mismo). `shiftsDate` marca para que fecha es valido
+  // `manicuristShifts` -- mientras no coincida con `bookingDate` (carga en curso,
+  // fecha recien cambiada, o el fetch fallo), el efecto de abajo no debe calcular
+  // horarios: sin saber el turno real, no hay forma segura de decir que un
+  // horario es valido.
   useEffect(() => {
-    if (!bookingDate) { setManicuristShifts({}); return; }
+    if (!bookingDate) { setManicuristShifts({}); setShiftsDate(null); return; }
     let cancelled = false;
+    setShiftsDate(null);
     fetch(`${API_URL}/api/manicurists?date=${bookingDate}`)
-      .then(res => res.ok ? res.json() : [])
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status')))
       .then((data: any[]) => {
         if (cancelled) return;
         const map: Record<string, { startTime: string; endTime: string } | null> = {};
         (data || []).forEach(m => { map[String(m.id)] = m.shift || null; });
         setManicuristShifts(map);
+        setShiftsDate(bookingDate);
       })
-      .catch(() => { if (!cancelled) setManicuristShifts({}); });
+      .catch(() => { /* no marcamos shiftsDate: el efecto de horarios se queda esperando en vez de asumir "sin turno" */ });
     return () => { cancelled = true; };
   }, [bookingDate]);
 
@@ -472,6 +480,14 @@ export default function App() {
 
     if (!bookingDate || !selectedSpecialist || totalDuration === 0) {
       setAvailableSlots([]);
+      return;
+    }
+
+    // El turno de esta fecha todavia no cargo (o cambio de fecha y esta
+    // recargando): no calculamos horarios con datos de turno desactualizados.
+    if (shiftsDate !== bookingDate) {
+      setAvailableSlots([]);
+      setLoadingSlots(true);
       return;
     }
 
@@ -493,7 +509,7 @@ export default function App() {
       .finally(() => { if (!cancelled) setLoadingSlots(false); });
 
     return () => { cancelled = true; };
-  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts]);
+  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts, shiftsDate]);
 
   // Mismo calculo de horarios disponibles, para reprogramar una cita existente.
   // Excluye la propia cita (excludeId) para no chocar contra su propio horario actual.
@@ -512,7 +528,7 @@ export default function App() {
       fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
         .then(res => res.ok ? res.json() : []) as Promise<{ date: string; totalDuration: number }[]>,
       fetch(`${API_URL}/api/manicurists?date=${newDateInput}`)
-        .then(res => res.ok ? res.json() : []) as Promise<any[]>,
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status'))) as Promise<any[]>,
     ])
       .then(([occupied, manicuristsData]) => {
         if (cancelled) return;
