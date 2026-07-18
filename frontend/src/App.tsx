@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { motion, useScroll, useTransform } from 'motion/react'
+import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react'
 import { AdminDashboard } from './features/admin/views/AdminDashboard'
 import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
@@ -160,11 +160,14 @@ const heroItemVariants = {
 const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = ({ heroImage, onBook }) => {
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const imageY = useTransform(scrollYProgress, [0, 1], [0, 120]);
-  const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
-  const imageOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.35]);
-  const textY = useTransform(scrollYProgress, [0, 1], [0, -40]);
-  const textOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  // prefers-reduced-motion: en vez de saltarnos los hooks (rompe las reglas de
+  // hooks), les damos un rango de salida chato -- el scroll no mueve nada.
+  const reduceMotion = useReducedMotion();
+  const imageY = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [0, 120]);
+  const imageScale = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [1, 1.12]);
+  const imageOpacity = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [1, 0.35]);
+  const textY = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [0, -40]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.7], reduceMotion ? [1, 1] : [1, 0]);
 
   return (
     <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center overflow-hidden">
@@ -1485,7 +1488,7 @@ export default function App() {
 
           {/* Acción rápida */}
           <div className="text-center pt-6">
-            <button onClick={() => { setBookingStep('selection'); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+            <button onClick={() => { resetBooking(); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
               Agendar Nueva Cita
             </button>
           </div>
@@ -1605,7 +1608,7 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
                         <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                        <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                        <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
                   </motion.div>
@@ -1685,7 +1688,7 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
                       <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                      <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                      <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
                 </motion.div>
