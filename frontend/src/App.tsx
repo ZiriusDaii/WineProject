@@ -20,6 +20,41 @@ const PanelLoadingFallback: React.FC = () => (
   </div>
 );
 
+// Suspense solo cubre la espera de carga -- si el chunk lazy falla al
+// bajarse (red, o un deploy nuevo que invalido el hash del chunk viejo que
+// el HTML todavia referencia), eso es un error de render normal, y sin un
+// Error Boundary (tiene que ser un componente de clase, no hay equivalente
+// con hooks) esa excepcion se escapa a la pantalla blanca de React en vez de
+// una UI recuperable.
+class StaffPanelErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error('Error cargando el panel:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-xs text-[#78716C]">
+          <p>No se pudo cargar el panel.</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+            Recargar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 interface Service {
   id: string | number;
   name: string;
@@ -1503,9 +1538,11 @@ export default function App() {
           <span>Sesión activa: {session.name} (Administrador)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <Suspense fallback={<PanelLoadingFallback />}>
-          <AdminDashboard key={session.id} />
-        </Suspense>
+        <StaffPanelErrorBoundary>
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <AdminDashboard key={session.id} />
+          </Suspense>
+        </StaffPanelErrorBoundary>
       </div>
     );
   }
@@ -1517,9 +1554,11 @@ export default function App() {
           <span>Sesión activa: {session.name} (Manicurista)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <Suspense fallback={<PanelLoadingFallback />}>
-          <StylistAgenda key={session.id} />
-        </Suspense>
+        <StaffPanelErrorBoundary>
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <StylistAgenda key={session.id} />
+          </Suspense>
+        </StaffPanelErrorBoundary>
       </div>
     );
   }
