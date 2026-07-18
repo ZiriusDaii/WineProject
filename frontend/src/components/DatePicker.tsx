@@ -114,6 +114,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               type="button"
               disabled={disabled || isPast || !hasAvailability}
               onClick={() => onSelectDate(dateStr)}
+              aria-label={`${day} de ${MONTHS[viewMonth]}${isMarked ? ', tiene citas agendadas' : ''}`}
               className={`
                 relative w-8 h-8 rounded-full text-[11px] font-medium mx-auto flex items-center justify-center transition-all
                 ${isSelected
