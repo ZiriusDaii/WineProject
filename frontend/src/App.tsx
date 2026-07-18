@@ -643,10 +643,20 @@ export default function App() {
     }
   };
 
+  // Header de autorizacion para las rutas de cliente (/appointments, /clients/:id/appointments)
+  // que ahora exigen ownership: el token se guarda en localStorage al pasar el chequeo
+  // de telefono (authClient/createClient), igual que el token de staff.
+  const authHeader = (): Record<string, string> => {
+    const token = localStorage.getItem('winespa_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const fetchClientAppointments = async () => {
     if (!session || session.role !== 'cliente') return;
     try {
-      const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`);
+      const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`, {
+        headers: authHeader(),
+      });
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
@@ -661,7 +671,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({ status: 'CANCELLED' })
       });
       if (res.ok) {
@@ -685,7 +695,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         // Concatenacion directa: `new Date(...).toISOString()` interpretaba el string
         // como hora local del navegador y corria la hora guardada.
         body: JSON.stringify({ date: `${newDateInput}T${newTimeInput}:00.000Z` })
@@ -746,6 +756,7 @@ export default function App() {
       const data = await res.json();
       const client = data.client || data;
       if (res.ok && (data.exists || data.client) && (client.id || client._id)) {
+        if (data.token) localStorage.setItem('winespa_token', data.token);
         return { id: String(client.id || client._id), name: client.name || 'Cliente' };
       }
       return null;
@@ -782,6 +793,7 @@ export default function App() {
             role: 'cliente',
             phone: phoneInput
           };
+          if (data.token) localStorage.setItem('winespa_token', data.token);
           setSession(user);
           localStorage.setItem('winespa_session', JSON.stringify(user));
           setIsLoginOpen(false);
@@ -839,6 +851,7 @@ export default function App() {
           role: 'cliente',
           phone: phoneInput
         };
+        if (clientData.token) localStorage.setItem('winespa_token', clientData.token);
         setSession(user);
         localStorage.setItem('winespa_session', JSON.stringify(user));
         setIsLoginOpen(false);
@@ -996,6 +1009,7 @@ export default function App() {
 
       if (response.ok && (data.exists || data.client)) {
         const client = data.client || data;
+        if (data.token) localStorage.setItem('winespa_token', data.token);
         try {
           await createAppointment(String(client.id || client._id), client.name);
         } catch (err: any) {
@@ -1054,6 +1068,7 @@ export default function App() {
       }
 
       const clientData = await clientRes.json();
+      if (clientData.token) localStorage.setItem('winespa_token', clientData.token);
       await createAppointment(String(clientData.id || clientData._id || 'nuevo-cliente'), bookingName);
     } catch (err: any) {
       setSubmitError(err.message || 'Error al agendar.');
@@ -1066,7 +1081,7 @@ export default function App() {
     try {
       const apptRes = await fetch(`${API_URL}/api/appointments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({
           clientId,
           manicuristId: selectedSpecialist,

@@ -1,8 +1,20 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
+import { signToken } from "../lib/jwt.js";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
 const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
+
+// El "login" de cliente sigue siendo solo por telefono (sin password/OTP,
+// decision consciente por ahora -- ver conversacion). Este token no prueba
+// identidad real, pero evita que cualquiera que sepa/adivine un clientId o
+// un appointmentId pueda leer o modificar citas ajenas sin haber pasado
+// primero por el chequeo de telefono.
+const signClientToken = (userId: string) => signToken({ userId, role: "CLIENTE" });
+
+const isOwner = (req: AuthRequest, ownerId: string) =>
+  !!req.user && req.user.role === "CLIENTE" && req.user.userId === ownerId;
 
 // Cuentas viejas pueden tener el numero guardado con prefijo de pais (57),
 // un cero inicial u otros caracteres si se registraron antes de que el
@@ -90,7 +102,7 @@ async function findOverlappingAppointment(
   });
 }
 
-export async function getServices(req: Request, res: Response): Promise<void> {
+export async function getServices(req: AuthRequest, res: Response): Promise<void> {
   try {
     const hasPagination = req.query.page || req.query.limit || req.query.search;
 
@@ -156,7 +168,7 @@ export async function getServices(req: Request, res: Response): Promise<void> {
 }
 
 export async function getManicurists(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -192,7 +204,7 @@ export async function getManicurists(
   }
 }
 
-export async function getOffers(_req: Request, res: Response): Promise<void> {
+export async function getOffers(_req: AuthRequest, res: Response): Promise<void> {
   try {
     const offers = await prisma.specialOffer.findMany({
       where: { isActive: true },
@@ -205,7 +217,7 @@ export async function getOffers(_req: Request, res: Response): Promise<void> {
 }
 
 export async function authClient(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -256,6 +268,7 @@ export async function authClient(
       exists: true,
       client: user,
       appointmentHistory: appointments,
+      token: signClientToken(user.id),
     });
   } catch (error) {
     console.error("Error en authClient:", error);
@@ -264,7 +277,7 @@ export async function authClient(
 }
 
 export async function createClient(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -317,7 +330,7 @@ export async function createClient(
       select: { id: true, name: true, phone: true, age: true, gender: true },
     });
 
-    res.status(201).json(client);
+    res.status(201).json({ ...client, token: signClientToken(client.id) });
   } catch (error) {
     console.error("Error creando cliente:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -325,7 +338,7 @@ export async function createClient(
 }
 
 export async function createAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -350,6 +363,11 @@ export async function createAppointment(
         error: `Faltan campos requeridos: ${missing.join(", ")}`,
         missing,
       });
+      return;
+    }
+
+    if (!isOwner(req, clientId!)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para crear una cita a nombre de otro cliente" });
       return;
     }
 
@@ -434,7 +452,7 @@ export async function createAppointment(
 }
 
 export async function updateAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -461,6 +479,11 @@ export async function updateAppointment(
 
     if (!existing) {
       res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    if (!isOwner(req, existing.clientId)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para modificar esta cita" });
       return;
     }
 
@@ -513,7 +536,7 @@ export async function updateAppointment(
 }
 
 export async function getClientAppointments(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -559,6 +582,11 @@ export async function getClientAppointments(
       return;
     }
 
+    if (!isOwner(req, clientId)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para ver estas citas" });
+      return;
+    }
+
     const appointments = await prisma.appointment.findMany({
       where: { clientId },
       include: {
@@ -576,7 +604,7 @@ export async function getClientAppointments(
 }
 
 export async function uploadManicuristAvatar(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -613,7 +641,7 @@ export async function uploadManicuristAvatar(
 }
 
 export async function uploadLandingImage(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -634,7 +662,7 @@ export async function uploadLandingImage(
 }
 
 export async function validateOfferCode(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
