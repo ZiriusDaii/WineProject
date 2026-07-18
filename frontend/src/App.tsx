@@ -651,8 +651,13 @@ export default function App() {
       .reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0);
 
     if (!bookingDate || !selectedSpecialist || totalDuration === 0) {
+      // No tocar slotsError aca: si el turno ya fallo para esta fecha (shiftsDate
+      // sigue null) y el usuario todavia no eligio especialista, limpiarlo dejaba
+      // shiftsDate desincronizado -- al elegir especialista despues, ni el error
+      // ni el loading se resolvian nunca (nada dispara un reintento del fetch).
+      // El efecto de turnos ya resetea slotsError el solo cuando cambia la fecha.
       setAvailableSlots([]);
-      setSlotsError(false);
+      setLoadingSlots(false);
       return;
     }
 
@@ -1436,6 +1441,11 @@ export default function App() {
   // useCallback: se pasa a ServiceSelectionGrid (memoizado) como onToggleService --
   // sin esto, una funcion nueva en cada render de App invalidaria el memo.
   const handleServiceToggle = useCallback((idStr: string) => {
+    // Sincronico, no esperar a que el efecto de horarios recalcule: la
+    // duracion total cambia con los servicios, y el horario ya elegido podia
+    // quedar "confirmable" (sin ningun chequeo) hasta que ese efecto async
+    // terminara y recien ahi lo limpiara si ya no calzaba.
+    setBookingTime('');
     setSelectedServiceIds(prev => {
       if (prev.includes(idStr)) return prev.filter(x => x !== idStr);
 
@@ -2111,7 +2121,7 @@ export default function App() {
               // se veia como que la reserva se hubiera perdido. Los ocultamos en vez
               // de eso mientras se ve la confirmacion.
               <div className="text-center py-16 text-xs text-[#78716C]">
-                Tu cita fue confirmada -- mirá el resumen a la izquierda.
+                Tu cita fue confirmada -- mirá el resumen de la reserva.
               </div>
             ) : (
               <>
@@ -2359,33 +2369,35 @@ export default function App() {
                   </>
                 )}
 
-                {session && session.role === 'cliente' ? (
-                  <div className="space-y-3 text-xs">
-                    <p>Sesión activa: <strong>{session.name}</strong></p>
-                    {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                    <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
-                      {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {(bookingStep === 'selection' || bookingStep === 'auth') && (
-                      <form onSubmit={handleCheckAuthBooking} className="space-y-3">
-                        <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
-                        <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Verificar</button>
-                      </form>
-                    )}
+                {bookingStep !== 'success' && (
+                  session && session.role === 'cliente' ? (
+                    <div className="space-y-3 text-xs">
+                      <p>Sesión activa: <strong>{session.name}</strong></p>
+                      {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
+                      <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
+                        {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {(bookingStep === 'selection' || bookingStep === 'auth') && (
+                        <form onSubmit={handleCheckAuthBooking} className="space-y-3">
+                          <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Verificar</button>
+                        </form>
+                      )}
 
-                    {bookingStep === 'register' && (
-                      <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                        <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
-                        <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
-                      </form>
-                    )}
-                  </>
+                      {bookingStep === 'register' && (
+                        <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
+                          <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
+                        </form>
+                      )}
+                    </>
+                  )
                 )}
 
                 {bookingStep === 'success' && (
