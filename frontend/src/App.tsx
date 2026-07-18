@@ -334,7 +334,14 @@ const ServiceSelectionGrid: React.FC<{
           const serviceIdStr = String(s.id);
           const isSelected = selectedServiceIds.includes(serviceIdStr);
           return (
-            <div key={s.id} onClick={() => onToggleService(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+            <div
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onToggleService(serviceIdStr)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleService(serviceIdStr); } }}
+              className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}
+            >
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-1.5">
                   {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
@@ -388,12 +395,19 @@ const ManicuristSelectionGrid: React.FC<{
           const isSelected = selectedSpecialist === manicuristIdStr;
           const shift = manicuristShifts[manicuristIdStr];
           return (
-            <div key={m.id} onClick={() => onSelectSpecialist(manicuristIdStr)} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
+            <div
+              key={m.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectSpecialist(manicuristIdStr)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSpecialist(manicuristIdStr); } }}
+              className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}
+            >
               {m.avatarPath || m.avatarUrl ? (
                 <img
                   src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
                   alt={m.name}
-                  onClick={() => onZoomAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
+                  onClick={(e) => { e.stopPropagation(); onZoomAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
                   className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
                 />
               ) : (
@@ -465,6 +479,8 @@ export default function App() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [manicuristShifts, setManicuristShifts] = useState<Record<string, { startTime: string; endTime: string } | null>>({});
   const [shiftsDate, setShiftsDate] = useState<string | null>(null);
+  const [slotsError, setSlotsError] = useState(false);
+  const [slotsRetryKey, setSlotsRetryKey] = useState(0);
 
   // Estados para Imágenes Dinámicas del Home/Landing
   const [heroImage, setHeroImage] = useState('/hero_1.jpg');
@@ -592,9 +608,10 @@ export default function App() {
   // horarios: sin saber el turno real, no hay forma segura de decir que un
   // horario es valido.
   useEffect(() => {
-    if (!bookingDate) { setManicuristShifts({}); setShiftsDate(null); return; }
+    if (!bookingDate) { setManicuristShifts({}); setShiftsDate(null); setSlotsError(false); return; }
     let cancelled = false;
     setShiftsDate(null);
+    setSlotsError(false);
     fetch(`${API_URL}/api/manicurists?date=${bookingDate}`)
       .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status')))
       .then((data: any[]) => {
@@ -604,9 +621,12 @@ export default function App() {
         setManicuristShifts(map);
         setShiftsDate(bookingDate);
       })
-      .catch(() => { /* no marcamos shiftsDate: el efecto de horarios se queda esperando en vez de asumir "sin turno" */ });
+      // No marcamos shiftsDate -- pero tampoco dejamos el efecto de abajo
+      // esperando para siempre: slotsError corta el "Buscando..." infinito
+      // y muestra un error real con opcion de reintentar.
+      .catch(() => { if (!cancelled) setSlotsError(true); });
     return () => { cancelled = true; };
-  }, [bookingDate]);
+  }, [bookingDate, slotsRetryKey]);
 
   // Recalcula los horarios disponibles (dentro del horario del local y del
   // turno de la manicurista, sin choques con citas ya agendadas ni horarios
@@ -618,6 +638,16 @@ export default function App() {
 
     if (!bookingDate || !selectedSpecialist || totalDuration === 0) {
       setAvailableSlots([]);
+      setSlotsError(false);
+      return;
+    }
+
+    // El turno fallo al cargar: no hay forma segura de calcular horarios sin
+    // el, y quedarse en "Buscando..." para siempre seria peor -- se corta con
+    // un error real (slotsError, seteado por el efecto de turnos de arriba).
+    if (slotsError) {
+      setAvailableSlots([]);
+      setLoadingSlots(false);
       return;
     }
 
@@ -632,7 +662,7 @@ export default function App() {
     let cancelled = false;
     setLoadingSlots(true);
     fetch(`${API_URL}/api/appointments?date=${bookingDate}&manicuristId=${selectedSpecialist}`)
-      .then(res => res.ok ? res.json() : [])
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status')))
       .then((occupied: { date: string; totalDuration: number }[]) => {
         if (cancelled) return;
         const busy = occupied.map(a => {
@@ -643,11 +673,14 @@ export default function App() {
         setAvailableSlots(slots);
         if (bookingTime && !slots.includes(bookingTime)) setBookingTime('');
       })
-      .catch(() => { if (!cancelled) setAvailableSlots([]); })
+      // Antes esto resolvia a [] silenciosamente en vez de rechazar -- un
+      // fetch fallido de "citas ocupadas" se leia como "nadie tiene cita ese
+      // dia" y ofrecia horarios que en realidad podian estar tomados.
+      .catch(() => { if (!cancelled) { setAvailableSlots([]); setSlotsError(true); } })
       .finally(() => { if (!cancelled) setLoadingSlots(false); });
 
     return () => { cancelled = true; };
-  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts, shiftsDate]);
+  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts, shiftsDate, slotsError]);
 
   // Mismo calculo de horarios disponibles, para reprogramar una cita existente.
   // Excluye la propia cita (excludeId) para no chocar contra su propio horario actual.
@@ -814,6 +847,10 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
+      } else if (res.status === 401) {
+        // Token vencido/invalido: la sesion quedaba "activa" en pantalla pero
+        // toda accion del portal fallaba en silencio sin decir por que.
+        handleLogout();
       }
     } catch {
       setClientAppointments([]);
@@ -831,6 +868,8 @@ export default function App() {
       if (res.ok) {
         setPortalToast({ msg: 'Cita cancelada con exito.', ok: true });
         fetchClientAppointments();
+      } else if (res.status === 401) {
+        handleLogout();
       } else {
         const errData = await res.json().catch(() => null);
         setPortalToast({ msg: errData?.error || 'No se pudo cancelar la cita.', ok: false });
@@ -858,6 +897,8 @@ export default function App() {
         setPortalToast({ msg: 'Horario modificado con exito.', ok: true });
         setEditingAppointmentId(null);
         fetchClientAppointments();
+      } else if (res.status === 401) {
+        handleLogout();
       } else {
         setPortalToast({ msg: 'No se pudo modificar el horario.', ok: false });
       }
@@ -1120,6 +1161,7 @@ export default function App() {
     setBookingPhone('');
     setBookingName('');
     setBookingAge('');
+    setBookingGender('Femenino');
     setSubmitError(null);
     setIsBookingOpen(false);
     setSvcSearch('');
@@ -2036,6 +2078,18 @@ export default function App() {
             <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
               ← Volver
             </button>
+            {bookingStep === 'success' ? (
+              // La seleccion ya se limpio (createAppointment lo hace apenas confirma,
+              // para que no quede un horario ya tomado listo para reenviarse) -- en
+              // desktop los pasos 1-3 son hermanos siempre visibles del panel de
+              // confirmacion, y mostrarlos "vacios" al lado de un mensaje de exito
+              // se veia como que la reserva se hubiera perdido. Los ocultamos en vez
+              // de eso mientras se ve la confirmacion.
+              <div className="text-center py-16 text-xs text-[#78716C]">
+                Tu cita fue confirmada -- mirá el resumen a la izquierda.
+              </div>
+            ) : (
+              <>
             {/* Wizard Progress — mobile only */}
             <div className="md:hidden flex items-center justify-center gap-3 pb-2">
               {[1, 2, 3].map((s) => (
@@ -2128,6 +2182,11 @@ export default function App() {
 
                   {!selectedSpecialist ? (
                     <p className="text-[10px] text-[#78716C]">Elegí una manicurista para ver sus horarios disponibles.</p>
+                  ) : slotsError ? (
+                    <div className="text-center space-y-1.5">
+                      <p className="text-[10px] text-red-600">No pudimos cargar los horarios disponibles.</p>
+                      <button type="button" onClick={() => setSlotsRetryKey(k => k + 1)} className="text-[10px] text-[#8E1B54] underline font-semibold">Reintentar</button>
+                    </div>
                   ) : loadingSlots ? (
                     <p className="text-[10px] text-[#78716C]">Buscando horarios disponibles...</p>
                   ) : availableSlots.length === 0 ? (
@@ -2158,6 +2217,8 @@ export default function App() {
                 </button>
               </div>
             </section>
+              </>
+            )}
 
           </main>
 
@@ -2215,6 +2276,15 @@ export default function App() {
                   className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
                 >
                   Continuar: Fecha y Hora
+                </button>
+              ) : bookingWizardStep === 2 ? (
+                <button
+                  type="button"
+                  onClick={() => setBookingWizardStep(3)}
+                  disabled={!bookingDate}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Continuar: Manicurista →
                 </button>
               ) : (
                 <button
