@@ -1,9 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react'
-import { AdminDashboard } from './features/admin/views/AdminDashboard'
-import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
 import { DatePicker } from './components/DatePicker'
+
+// Code-splitting: los paneles de admin y manicurista son bundles grandes
+// (graficos, formularios) que un visitante publico reservando una cita nunca
+// toca. Cargarlos solo cuando el rol de sesion realmente los necesita evita
+// que ese peso retrase el arranque de la landing/booking para todo el mundo.
+const AdminDashboard = lazy(() =>
+  import('./features/admin/views/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
+);
+const StylistAgenda = lazy(() =>
+  import('./features/manicurista/views/StylistAgenda').then(m => ({ default: m.StylistAgenda }))
+);
+
+const PanelLoadingFallback: React.FC = () => (
+  <div className="w-full min-h-[50vh] flex items-center justify-center text-xs text-[#A68F63]">
+    Cargando panel...
+  </div>
+);
 
 interface Service {
   id: string | number;
@@ -1281,7 +1296,9 @@ export default function App() {
           <span>Sesión activa: {session.name} (Administrador)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <AdminDashboard />
+        <Suspense fallback={<PanelLoadingFallback />}>
+          <AdminDashboard />
+        </Suspense>
       </div>
     );
   }
@@ -1293,7 +1310,9 @@ export default function App() {
           <span>Sesión activa: {session.name} (Manicurista)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <StylistAgenda />
+        <Suspense fallback={<PanelLoadingFallback />}>
+          <StylistAgenda />
+        </Suspense>
       </div>
     );
   }
