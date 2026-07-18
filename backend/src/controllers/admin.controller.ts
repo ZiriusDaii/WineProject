@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
+import { normalizePhone, isValidPhone, phoneIsTaken } from "./client.controller.js";
 
 export async function getDashboardStats(
   _req: Request,
@@ -60,7 +61,7 @@ export async function getAllAppointments(
 ): Promise<void> {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+    const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 10));
     const skip = (page - 1) * limit;
     const search = (req.query.search as string)?.trim() || null;
 
@@ -321,6 +322,14 @@ export async function updateManicuristStatus(
       return;
     }
 
+    // normalizePhone puede devolver vacio o un valor corto de mas con un
+    // input malformado (ej. "abc" -> ""); sin este chequeo eso se guardaba
+    // tal cual, en vez de rechazarlo como el registro de clientes ya hace.
+    if (phone && !isValidPhone(normalizePhone(phone))) {
+      res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
+      return;
+    }
+
     if (id) {
       if (!phone || !username || !name) {
         res.status(400).json({
@@ -329,12 +338,21 @@ export async function updateManicuristStatus(
         return;
       }
 
+      // Sin esto, actualizar a "3001234567" cuando ya existe un registro
+      // legacy "573001234567" para el mismo numero real pasaba el indice
+      // unico de la BD sin problema (son strings distintos) y dejaba dos
+      // cuentas logicamente duplicadas para el mismo telefono.
+      if (await phoneIsTaken(phone, id)) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+        return;
+      }
+
       const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
       const updated = await prisma.user.update({
         where: { id },
         data: {
-          phone,
+          phone: normalizePhone(phone),
           username,
           ...(hashedPassword !== undefined && { password: hashedPassword }),
           name,
@@ -363,11 +381,16 @@ export async function updateManicuristStatus(
         return;
       }
 
+      if (await phoneIsTaken(phone)) {
+        res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+        return;
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const created = await prisma.user.create({
         data: {
-          phone,
+          phone: normalizePhone(phone),
           username,
           password: hashedPassword,
           name,

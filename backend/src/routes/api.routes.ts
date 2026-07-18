@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middlewares/upload.middleware.js";
-import { requireAdmin, requireStaff } from "../middlewares/auth.middleware.js";
+import { requireAdmin, requireStaff, optionalAuth } from "../middlewares/auth.middleware.js";
 import {
   getServices,
   getManicurists,
@@ -62,10 +62,10 @@ router.post("/clients/auth", authClient);
 router.post("/clients", createClient);
 router.post("/auth/login", loginStaff);
 
-router.post("/appointments", createAppointment);
-router.get("/appointments", getClientAppointments);
-router.get("/clients/:clientId/appointments", getClientAppointments);
-router.put("/appointments/:id", updateAppointment);
+router.post("/appointments", optionalAuth, createAppointment);
+router.get("/appointments", optionalAuth, getClientAppointments);
+router.get("/clients/:clientId/appointments", optionalAuth, getClientAppointments);
+router.put("/appointments/:id", optionalAuth, updateAppointment);
 
 // Admin routes (require auth)
 router.get("/admin/stats", requireAdmin, getDashboardStats);

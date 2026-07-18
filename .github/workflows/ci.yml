@@ -40,9 +40,7 @@ jobs:
       - run: npm ci
       - run: npx prisma generate
       - run: npx tsc --noEmit
-      # ponytail: no hay carpeta prisma/migrations aun, se valida el schema con db push;
-      # cuando existan migraciones reales cambiar a `prisma migrate deploy`.
-      - run: npx prisma db push
+      - run: npx prisma migrate deploy
 
   frontend:
     name: Frontend (lint + tipos)

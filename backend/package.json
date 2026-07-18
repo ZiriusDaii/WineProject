@@ -8,8 +8,8 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev --name",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio"
   },
   "keywords": [],

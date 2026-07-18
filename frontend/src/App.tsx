@@ -1,8 +1,59 @@
-import React, { useState, useEffect } from 'react'
-import { AdminDashboard } from './features/admin/views/AdminDashboard'
-import { StylistAgenda } from './features/manicurista/views/StylistAgenda'
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react'
 import { TerminosCondiciones, PoliticaPrivacidad, PoliticaCancelacion } from './features/legal/LegalPages'
 import { DatePicker } from './components/DatePicker'
+
+// Code-splitting: los paneles de admin y manicurista son bundles grandes
+// (graficos, formularios) que un visitante publico reservando una cita nunca
+// toca. Cargarlos solo cuando el rol de sesion realmente los necesita evita
+// que ese peso retrase el arranque de la landing/booking para todo el mundo.
+const AdminDashboard = lazy(() =>
+  import('./features/admin/views/AdminDashboard').then(m => ({ default: m.AdminDashboard }))
+);
+const StylistAgenda = lazy(() =>
+  import('./features/manicurista/views/StylistAgenda').then(m => ({ default: m.StylistAgenda }))
+);
+
+const PanelLoadingFallback: React.FC = () => (
+  <div className="w-full min-h-[50vh] flex items-center justify-center text-xs text-[#A68F63]">
+    Cargando panel...
+  </div>
+);
+
+// Suspense solo cubre la espera de carga -- si el chunk lazy falla al
+// bajarse (red, o un deploy nuevo que invalido el hash del chunk viejo que
+// el HTML todavia referencia), eso es un error de render normal, y sin un
+// Error Boundary (tiene que ser un componente de clase, no hay equivalente
+// con hooks) esa excepcion se escapa a la pantalla blanca de React en vez de
+// una UI recuperable.
+class StaffPanelErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error('Error cargando el panel:', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-xs text-[#78716C]">
+          <p>No se pudo cargar el panel.</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+            Recargar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface Service {
   id: string | number;
@@ -67,6 +118,7 @@ const BUSINESS_HOURS: Record<number, { open: string; close: string }> = {
 };
 
 const SLOT_STEP_MINUTES = 30;
+const PER_PAGE = 5;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -81,18 +133,53 @@ const minutesToTime = (mins: number) => {
   return `${h}:${m}`;
 };
 
+// Colombia es UTC-5 fijo, sin horario de verano -- no la hora local del
+// NAVEGADOR (alguien reservando desde otro huso veria horarios ya pasados
+// como disponibles, u ocultos horarios validos). Restamos el offset fijo del
+// timestamp real y leemos los componentes en UTC.
+const COLOMBIA_OFFSET_MS = 5 * 60 * 60 * 1000;
+const nowInColombia = () => new Date(Date.now() - COLOMBIA_OFFSET_MS);
+// "Hoy" en Colombia como YYYY-MM-DD, para pasarle a DatePicker (que por su
+// cuenta usaria la hora local del NAVEGADOR) y mantenerlo consistente con el
+// corte de horarios de getAvailableSlots, ya calculado en hora Colombia.
+const colombiaTodayKey = () => {
+  const d = nowInColombia();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+};
+
 // Genera los horarios candidatos para una fecha (YYYY-MM-DD), respetando el
-// horario del local y descartando los que se solapan con `busy` (rangos en
-// minutos desde medianoche, ya filtrados a la manicurista/fecha elegida).
-const getAvailableSlots = (dateStr: string, durationMinutes: number, busy: { start: number; end: number }[]): string[] => {
+// horario del local, el turno de la manicurista (si tiene uno asignado) y
+// descartando los que se solapan con `busy` (rangos en minutos desde
+// medianoche, ya filtrados a la manicurista/fecha elegida) o que ya pasaron
+// si la fecha es hoy. Debe reflejar exactamente las mismas reglas que el
+// backend (isWithinBusinessHours / isWithinManicuristShift en
+// client.controller.ts) -- si un horario no pasaria esas validaciones, no
+// tiene que aparecer aca como opcion; el usuario no deberia enterarse del
+// rechazo recien al confirmar.
+const getAvailableSlots = (
+  dateStr: string,
+  durationMinutes: number,
+  busy: { start: number; end: number }[],
+  shift?: { startTime: string; endTime: string } | null,
+): string[] => {
   if (!dateStr || !durationMinutes) return [];
   const dayOfWeek = new Date(`${dateStr}T00:00:00.000Z`).getUTCDay();
   const hours = BUSINESS_HOURS[dayOfWeek];
   if (!hours) return [];
-  const openMin = timeToMinutes(hours.open);
-  const closeMin = timeToMinutes(hours.close);
+  let openMin = timeToMinutes(hours.open);
+  let closeMin = timeToMinutes(hours.close);
+  if (shift) {
+    openMin = Math.max(openMin, timeToMinutes(shift.startTime));
+    closeMin = Math.min(closeMin, timeToMinutes(shift.endTime));
+  }
+
+  const now = nowInColombia();
+  const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+  const nowMin = dateStr === todayStr ? now.getUTCHours() * 60 + now.getUTCMinutes() : -1;
+
   const slots: string[] = [];
   for (let start = openMin; start + durationMinutes <= closeMin; start += SLOT_STEP_MINUTES) {
+    if (start <= nowMin) continue;
     const end = start + durationMinutes;
     const overlaps = busy.some((b) => start < b.end && b.start < end);
     if (!overlaps) slots.push(minutesToTime(start));
@@ -121,6 +208,276 @@ export const FallbackAvatar: React.FC<{ className?: string }> = ({ className = "
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
   </svg>
 );
+
+// EXPERIMENTAL -- rama de testeo. Hero con parallax ligado al scroll (motion/react):
+// la imagen se desplaza y se atenua a medida que el usuario baja, el texto entra
+// escalonado al montar. Si se valida, migrar el patron a un componente reusable
+// en vez de dejarlo inline aca.
+const heroTextVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
+};
+const heroItemVariants = {
+  hidden: { opacity: 0, y: 28 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const } },
+};
+
+const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = React.memo(({ heroImage, onBook }) => {
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
+  // prefers-reduced-motion: en vez de saltarnos los hooks (rompe las reglas de
+  // hooks), les damos un rango de salida chato -- el scroll no mueve nada.
+  const reduceMotion = useReducedMotion();
+  const imageY = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [0, 120]);
+  const imageScale = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [1, 1.12]);
+  const imageOpacity = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [1, 0.35]);
+  const textY = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [0, -40]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.7], reduceMotion ? [1, 1] : [1, 0]);
+
+  return (
+    <section ref={heroRef} className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center overflow-hidden">
+      <motion.div
+        className="md:col-span-6 space-y-6 text-left"
+        style={{ y: textY, opacity: textOpacity }}
+        variants={heroTextVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={heroItemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
+          <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
+          <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>
+        </motion.div>
+        <motion.h1 variants={heroItemVariants} className="serif-title text-5xl md:text-6xl leading-[1.1] text-[#3B0019] font-light tracking-tight">
+          El arte de <br />
+          <span className="italic font-normal text-[#8E1B54]">consentir</span> tus <br />
+          manos y pies.
+        </motion.h1>
+        <motion.p variants={heroItemVariants} className="text-[#57534E] text-xs leading-relaxed max-w-sm font-light">
+          Un spa boutique premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
+        </motion.p>
+        <motion.div variants={heroItemVariants} className="pt-2">
+          <button
+            onClick={onBook}
+            className="px-8 py-4 bg-[#5C0632] hover:bg-[#3B0019] text-white font-medium rounded-xl text-xs tracking-wider uppercase shadow-lg transition-all"
+          >
+            Reservar una Experiencia
+          </button>
+        </motion.div>
+      </motion.div>
+
+      <motion.div
+        className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] md:aspect-square"
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <motion.img
+          src={heroImage}
+          alt="Trabajo de uñas WineSpa"
+          className="w-full h-full object-cover"
+          style={{ y: imageY, scale: imageScale, opacity: imageOpacity }}
+        />
+      </motion.div>
+    </section>
+  );
+});
+
+const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () => void }> = React.memo(({ experienceImage, onBook }) => {
+  return (
+    <section className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-12 gap-12 items-center text-left">
+      <div className="md:col-span-6">
+        <motion.div
+          className="aspect-[4/3] md:aspect-video w-full rounded-2xl overflow-hidden shadow-lg border border-[#EADEC9]/40 bg-neutral-100"
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <img src={experienceImage} alt="Interior de Wine Nails Spa" className="w-full h-full object-cover hover:scale-103 transition-transform duration-700 ease-out" />
+        </motion.div>
+      </div>
+
+      <motion.div
+        className="md:col-span-6 space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">La Experiencia</span>
+        <h2 className="serif-title text-3xl md:text-4xl text-[#3B0019] font-light leading-tight">
+          Un Refugio Diseñado para tu <span className="italic font-normal text-[#8E1B54]">Bienestar</span>
+        </h2>
+        <p className="text-xs text-[#57534E] leading-relaxed font-light">
+          En WineSpa fusionamos la delicadeza del cuidado de manos y pies con el ritual relajante del vino. Creamos un ambiente exclusivo para desconectarte del día a día.
+        </p>
+
+        <div className="space-y-4 pt-2">
+          {[
+            {
+              title: "Nail Art & Cuidado Boutique",
+              desc: "Esmaltados semipermanentes y tradicionales con los más altos estándares de higiene y diseño de vanguardia."
+            },
+            {
+              title: "Espacio de Confort Acústico",
+              desc: "Aromas de lavanda, iluminación cálida y música relajante pensados para mimar tus sentidos."
+            }
+          ].map((item, idx) => (
+            <div key={idx} className="flex gap-4">
+              <span className="w-5 h-5 rounded-full bg-[#5C0632]/5 text-[#8E1B54] flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                ✓
+              </span>
+              <div>
+                <h4 className="text-xs font-semibold text-[#3B0019]">{item.title}</h4>
+                <p className="text-[11px] text-[#78716C] font-light mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={onBook}
+            className="px-6 py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-102 active:scale-98 cursor-pointer"
+          >
+            Reservar Cita en Línea
+          </button>
+        </div>
+      </motion.div>
+    </section>
+  );
+});
+
+// Extraidos y memoizados a proposito: antes vivian como IIFEs inline dentro
+// del wizard de reserva, y como App.tsx es un solo componente gigante con
+// todo el estado arriba, cualquier cambio (ej. tipear en el input de telefono
+// del drawer de confirmacion, que no tiene nada que ver con esto) volvia a
+// filtrar/ordenar/paginar y re-renderizar estas grillas enteras. Medido con
+// el profiler: hasta 900ms por tecla. Con memo, solo se re-renderizan cuando
+// sus propios props cambian.
+const ServiceSelectionGrid: React.FC<{
+  services: Service[];
+  svcSearch: string;
+  setSvcSearch: (v: string) => void;
+  svcPage: number;
+  setSvcPage: React.Dispatch<React.SetStateAction<number>>;
+  selectedServiceIds: string[];
+  onToggleService: (id: string) => void;
+}> = React.memo(({ services, svcSearch, setSvcSearch, svcPage, setSvcPage, selectedServiceIds, onToggleService }) => {
+  const filtered = services
+    .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
+    .sort((a, b) => {
+      if ((a as any).trending && !(b as any).trending) return -1;
+      if (!(a as any).trending && (b as any).trending) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  const total = filtered.length;
+  const start = (svcPage - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  return (
+    <>
+      <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {page.map(s => {
+          const serviceIdStr = String(s.id);
+          const isSelected = selectedServiceIds.includes(serviceIdStr);
+          return (
+            <div
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onToggleService(serviceIdStr)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleService(serviceIdStr); } }}
+              className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-1.5">
+                  {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                  <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
+                </div>
+                <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+              </div>
+              <div className="flex gap-2 mt-0.5">
+                <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
+                {s.shortDescription && <span className="text-[9px] text-[#78716C] italic truncate">{s.shortDescription}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {total > PER_PAGE && (
+        <div className="flex items-center justify-center gap-3 text-xs pt-2">
+          <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
+          <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+        </div>
+      )}
+    </>
+  );
+});
+
+const ManicuristSelectionGrid: React.FC<{
+  manicurists: Manicurist[];
+  manSearch: string;
+  setManSearch: (v: string) => void;
+  manPage: number;
+  setManPage: React.Dispatch<React.SetStateAction<number>>;
+  selectedSpecialist: string | null;
+  onSelectSpecialist: (id: string) => void;
+  manicuristShifts: Record<string, { startTime: string; endTime: string } | null>;
+  onZoomAvatar: (url: string | null) => void;
+}> = React.memo(({ manicurists, manSearch, setManSearch, manPage, setManPage, selectedSpecialist, onSelectSpecialist, manicuristShifts, onZoomAvatar }) => {
+  const filtered = manicurists
+    .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const total = filtered.length;
+  const start = (manPage - 1) * PER_PAGE;
+  const page = filtered.slice(start, start + PER_PAGE);
+
+  return (
+    <>
+      <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {page.map(m => {
+          const manicuristIdStr = String(m.id);
+          const isSelected = selectedSpecialist === manicuristIdStr;
+          const shift = manicuristShifts[manicuristIdStr];
+          return (
+            <div
+              key={m.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectSpecialist(manicuristIdStr)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSpecialist(manicuristIdStr); } }}
+              className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}
+            >
+              {m.avatarPath || m.avatarUrl ? (
+                <img
+                  src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
+                  alt={m.name}
+                  onClick={(e) => { e.stopPropagation(); onZoomAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null)); }}
+                  className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
+                />
+              ) : (
+                <FallbackAvatar className="w-10 h-10 mx-auto" />
+              )}
+              <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
+              {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
+            </div>
+          );
+        })}
+      </div>
+      {total > PER_PAGE && (
+        <div className="flex items-center justify-center gap-3 text-xs pt-2">
+          <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
+          <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+        </div>
+      )}
+    </>
+  );
+});
 
 export default function App() {
   // PERSISTENCIA DE SESION
@@ -170,6 +527,13 @@ export default function App() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [manicuristShifts, setManicuristShifts] = useState<Record<string, { startTime: string; endTime: string } | null>>({});
+  const [shiftsDate, setShiftsDate] = useState<string | null>(null);
+  const [slotsError, setSlotsError] = useState(false);
+  const [slotsRetryKey, setSlotsRetryKey] = useState(0);
+
+  // Estados para Imágenes Dinámicas del Home/Landing
+  const [heroImage, setHeroImage] = useState('/hero_1.jpg');
+  const [experienceImage, setExperienceImage] = useState('/winespa_interior_1.jpg');
 
   // Control de Modales Booking
   const [isBookingOpen, setIsBookingOpen] = useState(false); // Móvil
@@ -180,7 +544,6 @@ export default function App() {
   const [manSearch, setManSearch] = useState('');
   const [svcPage, setSvcPage] = useState(1);
   const [manPage, setManPage] = useState(1);
-  const PER_PAGE = 5;
   const [showDiscount, setShowDiscount] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(true);
 
@@ -190,6 +553,18 @@ export default function App() {
   const [bookingName, setBookingName] = useState('');
   const [bookingAge, setBookingAge] = useState('');
   const [bookingGender, setBookingGender] = useState('Femenino');
+
+  // useCallback: se pasa como prop `onBook` a HeroScrollSection/WineSpaExperienceSection,
+  // que estan memoizados -- sin esto, una funcion nueva en cada render de App
+  // (ej. cada tecla en el input de telefono) invalidaria el memo igual.
+  const handleGoToBooking = useCallback(() => {
+    setBookingStep('selection');
+    if (session && session.role === 'cliente') {
+      setBookingPhone(session.phone || '');
+      setBookingName(session.name || '');
+    }
+    setView('booking');
+  }, [session]);
 
   // Envío Cita
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -274,55 +649,92 @@ export default function App() {
   useEffect(() => { setPortalToast(null); }, [view]);
 
   // Trae el turno asignado (si existe) a cada manicurista para la fecha elegida,
-  // para mostrarlo como dato al elegir manicurista (no filtra a nadie: sin turno
-  // asignado se interpreta como "sin restriccion", el backend hace lo mismo).
+  // para mostrarlo como dato al elegir manicurista y para restringir los horarios
+  // disponibles a ese turno (sin turno asignado si es "sin restriccion", el
+  // backend hace lo mismo). `shiftsDate` marca para que fecha es valido
+  // `manicuristShifts` -- mientras no coincida con `bookingDate` (carga en curso,
+  // fecha recien cambiada, o el fetch fallo), el efecto de abajo no debe calcular
+  // horarios: sin saber el turno real, no hay forma segura de decir que un
+  // horario es valido.
   useEffect(() => {
-    if (!bookingDate) { setManicuristShifts({}); return; }
+    if (!bookingDate) { setManicuristShifts({}); setShiftsDate(null); setSlotsError(false); return; }
     let cancelled = false;
+    setShiftsDate(null);
+    setSlotsError(false);
     fetch(`${API_URL}/api/manicurists?date=${bookingDate}`)
-      .then(res => res.ok ? res.json() : [])
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status')))
       .then((data: any[]) => {
         if (cancelled) return;
         const map: Record<string, { startTime: string; endTime: string } | null> = {};
         (data || []).forEach(m => { map[String(m.id)] = m.shift || null; });
         setManicuristShifts(map);
+        setShiftsDate(bookingDate);
       })
-      .catch(() => { if (!cancelled) setManicuristShifts({}); });
+      // No marcamos shiftsDate -- pero tampoco dejamos el efecto de abajo
+      // esperando para siempre: slotsError corta el "Buscando..." infinito
+      // y muestra un error real con opcion de reintentar.
+      .catch(() => { if (!cancelled) setSlotsError(true); });
     return () => { cancelled = true; };
-  }, [bookingDate]);
+  }, [bookingDate, slotsRetryKey]);
 
-  // Recalcula los horarios disponibles (dentro del horario del local, sin
-  // choques con citas ya agendadas) cada vez que cambian fecha, especialista o
-  // servicios elegidos.
+  // Recalcula los horarios disponibles (dentro del horario del local y del
+  // turno de la manicurista, sin choques con citas ya agendadas ni horarios
+  // ya pasados hoy) cada vez que cambian fecha, especialista o servicios elegidos.
   useEffect(() => {
     const totalDuration = services
       .filter(s => selectedServiceIds.includes(String(s.id)))
       .reduce((sum, s) => sum + (Number(s.durationInMinutes) || 60), 0);
 
     if (!bookingDate || !selectedSpecialist || totalDuration === 0) {
+      // No tocar slotsError aca: si el turno ya fallo para esta fecha (shiftsDate
+      // sigue null) y el usuario todavia no eligio especialista, limpiarlo dejaba
+      // shiftsDate desincronizado -- al elegir especialista despues, ni el error
+      // ni el loading se resolvian nunca (nada dispara un reintento del fetch).
+      // El efecto de turnos ya resetea slotsError el solo cuando cambia la fecha.
       setAvailableSlots([]);
+      setLoadingSlots(false);
+      return;
+    }
+
+    // El turno fallo al cargar: no hay forma segura de calcular horarios sin
+    // el, y quedarse en "Buscando..." para siempre seria peor -- se corta con
+    // un error real (slotsError, seteado por el efecto de turnos de arriba).
+    if (slotsError) {
+      setAvailableSlots([]);
+      setLoadingSlots(false);
+      return;
+    }
+
+    // El turno de esta fecha todavia no cargo (o cambio de fecha y esta
+    // recargando): no calculamos horarios con datos de turno desactualizados.
+    if (shiftsDate !== bookingDate) {
+      setAvailableSlots([]);
+      setLoadingSlots(true);
       return;
     }
 
     let cancelled = false;
     setLoadingSlots(true);
     fetch(`${API_URL}/api/appointments?date=${bookingDate}&manicuristId=${selectedSpecialist}`)
-      .then(res => res.ok ? res.json() : [])
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status')))
       .then((occupied: { date: string; totalDuration: number }[]) => {
         if (cancelled) return;
         const busy = occupied.map(a => {
           const start = timeToMinutes(toTimeLabel(a.date));
           return { start, end: start + a.totalDuration };
         });
-        const slots = getAvailableSlots(bookingDate, totalDuration, busy);
+        const slots = getAvailableSlots(bookingDate, totalDuration, busy, manicuristShifts[selectedSpecialist]);
         setAvailableSlots(slots);
         if (bookingTime && !slots.includes(bookingTime)) setBookingTime('');
       })
-      .catch(() => { if (!cancelled) setAvailableSlots([]); })
+      // Antes esto resolvia a [] silenciosamente en vez de rechazar -- un
+      // fetch fallido de "citas ocupadas" se leia como "nadie tiene cita ese
+      // dia" y ofrecia horarios que en realidad podian estar tomados.
+      .catch(() => { if (!cancelled) { setAvailableSlots([]); setSlotsError(true); } })
       .finally(() => { if (!cancelled) setLoadingSlots(false); });
 
     return () => { cancelled = true; };
-  }, [bookingDate, selectedSpecialist, selectedServiceIds, services]);
+  }, [bookingDate, selectedSpecialist, selectedServiceIds, services, manicuristShifts, shiftsDate, slotsError]);
 
   // Mismo calculo de horarios disponibles, para reprogramar una cita existente.
   // Excluye la propia cita (excludeId) para no chocar contra su propio horario actual.
@@ -337,15 +749,20 @@ export default function App() {
 
     let cancelled = false;
     setLoadingRescheduleSlots(true);
-    fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
-      .then(res => res.ok ? res.json() : [])
-      .then((occupied: { date: string; totalDuration: number }[]) => {
+    Promise.all([
+      fetch(`${API_URL}/api/appointments?date=${newDateInput}&manicuristId=${editingAppt.manicuristId}&excludeId=${editingAppt.id}`)
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status'))) as Promise<{ date: string; totalDuration: number }[]>,
+      fetch(`${API_URL}/api/manicurists?date=${newDateInput}`)
+        .then(res => res.ok ? res.json() : Promise.reject(new Error('bad status'))) as Promise<any[]>,
+    ])
+      .then(([occupied, manicuristsData]) => {
         if (cancelled) return;
         const busy = occupied.map(a => {
           const start = timeToMinutes(toTimeLabel(a.date));
           return { start, end: start + a.totalDuration };
         });
-        const slots = getAvailableSlots(newDateInput, totalDuration, busy);
+        const shift = (manicuristsData || []).find(m => String(m.id) === String(editingAppt.manicuristId))?.shift || null;
+        const slots = getAvailableSlots(newDateInput, totalDuration, busy, shift);
         setRescheduleSlots(slots);
         if (newTimeInput && !slots.includes(newTimeInput)) setNewTimeInput('');
       })
@@ -417,6 +834,23 @@ export default function App() {
         const landingRes = await fetch(`${API_URL}/api/landing/content`);
         if (!landingRes.ok) throw new Error();
         const items: { type: string; title: string; description?: string | null; imageUrl: string; order?: number }[] = await landingRes.json();
+        
+        // Extract Hero Image
+        const heroItem = items.find((i) => i.type === 'HERO');
+        if (heroItem) {
+          setHeroImage(heroItem.imageUrl.startsWith('/uploads') ? `${API_URL}${heroItem.imageUrl}` : heroItem.imageUrl);
+        } else {
+          setHeroImage('/hero_1.jpg');
+        }
+
+        // Extract Experience Image
+        const expItem = items.find((i) => i.type === 'EXPERIENCE');
+        if (expItem) {
+          setExperienceImage(expItem.imageUrl.startsWith('/uploads') ? `${API_URL}${expItem.imageUrl}` : expItem.imageUrl);
+        } else {
+          setExperienceImage('/winespa_interior_1.jpg');
+        }
+
         const carousel = items
           .filter((i) => i.type === 'CAROUSEL')
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -426,6 +860,8 @@ export default function App() {
           news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
         });
       } catch {
+        setHeroImage('/hero_1.jpg');
+        setExperienceImage('/winespa_interior_1.jpg');
         setLandingContent({
           images: [
             '/hero_1.jpg',
@@ -434,7 +870,7 @@ export default function App() {
           ],
           news: [
             { title: 'Inauguración El Poblado', description: 'Disfruta de nuestras nuevas estaciones boutique con aromaterapia.' },
-            { title: 'Ritual de Bienvenida', description: 'Por cualquier manicura semipermanente te obsequiamos una copa de vino Malbec.' }
+            { title: 'Ritual de Bienvenida', description: 'Conocé nuestros tratamientos de manicura y pedicura boutique.' }
           ]
         });
       }
@@ -448,13 +884,27 @@ export default function App() {
     }
   };
 
+  // Header de autorizacion para las rutas de cliente (/appointments, /clients/:id/appointments)
+  // que ahora exigen ownership: el token se guarda en localStorage al pasar el chequeo
+  // de telefono (authClient/createClient), igual que el token de staff.
+  const authHeader = (): Record<string, string> => {
+    const token = localStorage.getItem('winespa_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   const fetchClientAppointments = async () => {
     if (!session || session.role !== 'cliente') return;
     try {
-      const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`);
+      const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`, {
+        headers: authHeader(),
+      });
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
+      } else if (res.status === 401) {
+        // Token vencido/invalido: la sesion quedaba "activa" en pantalla pero
+        // toda accion del portal fallaba en silencio sin decir por que.
+        handleLogout();
       }
     } catch {
       setClientAppointments([]);
@@ -466,17 +916,20 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({ status: 'CANCELLED' })
       });
       if (res.ok) {
         setPortalToast({ msg: 'Cita cancelada con exito.', ok: true });
         fetchClientAppointments();
+      } else if (res.status === 401) {
+        handleLogout();
       } else {
-        setClientAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
+        const errData = await res.json().catch(() => null);
+        setPortalToast({ msg: errData?.error || 'No se pudo cancelar la cita.', ok: false });
       }
     } catch {
-      setClientAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
+      setPortalToast({ msg: 'Error de conexion al cancelar.', ok: false });
     }
   };
 
@@ -489,7 +942,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         // Concatenacion directa: `new Date(...).toISOString()` interpretaba el string
         // como hora local del navegador y corria la hora guardada.
         body: JSON.stringify({ date: `${newDateInput}T${newTimeInput}:00.000Z` })
@@ -498,6 +951,8 @@ export default function App() {
         setPortalToast({ msg: 'Horario modificado con exito.', ok: true });
         setEditingAppointmentId(null);
         fetchClientAppointments();
+      } else if (res.status === 401) {
+        handleLogout();
       } else {
         setPortalToast({ msg: 'No se pudo modificar el horario.', ok: false });
       }
@@ -537,6 +992,36 @@ export default function App() {
     setter(e.target.value.replace(/[^A-Za-zÀ-ÿ\s'-]/g, ''));
   };
 
+  // min/max en un <input type="number"> no bloquea lo que se escribe a mano
+  // (algunos navegadores mobile dejan tipear -5 o 120 igual). Sanitiza a solo
+  // digitos y clampea al mismo rango 0-100 que valida el backend.
+  const handleAgeInputChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    setter(digits ? String(Math.min(100, Math.max(0, parseInt(digits, 10)))) : '');
+  };
+
+  // Trae los datos reales de una cuenta existente por telefono. Se usa al
+  // recuperarnos de un 409 en el registro, para no quedarnos con el nombre
+  // que se acaba de escribir (que puede no ser el dueño real del numero).
+  const fetchClientByPhone = async (phone: string): Promise<{ id: string; name: string } | null> => {
+    try {
+      const res = await fetch(`${API_URL}/api/clients/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      const client = data.client || data;
+      if (res.ok && (data.exists || data.client) && (client.id || client._id)) {
+        if (data.token) localStorage.setItem('winespa_token', data.token);
+        return { id: String(client.id || client._id), name: client.name || 'Cliente' };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleClientAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneInput || phoneInput.length < 7) {
@@ -565,6 +1050,7 @@ export default function App() {
             role: 'cliente',
             phone: phoneInput
           };
+          if (data.token) localStorage.setItem('winespa_token', data.token);
           setSession(user);
           localStorage.setItem('winespa_session', JSON.stringify(user));
           setIsLoginOpen(false);
@@ -585,7 +1071,35 @@ export default function App() {
           })
         });
 
-        if (!clientRes.ok) throw new Error('Error al registrar tu cuenta.');
+        if (!clientRes.ok) {
+          const errData = await clientRes.json().catch(() => null);
+          // El numero ya tiene cuenta (caso tipico: cliente antiguo cuyo
+          // telefono quedo guardado en otro formato). Solo recuperamos la
+          // sesion si esa cuenta es realmente de tipo CLIENTE (fetchClientByPhone
+          // lo confirma) -- si el numero en realidad es de un admin/manicurista,
+          // no hay cuenta de cliente valida a la que loguear, y mostramos el error.
+          const existingClient = clientRes.status === 409 && errData?.clientId
+            ? await fetchClientByPhone(phoneInput)
+            : null;
+          if (existingClient) {
+            const user: UserSession = {
+              id: existingClient.id,
+              name: existingClient.name,
+              role: 'cliente',
+              phone: phoneInput
+            };
+            setSession(user);
+            localStorage.setItem('winespa_session', JSON.stringify(user));
+            setIsLoginOpen(false);
+            setPhoneInput('');
+            setClientNameInput('');
+            setClientAgeInput('');
+            setShowClientRegister(false);
+            setView('clientPortal');
+            return;
+          }
+          throw new Error(errData?.error || 'Error al registrar tu cuenta.');
+        }
 
         const clientData = await clientRes.json();
         const user: UserSession = {
@@ -594,6 +1108,7 @@ export default function App() {
           role: 'cliente',
           phone: phoneInput
         };
+        if (clientData.token) localStorage.setItem('winespa_token', clientData.token);
         setSession(user);
         localStorage.setItem('winespa_session', JSON.stringify(user));
         setIsLoginOpen(false);
@@ -700,6 +1215,7 @@ export default function App() {
     setBookingPhone('');
     setBookingName('');
     setBookingAge('');
+    setBookingGender('Femenino');
     setSubmitError(null);
     setIsBookingOpen(false);
     setSvcSearch('');
@@ -751,6 +1267,7 @@ export default function App() {
 
       if (response.ok && (data.exists || data.client)) {
         const client = data.client || data;
+        if (data.token) localStorage.setItem('winespa_token', data.token);
         try {
           await createAppointment(String(client.id || client._id), client.name);
         } catch (err: any) {
@@ -794,10 +1311,22 @@ export default function App() {
 
       if (!clientRes.ok) {
         const errData = await clientRes.json().catch(() => null);
+        // Numero ya registrado (cliente antiguo guardado en otro formato de
+        // telefono): reservamos igual, pero solo si esa cuenta es realmente
+        // de tipo CLIENTE. Si el numero en realidad es de un admin/manicurista,
+        // no hay cuenta de cliente valida y mostramos el error tal cual.
+        if (clientRes.status === 409 && errData?.clientId) {
+          const existingClient = await fetchClientByPhone(bookingPhone);
+          if (existingClient) {
+            await createAppointment(existingClient.id, existingClient.name);
+            return;
+          }
+        }
         throw new Error(errData?.error || 'Error al registrar.');
       }
 
       const clientData = await clientRes.json();
+      if (clientData.token) localStorage.setItem('winespa_token', clientData.token);
       await createAppointment(String(clientData.id || clientData._id || 'nuevo-cliente'), bookingName);
     } catch (err: any) {
       setSubmitError(err.message || 'Error al agendar.');
@@ -810,7 +1339,7 @@ export default function App() {
     try {
       const apptRes = await fetch(`${API_URL}/api/appointments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({
           clientId,
           manicuristId: selectedSpecialist,
@@ -826,6 +1355,25 @@ export default function App() {
         const apptData = await apptRes.json();
         setCreatedAppointment(apptData);
         setBookingStep('success');
+
+        // Limpiamos la seleccion del wizard ya mismo (no solo tras el
+        // resetBooking() del flujo logueado, que corre recien a los 2200ms):
+        // si el invitado cierra la pantalla de exito sin usar "Ver mi cita",
+        // volveria a ver el mismo servicio/especialista/horario ya elegidos
+        // -- y ese horario, recien tomado, ahora falla como solapado.
+        setSelectedServiceIds([]);
+        setSelectedSpecialist(null);
+        setBookingDate('');
+        setBookingTime('');
+        setDiscountCode('');
+        setDiscountPercent(null);
+        setDiscountTitle(null);
+        setDiscountError(null);
+        setBookingWizardStep(1);
+        setSvcSearch('');
+        setManSearch('');
+        setSvcPage(1);
+        setManPage(1);
 
         if (session && session.role === 'cliente') {
           // Ya estaba logueado: lo llevamos directo a ver la cita en su perfil.
@@ -861,6 +1409,12 @@ export default function App() {
         setTimeout(() => {
           window.open(whatsappUrl, '_blank');
         }, 1800);
+      } else if (apptRes.status === 401) {
+        // A diferencia de listar/cancelar/reprogramar, un 401 aca dejaba la
+        // sesion "activa" en pantalla sin forma de reintentar con exito --
+        // el token vencido no se arregla solo reenviando el mismo request.
+        if (session) handleLogout();
+        throw new Error('Tu sesión expiró, iniciá sesión de nuevo.');
       } else {
         const errData = await apptRes.json().catch(() => null);
         throw new Error(errData?.error || 'Error en el servidor al registrar cita.');
@@ -919,7 +1473,14 @@ export default function App() {
     return apptServices.map(s => s.name).join(', ');
   };
 
-  const handleServiceToggle = (idStr: string) => {
+  // useCallback: se pasa a ServiceSelectionGrid (memoizado) como onToggleService --
+  // sin esto, una funcion nueva en cada render de App invalidaria el memo.
+  const handleServiceToggle = useCallback((idStr: string) => {
+    // Sincronico, no esperar a que el efecto de horarios recalcule: la
+    // duracion total cambia con los servicios, y el horario ya elegido podia
+    // quedar "confirmable" (sin ningun chequeo) hasta que ese efecto async
+    // terminara y recien ahi lo limpiara si ya no calzaba.
+    setBookingTime('');
     setSelectedServiceIds(prev => {
       if (prev.includes(idStr)) return prev.filter(x => x !== idStr);
 
@@ -934,7 +1495,20 @@ export default function App() {
 
       return [...withoutSameCategory, idStr];
     });
-  };
+  }, [services]);
+
+  // Igual, para ManicuristSelectionGrid (memoizado).
+  const handleSelectSpecialist = useCallback((idStr: string) => {
+    setSelectedSpecialist(idStr);
+    setBookingTime('');
+  }, []);
+
+  // Igual, para el DatePicker (memoizado) del paso 2 del wizard.
+  const handleSelectBookingDate = useCallback((d: string) => {
+    setBookingDate(d);
+    setBookingTime('');
+    setSelectedSpecialist(null);
+  }, []);
 
   const activeSpecialistDetails = manicurists.find(m => String(m.id) === String(selectedSpecialist));
 
@@ -964,7 +1538,11 @@ export default function App() {
           <span>Sesión activa: {session.name} (Administrador)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <AdminDashboard />
+        <StaffPanelErrorBoundary>
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <AdminDashboard key={session.id} />
+          </Suspense>
+        </StaffPanelErrorBoundary>
       </div>
     );
   }
@@ -976,7 +1554,11 @@ export default function App() {
           <span>Sesión activa: {session.name} (Manicurista)</span>
           <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
-        <StylistAgenda />
+        <StaffPanelErrorBoundary>
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <StylistAgenda key={session.id} />
+          </Suspense>
+        </StaffPanelErrorBoundary>
       </div>
     );
   }
@@ -1021,7 +1603,12 @@ export default function App() {
 
       {/* RENDER PORTAL DEL CLIENTE */}
       {view === 'clientPortal' && session && session.role === 'cliente' && (
-        <div className="max-w-4xl mx-auto px-6 py-12 flex-1 w-full space-y-10 animate-fade-in text-left">
+        <motion.div
+          className="max-w-4xl mx-auto px-6 py-12 flex-1 w-full space-y-10 text-left"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <header className="flex items-center gap-3">
             <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
             <div className="flex flex-col">
@@ -1100,6 +1687,7 @@ export default function App() {
                                 selectedDate={newDateInput}
                                 onSelectDate={(d) => { setNewDateInput(d); setNewTimeInput(''); }}
                                 className="max-w-[260px] mt-1"
+                                todayKey={colombiaTodayKey()}
                               />
                             </div>
                             {newDateInput && (
@@ -1174,26 +1762,57 @@ export default function App() {
 
           {/* Acción rápida */}
           <div className="text-center pt-6">
-            <button onClick={() => { setBookingStep('selection'); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+            <button onClick={() => { resetBooking(); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
               Agendar Nueva Cita
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA 3: LANDING PAGE */}
       {view === 'landing' && (
-        <div className="space-y-16 pb-16 animate-fade-in">
+        <motion.div
+          className="space-y-16 pb-16"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           {/* Banner CMS como hero visual */}
           {landingContent && landingContent.images && landingContent.images.length > 0 && (
             <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
               <div className="max-w-5xl mx-auto">
                 <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
-                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative">
-                    <img src={landingContent.images[activeSlide]} alt="Anuncio" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent" />
+                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative overflow-hidden bg-neutral-900 cursor-grab active:cursor-grabbing">
+                    <motion.img
+                      key={activeSlide}
+                      src={landingContent.images[activeSlide]}
+                      alt="Anuncio"
+                      className="w-full h-full object-cover select-none"
+                      initial={{ opacity: 0, scale: 1.05 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.6}
+                      onDragEnd={(_, info) => {
+                        const swipe = info.offset.x;
+                        const count = landingContent.images.length;
+                        if (swipe < -80) {
+                          setActiveSlide((activeSlide + 1) % count);
+                        } else if (swipe > 80) {
+                          setActiveSlide((activeSlide - 1 + count) % count);
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent pointer-events-none" />
                   </div>
-                  <div className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10">
+                  <motion.div
+                    key={activeSlide}
+                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10"
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+                  >
                     {landingContent.news && landingContent.news[activeSlide] ? (
                       <>
                         <span className="text-[9px] uppercase tracking-widest text-[#EADEC9] font-bold">Novedad</span>
@@ -1208,54 +1827,28 @@ export default function App() {
                         <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
           )}
 
-          <section className="max-w-7xl mx-auto px-6 pt-10 md:pt-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            <div className="md:col-span-6 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#D8C7A9]/40 bg-[#F7F3EB]/60">
-                <span className="w-1.5 h-1.5 bg-[#8E1B54] rounded-full"></span>
-                <span className="text-[9px] tracking-[0.15em] uppercase text-[#8D774C] font-semibold">Experiencia Premium</span>
-              </div>
-              <h1 className="serif-title text-5xl md:text-6xl leading-[1.1] text-[#3B0019] font-light tracking-tight">
-                El arte de <br />
-                <span className="italic font-normal text-[#8E1B54]">consentir</span> tus <br />
-                manos y pies.
-              </h1>
-              <p className="text-[#57534E] text-xs leading-relaxed max-w-sm font-light">
-                Un spa boutique premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
-              </p>
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    setBookingStep('selection');
-                    if (session && session.role === 'cliente') {
-                      setBookingPhone(session.phone || '');
-                      setBookingName(session.name || '');
-                    }
-                    setView('booking');
-                  }}
-                  className="px-8 py-4 bg-[#5C0632] hover:bg-[#3B0019] text-white font-medium rounded-xl text-xs tracking-wider uppercase shadow-lg transition-all"
-                >
-                  Reservar una Experiencia
-                </button>
-              </div>
-            </div>
+          <HeroScrollSection heroImage={heroImage} onBook={handleGoToBooking} />
 
-            <div className="md:col-span-6 relative rounded-2xl overflow-hidden shadow-xl aspect-video md:aspect-square">
-              <img src="/hero_1.jpg" alt="Trabajo de uñas WineSpa" className="w-full h-full object-cover" />
-            </div>
-          </section>
+          <WineSpaExperienceSection experienceImage={experienceImage} onBook={handleGoToBooking} />
 
           {/* Servicios Destacados — compacto en landing */}
           <section id="services" className="max-w-7xl mx-auto px-6 space-y-6">
-            <div className="text-center space-y-1">
+            <motion.div
+              className="text-center space-y-1"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            >
               <span className="text-[10px] tracking-widest uppercase text-[#A68F63] font-bold">Carta de Rituales</span>
               <h2 className="serif-title text-2xl text-[#3B0019] font-light">Servicios de Uñas & Cuidado Premium</h2>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {(() => {
@@ -1263,8 +1856,15 @@ export default function App() {
                 const featured = trending.length > 0
                   ? trending.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')).slice(0, 3)
                   : [...services].sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 3);
-                return featured.map(s => (
-                  <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                return featured.map((s, i) => (
+                  <motion.div
+                    key={s.id}
+                    className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                    initial={{ opacity: 0, y: 32, scale: 0.96 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, amount: 0.4 }}
+                    transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  >
                     <div className="aspect-video relative overflow-hidden bg-neutral-100">
                       <img src={
                         s.imageUrl
@@ -1282,10 +1882,10 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
                         <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                        <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                        <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ));
               })()}
             </div>
@@ -1296,12 +1896,17 @@ export default function App() {
               </button>
             </div>
           </section>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA: Catálogo Completo de Servicios */}
       {view === 'servicesCatalog' && (
-        <div className="max-w-7xl mx-auto px-6 py-12 space-y-8 animate-fade-in text-left">
+        <motion.div
+          className="max-w-7xl mx-auto px-6 py-12 space-y-8 text-left"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <button onClick={() => setView('landing')} className="text-xs text-[#A68F63] hover:text-[#5C0632] font-semibold mb-2 inline-block">← Volver al Inicio</button>
@@ -1330,8 +1935,14 @@ export default function App() {
                   return (a.name || '').localeCompare(b.name || '');
                 });
               if (filtered.length === 0) return <p className="text-xs text-[#78716C] py-12 text-center col-span-full">Sin servicios que coincidan.</p>;
-              return filtered.map(s => (
-                <div key={s.id} className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+              return filtered.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  className="bg-white border border-[#EADEC9]/30 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: Math.min(i * 0.04, 0.3), ease: [0.16, 1, 0.3, 1] }}
+                >
                   <div className="aspect-video relative overflow-hidden bg-neutral-100">
                     <img src={
                       s.imageUrl
@@ -1351,24 +1962,28 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
                       <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                      <button onClick={() => { setSelectedServiceIds([String(s.id)]); setBookingStep('selection'); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                      <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ));
             })()}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* VISTA 4: FORMULARIO RESERVAS */}
       {view === 'booking' && (
-        <div className="flex-1 md:grid md:grid-cols-12 min-h-screen animate-fade-in relative">
-          <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="absolute top-4 left-4 z-30 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm">
-            ← Volver
-          </button>
-
-          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen pt-16">
+        <motion.div
+          className="flex-1 md:grid md:grid-cols-12 min-h-screen relative"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen md:overflow-y-auto pt-8">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
+              ← Volver
+            </button>
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
@@ -1463,7 +2078,23 @@ export default function App() {
               )}
               {discountError && <p className="text-[10px] text-red-600 bg-red-50 p-1.5 rounded-lg">{discountError}</p>}
 
-              {selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
+              {bookingStep === 'success' ? (
+                // Chequeado antes que "seleccion completa": createAppointment
+                // limpia selectedServiceIds/selectedSpecialist/bookingDate/
+                // bookingTime apenas confirma (evita reofrecer un horario ya
+                // tomado), asi que si este mensaje quedara *dentro* de la
+                // rama de "seleccion completa" nunca se llegaria a mostrar --
+                // caeria directo en el placeholder de "Completa servicios...".
+                <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
+                  <p className="font-bold text-base">Cita Agendada</p>
+                  <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
+                  {!session && (
+                    <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                      Ver mi cita
+                    </button>
+                  )}
+                </div>
+              ) : selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                 <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
                   Completa servicios, especialista y fecha para continuar.
                 </p>
@@ -1498,7 +2129,7 @@ export default function App() {
                         <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
                           <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
                           <div className="grid grid-cols-2 gap-3">
-                            <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="p-2.5 border rounded-xl text-xs" />
+                            <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="p-2.5 border rounded-xl text-xs" />
                             <select value={bookingGender} onChange={(e) => setBookingGender(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs bg-white">
                               <option value="Femenino">Femenino</option>
                               <option value="Masculino">Masculino</option>
@@ -1510,18 +2141,6 @@ export default function App() {
                           </button>
                         </form>
                       )}
-
-                      {bookingStep === 'success' && (
-                        <div className="text-center py-4 text-xs space-y-3 text-[#3B0019]">
-                          <p className="font-bold text-base">Cita Agendada</p>
-                          <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
-                          {!session && (
-                            <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
-                              Ver mi cita
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </>
                   )}
                 </div>
@@ -1530,6 +2149,21 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16 pb-24 md:pb-10">
+            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
+              ← Volver
+            </button>
+            {bookingStep === 'success' ? (
+              // La seleccion ya se limpio (createAppointment lo hace apenas confirma,
+              // para que no quede un horario ya tomado listo para reenviarse) -- en
+              // desktop los pasos 1-3 son hermanos siempre visibles del panel de
+              // confirmacion, y mostrarlos "vacios" al lado de un mensaje de exito
+              // se veia como que la reserva se hubiera perdido. Los ocultamos en vez
+              // de eso mientras se ve la confirmacion.
+              <div className="text-center py-16 text-xs text-[#78716C]">
+                Tu cita fue confirmada -- mirá el resumen de la reserva.
+              </div>
+            ) : (
+              <>
             {/* Wizard Progress — mobile only */}
             <div className="md:hidden flex items-center justify-center gap-3 pb-2">
               {[1, 2, 3].map((s) => (
@@ -1565,51 +2199,15 @@ export default function App() {
             {/* ===== PASO 1 ===== */}
             <section className={`space-y-4 ${bookingWizardStep !== 1 ? 'hidden md:block' : ''}`}>
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">1. Selecciona tus Rituales</h2>
-              <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
-              {(() => {
-                const filtered = services
-                  .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
-                  .sort((a, b) => {
-                    if ((a as any).trending && !(b as any).trending) return -1;
-                    if (!(a as any).trending && (b as any).trending) return 1;
-                    return (a.name || '').localeCompare(b.name || '');
-                  });
-                const total = filtered.length;
-                const start = (svcPage - 1) * PER_PAGE;
-                const page = filtered.slice(start, start + PER_PAGE);
-                return (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {page.map(s => {
-                        const serviceIdStr = String(s.id);
-                        const isSelected = selectedServiceIds.includes(serviceIdStr);
-                        return (
-                          <div key={s.id} onClick={() => handleServiceToggle(serviceIdStr)} className={`p-4 rounded-xl border cursor-pointer transition-all text-left ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                            <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-1.5">
-                                {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
-                                <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
-                              </div>
-                              <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
-                            </div>
-                            <div className="flex gap-2 mt-0.5">
-                              <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
-                              {s.shortDescription && <span className="text-[9px] text-[#78716C] italic truncate">{s.shortDescription}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {total > PER_PAGE && (
-                      <div className="flex items-center justify-center gap-3 text-xs pt-2">
-                        <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
-                        <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
-                        <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+              <ServiceSelectionGrid
+                services={services}
+                svcSearch={svcSearch}
+                setSvcSearch={setSvcSearch}
+                svcPage={svcPage}
+                setSvcPage={setSvcPage}
+                selectedServiceIds={selectedServiceIds}
+                onToggleService={handleServiceToggle}
+              />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-end">
                 <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
@@ -1623,8 +2221,9 @@ export default function App() {
               <h2 className="serif-title text-xl text-[#3B0019] border-b border-[#EADEC9]/30 pb-3">2. Elige la Fecha</h2>
               <DatePicker
                 selectedDate={bookingDate}
-                onSelectDate={(d) => { setBookingDate(d); setBookingTime(''); setSelectedSpecialist(null); }}
+                onSelectDate={handleSelectBookingDate}
                 className="max-w-[280px]"
+                todayKey={colombiaTodayKey()}
               />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
@@ -1644,52 +2243,25 @@ export default function App() {
                 <p className="text-[10px] text-[#78716C]">Elegí primero una fecha.</p>
               ) : (
                 <>
-                  <input type="text" placeholder="Buscar manicurista..." value={manSearch} onChange={e => { setManSearch(e.target.value); setManPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
-                  {(() => {
-                    const filtered = manicurists
-                      .filter(m => (m.name || '').toLowerCase().includes(manSearch.toLowerCase()))
-                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                    const total = filtered.length;
-                    const start = (manPage - 1) * PER_PAGE;
-                    const page = filtered.slice(start, start + PER_PAGE);
-                    return (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {page.map(m => {
-                            const manicuristIdStr = String(m.id);
-                            const isSelected = selectedSpecialist === manicuristIdStr;
-                            const shift = manicuristShifts[manicuristIdStr];
-                            return (
-                              <div key={m.id} onClick={() => { setSelectedSpecialist(manicuristIdStr); setBookingTime(''); }} className={`p-4 rounded-xl border text-center cursor-pointer transition-all ${isSelected ? 'border-[#8E1B54] bg-[#5C0632]/5' : 'border-[#EADEC9]/30 bg-white'}`}>
-                                {m.avatarPath || m.avatarUrl ? (
-                                  <img
-                                    src={m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl)}
-                                    alt={m.name}
-                                    onClick={() => setZoomedAvatar(m.avatarPath?.startsWith('/') ? `${API_URL}${m.avatarPath}` : (m.avatarPath || m.avatarUrl || null))}
-                                    className="w-10 h-10 rounded-full mx-auto object-cover border border-[#EADEC9] cursor-zoom-in hover:scale-110 transition-transform"
-                                  />
-                                ) : (
-                                  <FallbackAvatar className="w-10 h-10 mx-auto" />
-                                )}
-                                <span className="block text-xs font-semibold text-[#44403C] mt-2">{m.name}</span>
-                                {shift && <span className="block text-[9px] text-[#A68F63] mt-0.5">Turno: {shift.startTime}-{shift.endTime}</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {total > PER_PAGE && (
-                          <div className="flex items-center justify-center gap-3 text-xs pt-2">
-                            <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
-                            <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
-                            <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                  <ManicuristSelectionGrid
+                    manicurists={manicurists}
+                    manSearch={manSearch}
+                    setManSearch={setManSearch}
+                    manPage={manPage}
+                    setManPage={setManPage}
+                    selectedSpecialist={selectedSpecialist}
+                    onSelectSpecialist={handleSelectSpecialist}
+                    manicuristShifts={manicuristShifts}
+                    onZoomAvatar={setZoomedAvatar}
+                  />
 
                   {!selectedSpecialist ? (
                     <p className="text-[10px] text-[#78716C]">Elegí una manicurista para ver sus horarios disponibles.</p>
+                  ) : slotsError ? (
+                    <div className="text-center space-y-1.5">
+                      <p className="text-[10px] text-red-600">No pudimos cargar los horarios disponibles.</p>
+                      <button type="button" onClick={() => setSlotsRetryKey(k => k + 1)} className="text-[10px] text-[#8E1B54] underline font-semibold">Reintentar</button>
+                    </div>
                   ) : loadingSlots ? (
                     <p className="text-[10px] text-[#78716C]">Buscando horarios disponibles...</p>
                   ) : availableSlots.length === 0 ? (
@@ -1720,6 +2292,8 @@ export default function App() {
                 </button>
               </div>
             </section>
+              </>
+            )}
 
           </main>
 
@@ -1769,13 +2343,34 @@ export default function App() {
             )}
 
             <div className="p-4 pt-2">
-              <button
-                onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }}
-                disabled={selectedServiceIds.length === 0}
-                className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs"
-              >
-                Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
-              </button>
+              {bookingWizardStep === 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setBookingWizardStep(2)}
+                  disabled={selectedServiceIds.length === 0}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Continuar: Fecha y Hora
+                </button>
+              ) : bookingWizardStep === 2 ? (
+                <button
+                  type="button"
+                  onClick={() => setBookingWizardStep(3)}
+                  disabled={!bookingDate}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Continuar: Manicurista →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { if (selectedServiceIds.length > 0 && selectedSpecialist && bookingDate && bookingTime) { setBookingStep('selection'); setIsBookingOpen(true); } }}
+                  disabled={selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime}
+                  className="w-full py-3.5 bg-[#5C0632] disabled:bg-neutral-300 text-white font-medium rounded-xl text-xs transition-all"
+                >
+                  Reservar {selectedServiceIds.length} Ritual(es) ({getFormattedTotal()})
+                </button>
+              )}
             </div>
           </div>
 
@@ -1789,51 +2384,59 @@ export default function App() {
                   <button type="button" onClick={() => setIsBookingOpen(false)} className="w-7 h-7 bg-neutral-200/50 rounded-full text-xs">✕</button>
                 </div>
 
-                {/* Codigo descuento movil */}
-                {discountPercent ? (
-                  <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>
-                ) : showDiscount ? (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
-                      <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
-                    </div>
-                    <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
-                    ¿Tienes un codigo de descuento?
-                  </button>
-                )}
-                {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
-
-                {session && session.role === 'cliente' ? (
-                  <div className="space-y-3 text-xs">
-                    <p>Sesión activa: <strong>{session.name}</strong></p>
-                    {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                    <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
-                      {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
-                    </button>
-                  </div>
-                ) : (
+                {/* Codigo descuento movil -- oculto en success: la seleccion/descuento
+                    ya se limpiaron (ver createAppointment), mostrarlo aca leeria
+                    ese estado vacio ("Total: $0") justo arriba del mensaje de exito. */}
+                {bookingStep !== 'success' && (
                   <>
-                    {(bookingStep === 'selection' || bookingStep === 'auth') && (
-                      <form onSubmit={handleCheckAuthBooking} className="space-y-3">
-                        <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
-                        <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Verificar</button>
-                      </form>
+                    {discountPercent ? (
+                      <p className="text-[10px] text-green-600 font-semibold">-{discountPercent}% {discountTitle} | Total: {getFormattedTotal()}</p>
+                    ) : showDiscount ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
+                          <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
+                        </div>
+                        <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                        ¿Tienes un codigo de descuento?
+                      </button>
                     )}
-
-                    {bookingStep === 'register' && (
-                      <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
-                        <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={(e) => setBookingAge(e.target.value)} className="w-full p-2.5 border rounded-xl text-xs" />
-                        {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
-                        <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
-                      </form>
-                    )}
+                    {discountError && <p className="text-[10px] text-red-600">{discountError}</p>}
                   </>
+                )}
+
+                {bookingStep !== 'success' && (
+                  session && session.role === 'cliente' ? (
+                    <div className="space-y-3 text-xs">
+                      <p>Sesión activa: <strong>{session.name}</strong></p>
+                      {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
+                      <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
+                        {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {(bookingStep === 'selection' || bookingStep === 'auth') && (
+                        <form onSubmit={handleCheckAuthBooking} className="space-y-3">
+                          <input type="tel" inputMode="numeric" required maxLength={10} placeholder="Celular" value={bookingPhone} onChange={handlePhoneInputChange(setBookingPhone)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Verificar</button>
+                        </form>
+                      )}
+
+                      {bookingStep === 'register' && (
+                        <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
+                          <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
+                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
+                        </form>
+                      )}
+                    </>
+                  )
                 )}
 
                 {bookingStep === 'success' && (
@@ -1850,7 +2453,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
 
@@ -1899,7 +2502,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Edad</label>
-                        <input type="number" required min={0} max={100} value={clientAgeInput} onChange={(e) => setClientAgeInput(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                        <input type="number" required min={0} max={100} value={clientAgeInput} onChange={handleAgeInputChange(setClientAgeInput)} className="w-full p-2 border rounded-lg text-xs" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] uppercase font-bold text-[#78716C] block">Género</label>

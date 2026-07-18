@@ -41,3 +41,21 @@ export function requireStaff(req: AuthRequest, res: Response, next: NextFunction
     next();
   });
 }
+
+// A diferencia de requireAuth, no rechaza si falta el token -- solo lo
+// decodifica cuando esta presente. Rutas como /appointments sirven tanto
+// una consulta publica (disponibilidad por fecha/manicurista, sin token)
+// como una privada (historial de un cliente, que si necesita ownership);
+// el controller decide segun el caso cual exige req.user.
+export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization;
+  if (header && header.startsWith("Bearer ")) {
+    try {
+      const payload = verifyToken(header.slice(7));
+      req.user = { userId: payload.userId, role: payload.role };
+    } catch {
+      // token invalido/expirado: seguimos sin req.user, el controller decide si alcanza
+    }
+  }
+  next();
+}

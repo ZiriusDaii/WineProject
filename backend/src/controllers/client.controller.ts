@@ -1,8 +1,74 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { Prisma } from "../../prisma/generated/client.js";
 import { getISOWeek } from "../lib/week.js";
+import { signToken } from "../lib/jwt.js";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
-const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
+export const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
+
+// El "login" de cliente sigue siendo solo por telefono (sin password/OTP,
+// decision consciente por ahora -- ver conversacion). Este token no prueba
+// identidad real, pero evita que cualquiera que sepa/adivine un clientId o
+// un appointmentId pueda leer o modificar citas ajenas sin haber pasado
+// primero por el chequeo de telefono.
+const signClientToken = (userId: string) => signToken({ userId, role: "CLIENTE" });
+
+const isOwner = (req: AuthRequest, ownerId: string) =>
+  !!req.user && req.user.role === "CLIENTE" && req.user.userId === ownerId;
+
+// Cuentas viejas pueden tener el numero guardado con prefijo de pais (57),
+// un cero inicial u otros caracteres si se registraron antes de que el
+// frontend limitara el input a 10 digitos limpios. Normalizamos a los
+// ultimos 10 digitos para que un cliente antiguo pueda seguir encontrando
+// su cuenta con el input actual.
+export const normalizePhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length > 10 ? digits.slice(-10) : digits;
+};
+
+// Busca por telefono normalizado. Con menos de 10 digitos, solo exacto (un
+// input de 7 podria coincidir con el final de varios celulares distintos por
+// sufijo, asi que ese modo esta descartado del todo). Con los 10 digitos
+// completos de un celular colombiano, se buscan TODAS las cuentas que
+// terminen en esos digitos -- exacta o con prefijo de pais viejo -- en una
+// sola pasada: si hay una sola, esa es la cuenta; si hay mas de una (incluso
+// si una de ellas matcheaba exacto), no hay forma segura de saber cual es la
+// correcta y se trata como "no encontrado" en vez de preferir la exacta a
+// ciegas y esconder que existe otra cuenta ambigua para el mismo numero.
+async function findUserByPhone(
+  phone: string,
+  where: Record<string, unknown>,
+  select?: Record<string, boolean>,
+): Promise<any | null> {
+  const normalized = normalizePhone(phone);
+
+  if (normalized.length !== 10) {
+    return prisma.user.findFirst({ where: { phone: normalized, ...where }, select });
+  }
+
+  const candidates = await prisma.user.findMany({
+    where: { phone: { endsWith: normalized }, ...where },
+    select,
+  });
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+// Para el chequeo de duplicados en el registro. findUserByPhone resuelve una
+// identidad y por eso falla cerrado (null) ante un sufijo ambiguo -- correcto
+// para login, donde no hay a que cuenta loguear si hay mas de una candidata.
+// Pero para registro esa ambiguedad NO significa "numero libre": si hay 2+
+// cuentas que terminan en los mismos 10 digitos, el numero ya esta tomado
+// igual, y crear una cuenta nueva mas seria un tercer duplicado.
+// excludeId: para actualizar un registro a su propio telefono ya normalizado
+// sin que el chequeo se auto-rechace como "ya tomado".
+export async function phoneIsTaken(phone: string, excludeId?: string): Promise<boolean> {
+  const normalized = normalizePhone(phone);
+  const notSelf = excludeId ? { id: { not: excludeId } } : {};
+  if (await prisma.user.count({ where: { phone: normalized, ...notSelf } })) return true;
+  if (normalized.length !== 10) return false;
+  return (await prisma.user.count({ where: { phone: { endsWith: normalized }, ...notSelf } })) > 0;
+}
 
 // Horario del local (confirmado con el negocio, perfil de WhatsApp Business).
 // 0=Domingo..6=Sabado.
@@ -80,7 +146,7 @@ async function findOverlappingAppointment(
   });
 }
 
-export async function getServices(req: Request, res: Response): Promise<void> {
+export async function getServices(req: AuthRequest, res: Response): Promise<void> {
   try {
     const hasPagination = req.query.page || req.query.limit || req.query.search;
 
@@ -146,7 +212,7 @@ export async function getServices(req: Request, res: Response): Promise<void> {
 }
 
 export async function getManicurists(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -182,7 +248,7 @@ export async function getManicurists(
   }
 }
 
-export async function getOffers(_req: Request, res: Response): Promise<void> {
+export async function getOffers(_req: AuthRequest, res: Response): Promise<void> {
   try {
     const offers = await prisma.specialOffer.findMany({
       where: { isActive: true },
@@ -195,7 +261,7 @@ export async function getOffers(_req: Request, res: Response): Promise<void> {
 }
 
 export async function authClient(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -213,17 +279,14 @@ export async function authClient(
 
     // Solo cuentas de tipo CLIENTE: un telefono de staff (admin/manicurista)
     // no debe autenticar ni prellenar datos en el flujo de clientes.
-    const user = await prisma.user.findFirst({
-      where: { phone, role: "CLIENTE" },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        age: true,
-        gender: true,
-        role: true,
-        createdAt: true,
-      },
+    const user = await findUserByPhone(phone, { role: "CLIENTE" }, {
+      id: true,
+      name: true,
+      phone: true,
+      age: true,
+      gender: true,
+      role: true,
+      createdAt: true,
     });
 
     if (!user) {
@@ -244,6 +307,7 @@ export async function authClient(
       exists: true,
       client: user,
       appointmentHistory: appointments,
+      token: signClientToken(user.id),
     });
   } catch (error) {
     console.error("Error en authClient:", error);
@@ -252,7 +316,7 @@ export async function authClient(
 }
 
 export async function createClient(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -285,15 +349,23 @@ export async function createClient(
       return;
     }
 
-    const existing = await prisma.user.findUnique({ where: { phone } });
+    const normalizedPhone = normalizePhone(phone);
+    const existing = await findUserByPhone(phone, {}, { id: true });
     if (existing) {
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono", clientId: existing.id });
+      return;
+    }
+    if (await phoneIsTaken(phone)) {
+      // Sufijo ambiguo (2+ cuentas terminan en los mismos 10 digitos): no hay
+      // una identidad segura a la que recuperar la sesion, pero el numero
+      // igual esta tomado -- se bloquea el registro sin devolver clientId.
       res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
       return;
     }
 
     const client = await prisma.user.create({
       data: {
-        phone,
+        phone: normalizedPhone,
         name,
         age: age ?? null,
         gender: gender ?? null,
@@ -302,15 +374,23 @@ export async function createClient(
       select: { id: true, name: true, phone: true, age: true, gender: true },
     });
 
-    res.status(201).json(client);
+    res.status(201).json({ ...client, token: signClientToken(client.id) });
   } catch (error) {
+    // El chequeo de "ya existe" de arriba es raceable: dos requests casi
+    // simultaneas pueden pasar ambas el preflight antes de que cualquiera
+    // inserte, y la segunda insercion choca contra users_phone_key. Sin esto
+    // llegaba al 500 generico en vez del mismo 409 que el chequeo normal.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      res.status(409).json({ error: "Ya existe una cuenta con ese numero de telefono" });
+      return;
+    }
     console.error("Error creando cliente:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
 
 export async function createAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -338,6 +418,11 @@ export async function createAppointment(
       return;
     }
 
+    if (!isOwner(req, clientId!)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para crear una cita a nombre de otro cliente" });
+      return;
+    }
+
     const services = await prisma.service.findMany({
       where: { id: { in: serviceIds! } },
     });
@@ -353,6 +438,11 @@ export async function createAppointment(
     );
     const totalPrice = services.reduce((sum, s) => sum + Number(s.price), 0);
     const parsedDate = new Date(date!);
+
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate.getTime() < Date.now()) {
+      res.status(400).json({ error: "No es posible agendar una cita en una fecha u hora pasada" });
+      return;
+    }
 
     if (!isWithinBusinessHours(parsedDate, totalDuration)) {
       res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
@@ -414,7 +504,7 @@ export async function createAppointment(
 }
 
 export async function updateAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -444,6 +534,11 @@ export async function updateAppointment(
       return;
     }
 
+    if (!isOwner(req, existing.clientId)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para modificar esta cita" });
+      return;
+    }
+
     const data: Record<string, unknown> = {};
     if (status) data.status = status;
     if (manicuristId) data.manicuristId = manicuristId;
@@ -451,6 +546,11 @@ export async function updateAppointment(
     if (date || manicuristId) {
       const targetDate = date ? new Date(date) : existing.date;
       const targetManicuristId = manicuristId ?? existing.manicuristId;
+
+      if (date && (Number.isNaN(targetDate.getTime()) || targetDate.getTime() < Date.now())) {
+        res.status(400).json({ error: "No es posible reprogramar una cita a una fecha u hora pasada" });
+        return;
+      }
 
       if (!isWithinBusinessHours(targetDate, existing.totalDuration)) {
         res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
@@ -488,7 +588,7 @@ export async function updateAppointment(
 }
 
 export async function getClientAppointments(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -534,6 +634,11 @@ export async function getClientAppointments(
       return;
     }
 
+    if (!isOwner(req, clientId)) {
+      res.status(req.user ? 403 : 401).json({ error: "No autorizado para ver estas citas" });
+      return;
+    }
+
     const appointments = await prisma.appointment.findMany({
       where: { clientId },
       include: {
@@ -551,7 +656,7 @@ export async function getClientAppointments(
 }
 
 export async function uploadManicuristAvatar(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -588,7 +693,7 @@ export async function uploadManicuristAvatar(
 }
 
 export async function uploadLandingImage(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -609,7 +714,7 @@ export async function uploadLandingImage(
 }
 
 export async function validateOfferCode(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {

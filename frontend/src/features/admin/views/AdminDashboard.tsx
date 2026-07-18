@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
 
@@ -91,6 +92,18 @@ interface Offer {
 const toDateLabel = (isoDate: string) => isoDate ? isoDate.slice(0, 10) : '';
 const toTimeLabel = (isoDate: string) => isoDate ? isoDate.slice(11, 16) : '';
 
+// Fecha del negocio (Colombia, UTC-5 fijo, sin horario de verano) -- ni
+// `toISOString()` real (cruza de dia entre ~19:00 y medianoche hora Colombia)
+// ni la hora local del NAVEGADOR (un admin viajando o conectandose desde otro
+// huso daria un dia distinto) sirven aca. Restamos el offset fijo sobre el
+// timestamp real y leemos los componentes en UTC, para que de el mismo
+// resultado sin importar en que zona horaria este el navegador.
+const COLOMBIA_OFFSET_MS = 5 * 60 * 60 * 1000;
+const toLocalDateKey = (d: Date) => {
+  const co = new Date(d.getTime() - COLOMBIA_OFFSET_MS);
+  return `${co.getUTCFullYear()}-${String(co.getUTCMonth() + 1).padStart(2, '0')}-${String(co.getUTCDate()).padStart(2, '0')}`;
+};
+
 // Misma semana ISO 8601 que backend/src/lib/week.ts -- necesaria para saber
 // que semana/anio corresponde al turno que se esta editando.
 function getISOWeek(date: Date): { week: number; year: number } {
@@ -121,9 +134,15 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('metrics');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [apptDateFilter, setApptDateFilter] = useState<'all' | 'today' | 'tomorrow'>('all');
+  const [apptManicuristFilter, setApptManicuristFilter] = useState('all');
+  const [apptStatusFilter, setApptStatusFilter] = useState('all');
+  const [animateBars, setAnimateBars] = useState(false);
+  const [metricsOffsetDays, setMetricsOffsetDays] = useState(0);
+  const [metricsType, setMetricsType] = useState<'earnings' | 'appointments'>('earnings');
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsTruncated, setAppointmentsTruncated] = useState(false);
   const [manicurists, setManicurists] = useState<Manicurist[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalogItem[]>([]);
@@ -137,7 +156,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
+  const [calendarDate, setCalendarDate] = useState(toLocalDateKey(new Date()));
   const itemsPerPage = 5;
 
   // Turnos
@@ -192,6 +211,12 @@ export const AdminDashboard: React.FC = () => {
   const [cmsTitle, setCmsTitle] = useState('');
   const [cmsDesc, setCmsDesc] = useState('');
   const [cmsItems, setCmsItems] = useState<any[]>([]);
+  // Si fetchCMS falla, cmsItems queda vacio o stale -- los editores de Hero/
+  // Experience usan `cmsItems.find(...)?.id` para decidir si actualizan el
+  // registro existente o crean uno nuevo. Sin este flag, subir una imagen en
+  // ese momento crearia un HERO/EXPERIENCE duplicado en vez de actualizar.
+  const [cmsLoading, setCmsLoading] = useState(false);
+  const [cmsError, setCmsError] = useState(false);
   const [editingCmsId, setEditingCmsId] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -200,12 +225,23 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [unauthorized, setUnauthorized] = useState(false);
+  // Antes, si manicuristas/servicios fallaban al cargar, el dashboard
+  // simplemente se veia vacio -- indistinguible de "no hay datos", cuando en
+  // realidad el fetch fallo. Esto lo hace visible con un banner y reintento.
+  const [loadError, setLoadError] = useState(false);
   const [adminLoginUser, setAdminLoginUser] = useState('');
   const [adminLoginPass, setAdminLoginPass] = useState('');
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'schedule') fetchWeekSchedule(); }, [activeTab, scheduleWeek, scheduleYear]);
+  useEffect(() => {
+    if (activeTab === 'metrics') {
+      setAnimateBars(false);
+      const timer = setTimeout(() => setAnimateBars(true), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, metricsOffsetDays, metricsType]);
 
   const doLogin = async () => {
     setSubmitting(true);
@@ -226,8 +262,29 @@ export const AdminDashboard: React.FC = () => {
     finally { setSubmitting(false); }
   };
 
+  // Si el fetch falla, dejamos las stats actuales tal como estan en vez de
+  // pisarlas con el objeto en cero -- eso se veia como si de golpe no hubiera
+  // ganancias/citas, cuando en realidad solo fallo la actualizacion.
+  const fetchStats = async (): Promise<void> => {
+    try {
+      const stRes = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
+      if (!stRes.ok) { setLoadError(true); return; }
+      const r = await stRes.json();
+      setStats({
+        totalEarnings: r.totalEarnings ?? 0,
+        totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
+        topManicurist: r.manicuristPerformance?.[0]?.name || '-',
+        manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
+          name: p.name, completedAppointments: p.completedAppointments ?? 0,
+        })),
+        appointmentsByStatus: r.appointmentsByStatus || [],
+      });
+    } catch { setLoadError(true); /* dejamos las stats actuales, ver comentario arriba */ }
+  };
+
   const loadData = async () => {
     setLoading(true);
+    setLoadError(false);
     const h = authHeaders();
     try {
       const [mRes, sRes, cRes, oRes] = await Promise.all([
@@ -240,6 +297,7 @@ export const AdminDashboard: React.FC = () => {
       if (mRes.status === 401 || cRes?.status === 401 || oRes?.status === 401) {
         setUnauthorized(true); setLoading(false); return;
       }
+      if (!mRes.ok || !sRes.ok) setLoadError(true);
       const mData = mRes.ok ? await mRes.json() : [];
       const sData = sRes.ok ? await sRes.json() : [];
       const cPayload = cRes?.ok ? await cRes.json() : null;
@@ -262,29 +320,30 @@ export const AdminDashboard: React.FC = () => {
 
       let appts: Appointment[] = [];
       try {
-        const aRes = await fetch(`${API}/api/admin/appointments`, { headers: h });
-        if (aRes.ok) { const p = await aRes.json(); appts = p?.data ?? (Array.isArray(p) ? p : []); }
-      } catch { /* */ }
+        const aRes = await fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h });
+        if (aRes.ok) {
+          const p = await aRes.json();
+          appts = p?.data ?? (Array.isArray(p) ? p : []);
+          // El fetch tiene un tope de 1000: si el total real lo supera, la
+          // Pizarra de Citas y el Panel de Metricas quedarian truncados en
+          // silencio. Mejor avisar que el dato esta incompleto que fingir
+          // que es todo lo que hay.
+          setAppointmentsTruncated(typeof p?.totalCount === 'number' && p.totalCount > appts.length);
+        } else {
+          // Antes esto dejaba `appts` en [] en silencio -- la Pizarra de
+          // Citas mostraba "Sin citas" (dato falso), indistinguible de que
+          // de verdad no hubiera ninguna.
+          setLoadError(true);
+        }
+      } catch { setLoadError(true); }
       setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
 
-      let sData2: Stats = { totalEarnings: 0, totalAppointments: 0, topManicurist: '-', manicuristPerformance: [], appointmentsByStatus: [] };
-      try {
-        const stRes = await fetch(`${API}/api/admin/stats`, { headers: h });
-        if (stRes.ok) {
-          const r = await stRes.json();
-          sData2 = {
-            totalEarnings: r.totalEarnings ?? 0,
-            totalAppointments: r.appointmentsByStatus?.reduce((sum: number, s: any) => sum + s.count, 0) ?? 0,
-            topManicurist: r.manicuristPerformance?.[0]?.name || '-',
-            manicuristPerformance: (r.manicuristPerformance || []).map((p: any) => ({
-              name: p.name, completedAppointments: p.completedAppointments ?? 0,
-            })),
-            appointmentsByStatus: r.appointmentsByStatus || [],
-          };
-        }
-      } catch { /* */ }
-      setStats(sData2);
-    } catch { /* */ }
+      await fetchStats();
+      if (activeTab === 'metrics') {
+        setAnimateBars(false);
+        setTimeout(() => setAnimateBars(true), 150);
+      }
+    } catch { setLoadError(true); }
     finally { setLoading(false); }
   };
 
@@ -297,6 +356,7 @@ export const AdminDashboard: React.FC = () => {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: status as any } : a));
         setSuccessMsg(`Cita ${STATUS_LABELS[status]?.toLowerCase() || status}.`);
         setTimeout(() => setSuccessMsg(null), 2000);
+        fetchStats();
       }
     } catch { /* */ }
   };
@@ -483,10 +543,13 @@ export const AdminDashboard: React.FC = () => {
 
   // --- CMS ---
   const fetchCMS = async () => {
+    setCmsLoading(true);
+    setCmsError(false);
     try {
       const res = await fetch(`${API}/api/landing/content`);
-      if (res.ok) setCmsItems(await res.json());
-    } catch { /* */ }
+      if (res.ok) { setCmsItems(await res.json()); } else { setCmsError(true); }
+    } catch { setCmsError(true); }
+    finally { setCmsLoading(false); }
   };
   const handleDeleteCMS = async (id: string) => {
     if (!confirm('Eliminar este anuncio?')) return;
@@ -535,21 +598,44 @@ export const AdminDashboard: React.FC = () => {
   const paginate = (items: any[]) => { const s = (currentPage - 1) * itemsPerPage; return items.slice(s, s + itemsPerPage); };
   const filterApps = () => {
     const now = new Date();
-    const todayStr = toDateLabel(now.toISOString());
-    const tomorrowStr = toDateLabel(new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString());
+    const todayStr = toLocalDateKey(now);
+    const tomorrowStr = toLocalDateKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
     return appointments
       .filter(a => `${a.clientName || a.client?.name || ''} ${getManName(a.manicuristId)}`.toLowerCase().includes(searchQuery.toLowerCase()))
       .filter(a => {
         if (apptDateFilter === 'all') return true;
         const apptDay = toDateLabel(a.date);
         return apptDateFilter === 'today' ? apptDay === todayStr : apptDay === tomorrowStr;
-      });
+      })
+      .filter(a => apptManicuristFilter === 'all' || String(a.manicuristId) === apptManicuristFilter)
+      .filter(a => apptStatusFilter === 'all' || a.status === apptStatusFilter);
   };
   const filterClients = () => clients.filter(c => `${c.name} ${c.phone}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const filterOffers = () => offers.filter(o => `${o.title} ${o.code}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const getManName = (id: string | number) => manicurists.find(m => String(m.id) === String(id))?.name || '—';
   const svcNames = (ss: ServiceItem[]) => ss.map(s => s.name).join(', ') || '—';
   const clear = () => { setSuccessMsg(null); setErrorMsg(null); setSearchQuery(''); setCurrentPage(1); };
+  const filteredApps = useMemo(() => filterApps(), [appointments, searchQuery, apptDateFilter, apptManicuristFilter, apptStatusFilter, manicurists]);
+
+  // Si un filtro (o un cambio de datos, ej. una cita cancelada en otra pestana)
+  // reduce la lista visible y `currentPage` queda apuntando a una pagina que ya
+  // no existe, la tabla se veria vacia sin explicacion hasta que alguien haga
+  // click en "Anterior". Clampeamos apenas eso pasa, para cualquier pestana.
+  useEffect(() => {
+    let total: number;
+    if (activeTab === 'appointments') total = filteredApps.length;
+    else if (activeTab === 'clients') total = filterClients().length;
+    else if (activeTab === 'offers') total = filterOffers().length;
+    else if (activeTab === 'manicurists') {
+      total = manicurists.filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.username || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
+    } else if (activeTab === 'services') {
+      total = servicesCatalog.filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
+    } else {
+      return;
+    }
+    const maxPage = Math.max(1, Math.ceil(total / itemsPerPage));
+    if (currentPage > maxPage) setCurrentPage(maxPage);
+  }, [activeTab, filteredApps, clients, offers, manicurists, servicesCatalog, searchQuery, currentPage]);
   const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
@@ -613,57 +699,378 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
         <nav className="flex flex-col gap-1">
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }} className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${activeTab === t.id ? 'bg-[#5C0632] text-white' : 'text-[#78716C] hover:bg-[#EADEC9]/30'}`}>{t.label}</button>
-          ))}
+          {tabs.map(t => {
+            const isActive = activeTab === t.id;
+            return (
+              <motion.button
+                key={t.id}
+                onClick={() => { setActiveTab(t.id); setIsMobileMenuOpen(false); clear(); }}
+                className={`relative isolate px-4 py-3 rounded-xl text-xs font-semibold text-left transition-colors duration-250 cursor-pointer ${
+                  isActive ? 'text-white' : 'text-[#78716C] hover:text-[#5C0632]'
+                }`}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="adminActiveTabBg"
+                    className="absolute inset-0 bg-[#5C0632] rounded-xl -z-10"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                {t.label}
+              </motion.button>
+            );
+          })}
         </nav>
       </aside>
 
       <main className="flex-1 p-4 md:p-10 overflow-y-auto">
         {successMsg && <div className="mb-3 p-2.5 bg-green-50 text-green-700 text-xs rounded-xl border border-green-200">{successMsg}</div>}
         {errorMsg && <div className="mb-3 p-2.5 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">{errorMsg}</div>}
-
-        {/* METRICS */}
-        {activeTab === 'metrics' && stats && (
-          <div className="space-y-8 animate-fade-in text-left">
-            <h2 className="serif-title text-3xl text-[#3B0019]">Estadisticas</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Ganancias</span><h3 className="serif-title text-2xl text-[#3B0019]">${stats.totalEarnings.toLocaleString('es-CO')}</h3></div>
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Citas Totales</span><h3 className="serif-title text-2xl text-[#3B0019]">{stats.totalAppointments}</h3></div>
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl"><span className="text-[10px] uppercase text-[#A68F63] font-bold">Top Especialista</span><h3 className="serif-title text-lg text-[#8E1B54] truncate">{stats.topManicurist}</h3></div>
-            </div>
-            {stats.appointmentsByStatus && stats.appointmentsByStatus.length > 0 && (
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
-                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Por Estado</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  {stats.appointmentsByStatus.map(s => (
-                    <div key={s.status} className="text-center p-3 bg-[#F7F3EB]/30 rounded-xl">
-                      <span className="block text-2xl font-bold text-[#8E1B54]">{s.count}</span>
-                      <span className="text-[#78716C]">{STATUS_LABELS[s.status] || s.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {stats.manicuristPerformance.length > 0 && (
-              <div className="bg-white border border-[#EADEC9]/40 p-5 rounded-2xl space-y-3">
-                <h3 className="serif-title text-lg text-[#3B0019] border-b pb-2">Rendimiento por Especialista</h3>
-                {stats.manicuristPerformance.map((p, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-xs"><span>{p.name}</span><span className="font-semibold text-[#8E1B54]">{p.completedAppointments} completadas</span></div>
-                    <div className="h-2 bg-[#EADEC9]/25 rounded-full"><div className="bg-[#8E1B54] h-full rounded-full" style={{ width: `${Math.min((p.completedAppointments / Math.max(...stats.manicuristPerformance.map(x => x.completedAppointments), 1)) * 100, 100)}%` }} /></div>
-                  </div>
-                ))}
-              </div>
-            )}
+        {loadError && (
+          <div className="mb-3 p-2.5 bg-amber-50 text-amber-700 text-xs rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+            <span>No se pudo cargar toda la informacion (puede faltar datos en este panel).</span>
+            <button onClick={loadData} className="underline font-semibold shrink-0">Reintentar</button>
           </div>
         )}
+
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="space-y-8"
+        >
+
+        {/* METRICS */}
+        {activeTab === 'metrics' && stats && (() => {
+          const statusColors: Record<string, string> = {
+            PENDING: '#A68F63',
+            IN_PROGRESS: '#8E1B54',
+            COMPLETED: '#10B981',
+            CANCELLED: '#EF4444',
+          };
+          const statusData = (stats.appointmentsByStatus || []).filter(s => s.count > 0);
+          const totalCount = statusData.reduce((sum, s) => sum + s.count, 0) || 1;
+          
+          // r=50 en el <circle> de abajo -- circunferencia exacta, no el
+          // literal "314.16" (aproximacion a 2 decimales de 2*pi*50) usado
+          // antes en tres lugares distintos que tenian que coincidir.
+          const DONUT_CIRCUMFERENCE = 2 * Math.PI * 50;
+          let accumulatedLength = 0;
+          const donutSegments = statusData.map(s => {
+            const percent = s.count / totalCount;
+            const strokeDash = percent * DONUT_CIRCUMFERENCE;
+            const strokeOffset = -accumulatedLength;
+            accumulatedLength += strokeDash;
+            return {
+              ...s,
+              percent: Math.round(percent * 100),
+              color: statusColors[s.status] || '#78716C',
+              strokeDash,
+              strokeOffset
+            };
+          });
+
+          const getDailyMetrics = () => {
+            // Aritmetica en milisegundos, no con setDate/getDate locales -- esos
+            // mutan segun el calendario del navegador, que puede no coincidir con
+            // Colombia. toLocalDateKey ya hace la conversion de zona una sola vez.
+            const dates = Array.from({ length: 7 }, (_, i) => {
+              const offsetDays = i - 6 + metricsOffsetDays;
+              return toLocalDateKey(new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000));
+            });
+
+            const dailyData = dates.reduce((acc, dateStr) => {
+              acc[dateStr] = { earnings: 0, appointments: 0 };
+              return acc;
+            }, {} as Record<string, { earnings: number; appointments: number }>);
+
+            appointments.forEach(a => {
+              try {
+                // toDateLabel (slice directo), no new Date(...).toISOString() --
+                // mismo criterio que las llaves de `dates` arriba (toLocalDateKey),
+                // en vez de dos formas distintas de llegar (con suerte) al mismo valor.
+                const dateStr = toDateLabel(a.date);
+                if (dateStr in dailyData) {
+                  dailyData[dateStr].appointments += 1;
+                  if (a.status === 'COMPLETED' || a.status === 'IN_PROGRESS') {
+                    dailyData[dateStr].earnings += Number(a.totalPrice || 0);
+                  }
+                }
+              } catch { /* fecha invalida: se ignora esa cita */ }
+            });
+
+            return dates.map(dateStr => {
+              const dateObj = new Date(dateStr + 'T00:00:00');
+              const label = dateObj.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
+              return {
+                date: dateStr,
+                label: label.charAt(0).toUpperCase() + label.slice(1),
+                earnings: dailyData[dateStr].earnings,
+                appointments: dailyData[dateStr].appointments,
+              };
+            });
+          };
+
+          const dailyMetrics = getDailyMetrics();
+          const isEarnings = metricsType === 'earnings';
+          const maxVal = Math.max(
+            ...dailyMetrics.map(d => isEarnings ? d.earnings : d.appointments),
+            1
+          );
+
+          return (
+            <div className="space-y-8 animate-fade-in text-left">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-[#EADEC9]/30 pb-4">
+                <div>
+                  <h2 className="serif-title text-3xl text-[#3B0019]">Panel de Métricas</h2>
+                  <p className="text-xs text-[#78716C] mt-1">Monitoreo estratégico y rendimiento financiero en tiempo real.</p>
+                </div>
+              </div>
+
+              {appointmentsTruncated && (
+                <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Hay más de 1000 citas registradas -- estas métricas solo reflejan las primeras 1000.
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-[#8E1B54]" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Ingresos</span>
+                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">${stats.totalEarnings.toLocaleString('es-CO')}</h3>
+                      <span className="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Completado & En Progreso</span>
+                    </div>
+                    <div className="w-10 h-10 bg-[#8E1B54]/5 rounded-xl flex items-center justify-center text-[#8E1B54] group-hover:bg-[#8E1B54]/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-[#A68F63]" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Citas Registradas</span>
+                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">{stats.totalAppointments}</h3>
+                      <span className="text-[10px] text-[#78716C] block mt-1">Volumen total histórico</span>
+                    </div>
+                    <div className="w-10 h-10 bg-[#A68F63]/5 rounded-xl flex items-center justify-center text-[#A68F63] group-hover:bg-[#A68F63]/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Top Especialista</span>
+                      <h3 className="serif-title text-xl text-[#8E1B54] mt-2 font-bold truncate max-w-[160px]">{stats.topManicurist}</h3>
+                      <span className="text-[10px] text-amber-600 font-semibold block mt-1">★ Mayor número de completadas</span>
+                    </div>
+                    <div className="w-10 h-10 bg-amber-500/5 rounded-xl flex items-center justify-center text-amber-500 group-hover:bg-amber-500/10 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs lg:col-span-2 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-[#EADEC9]/25 pb-3">
+                    <div className="text-left w-full sm:w-auto">
+                      <h3 className="serif-title text-base font-bold text-[#3B0019]">Estadísticas Diarias</h3>
+                      <p className="text-[10px] text-[#78716C] mt-0.5">Métricas de rendimiento por fecha de cita.</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
+                      {/* Toggle Metricas */}
+                      <div className="flex bg-[#F7F3EB] rounded-lg p-0.5 text-[11px] font-bold border border-[#EADEC9]/40">
+                        <button
+                          onClick={() => { setMetricsType('earnings'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className={`px-3 py-1 rounded-md transition-colors ${isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                        >
+                          Ingresos ($)
+                        </button>
+                        <button
+                          onClick={() => { setMetricsType('appointments'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className={`px-3 py-1 rounded-md transition-colors ${!isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
+                        >
+                          Citas (Cant.)
+                        </button>
+                      </div>
+
+                      {/* Date Navigation */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setMetricsOffsetDays(0); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                          className="px-3.5 py-2 border border-[#EADEC9]/60 rounded-xl text-xs font-semibold text-[#8E1B54] bg-[#F7F3EB] hover:bg-[#8E1B54]/5 active:scale-95 transition-all animate-fade-in"
+                        >
+                          Semana Actual
+                        </button>
+                        <div className="flex items-center bg-white border border-[#EADEC9]/60 rounded-xl overflow-hidden shadow-xs">
+                          <button
+                            onClick={() => { setMetricsOffsetDays(prev => prev - 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                            className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold border-r border-[#EADEC9]/30"
+                            title="Anterior"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            onClick={() => { setMetricsOffsetDays(prev => prev + 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
+                            className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold"
+                            title="Siguiente"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative overflow-visible py-4 pr-2">
+                    <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
+                      <line x1="30" y1="30" x2="470" y2="30" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="80" x2="470" y2="80" stroke="#EADEC9" strokeWidth="0.5" strokeDasharray="4 4" />
+                      <line x1="30" y1="130" x2="470" y2="130" stroke="#EADEC9" strokeWidth="1" />
+
+                      {dailyMetrics.map((d, index) => {
+                        const val = isEarnings ? d.earnings : d.appointments;
+                        const heightVal = (val / maxVal) * 90;
+                        const x = index * 60 + 45;
+                        return (
+                          <g key={index} className="group/bar">
+                            <rect
+                              x={x}
+                              width="24"
+                              rx="4"
+                              ry="4"
+                              fill="#8E1B54"
+                              className="transition-all duration-700 ease-out hover:fill-[#5C0632] cursor-pointer"
+                              style={{
+                                y: `${130 - (animateBars ? heightVal : 0)}px`,
+                                height: `${animateBars ? heightVal : 0}px`
+                              }}
+                            />
+                            <text
+                              x={x + 12}
+                              y={130 - (animateBars ? heightVal : 0) - 8}
+                              textAnchor="middle"
+                              className="text-[10px] sm:text-[9px] font-extrabold fill-[#8E1B54]"
+                            >
+                              {val > 0 ? (isEarnings ? `$${val.toLocaleString('es-CO')}` : val) : ''}
+                            </text>
+                            <text
+                              x={x + 12}
+                              y="152"
+                              textAnchor="middle"
+                              className="text-[12px] sm:text-[10px] font-bold fill-[#78716C]"
+                            >
+                              {d.label}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4 flex flex-col justify-between">
+                  <h3 className="serif-title text-base font-bold text-[#3B0019] border-b border-[#EADEC9]/25 pb-2">Distribución por Estado</h3>
+                  
+                  {statusData.length === 0 ? (
+                    <div className="h-40 flex items-center justify-center text-xs text-[#78716C]">Sin datos de estado.</div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 lg:flex-col xl:flex-row py-2">
+                      <div className="relative w-32 h-32 flex-shrink-0">
+                        <svg viewBox="0 0 160 160" className="w-full h-full transform -rotate-90">
+                          <circle cx="80" cy="80" r="50" fill="transparent" stroke="#F5EFE6" strokeWidth="12" />
+                          {donutSegments.map((s, idx) => (
+                            <circle
+                              key={idx}
+                              cx="80"
+                              cy="80"
+                              r="50"
+                              fill="transparent"
+                              stroke={s.color}
+                              strokeWidth="12"
+                              strokeDasharray={`${s.strokeDash} ${DONUT_CIRCUMFERENCE}`}
+                              strokeDashoffset={s.strokeOffset}
+                              className="transition-all duration-300"
+                            />
+                          ))}
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="serif-title text-2xl font-black text-[#3B0019] leading-none">{stats.totalAppointments}</span>
+                          <span className="text-[8px] uppercase tracking-widest text-[#A68F63] font-bold mt-1">Citas</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-left w-full">
+                        {donutSegments.map((s, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[10px] border-b border-[#EADEC9]/10 pb-1 last:border-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                              <span className="text-[#44403C] font-medium">{STATUS_LABELS[s.status] || s.status}</span>
+                            </div>
+                            <span className="font-bold text-[#8E1B54]">{s.count} ({s.percent}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Specialist Performance */}
+              <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
+                  <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
+                  <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
+                </div>
+                {stats.manicuristPerformance.length === 0 ? (
+                  <p className="text-xs text-[#78716C] py-4 text-center">Sin datos de rendimiento.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {stats.manicuristPerformance.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-[#F7F3EB]/25 hover:bg-[#F7F3EB]/50 border border-[#EADEC9]/20 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${i === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EADEC9]/30 text-[#78716C]'}`}>
+                            {i === 0 ? '★' : i + 1}
+                          </span>
+                          <span className="font-semibold text-xs text-[#44403C]">{p.name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-[#8E1B54]">{p.completedAppointments} completadas</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* APPOINTMENTS */}
         {activeTab === 'appointments' && (
           <div className="space-y-6 animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">Pizarra de Citas</h2>
-            <div className="flex gap-2">
+            {appointmentsTruncated && (
+              <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Hay más de 1000 citas registradas -- esta lista solo muestra las primeras 1000. Usá los filtros de fecha para acotar la búsqueda.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
               {([['all', 'Todas'], ['today', 'Hoy'], ['tomorrow', 'Mañana']] as const).map(([value, label]) => (
                 <button
                   key={value}
@@ -673,18 +1080,34 @@ export const AdminDashboard: React.FC = () => {
                   {label}
                 </button>
               ))}
+              <select
+                value={apptManicuristFilter}
+                onChange={e => { setApptManicuristFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#EADEC9]/60 bg-white text-[#78716C]"
+              >
+                <option value="all">Todas las manicuristas</option>
+                {manicurists.map(m => <option key={m.id} value={String(m.id)}>{m.name}</option>)}
+              </select>
+              <select
+                value={apptStatusFilter}
+                onChange={e => { setApptStatusFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#EADEC9]/60 bg-white text-[#78716C]"
+              >
+                <option value="all">Todos los estados</option>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
               <input type="text" placeholder="Buscar..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
-              {pagination(filterApps().length)}
+              {pagination(filteredApps.length)}
             </div>
             {/* Desktop: tabla normal */}
             <div className="hidden md:block bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Especialista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
                 <tbody className="divide-y divide-[#EADEC9]/20">
-                  {filterApps().length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
-                    paginate(filterApps()).map(a => (
+                  {filteredApps.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
+                    paginate(filteredApps).map(a => (
                       <tr key={a.id} className={a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5' : ''}>
                         <td className="p-3 font-mono font-bold">#{a.appointmentId || a.id}</td>
                         <td className="p-3">{a.clientName || a.client?.name || '—'}</td>
@@ -709,8 +1132,8 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Mobile: cards apiladas */}
             <div className="md:hidden space-y-2">
-              {filterApps().length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin citas.</p> :
-                paginate(filterApps()).map(a => (
+              {filteredApps.length === 0 ? <p className="text-xs text-center py-8 text-[#78716C]">Sin citas.</p> :
+                paginate(filteredApps).map(a => (
                   <div key={a.id} className={`p-4 rounded-xl border text-left text-xs ${a.status === 'IN_PROGRESS' ? 'bg-[#5C0632]/5 border-[#8E1B54]/40' : 'bg-white border-[#EADEC9]/40'}`}>
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-mono font-bold text-[#3B0019]">#{a.appointmentId || a.id}</span>
@@ -742,12 +1165,15 @@ export const AdminDashboard: React.FC = () => {
         {/* CALENDAR */}
         {activeTab === 'calendar' && (
           <div className="space-y-6 animate-fade-in text-left max-w-3xl">
-            <h2 className="serif-title text-2xl text-[#3B0019]">Vista de Calendario</h2>
+            <h2 className="serif-title text-3xl text-[#3B0019]">Vista de Calendario</h2>
             <div className="md:grid md:grid-cols-12 md:gap-8">
               <div className="md:col-span-5">
                 <DatePicker
                   selectedDate={calendarDate}
                   onSelectDate={setCalendarDate}
+                  markedDates={new Set(appointments.map(a => (a.date || '').slice(0, 10)))}
+                  todayKey={toLocalDateKey(new Date())}
+                  allowPast
                 />
               </div>
               <div className="md:col-span-7 space-y-3">
@@ -1202,12 +1628,133 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-6 max-w-2xl animate-fade-in text-left">
             <h2 className="serif-title text-3xl text-[#3B0019]">CMS / Landing</h2>
 
+            {/* HERO & EXPERIENCE EDITORS */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-4">
+              <h3 className="text-xs font-bold text-[#3B0019] uppercase">Imágenes de la Página Principal</h3>
+              {cmsError && (
+                <div className="p-2.5 bg-amber-50 text-amber-700 text-[11px] rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+                  <span>No se pudo cargar el contenido actual -- subir una imagen ahora podria crear un registro duplicado en vez de actualizar el existente.</span>
+                  <button onClick={fetchCMS} className="underline font-semibold shrink-0">Reintentar</button>
+                </div>
+              )}
+
+              {/* HERO IMAGE EDITOR */}
+              <div className="border-b border-[#EADEC9]/25 pb-4 space-y-2">
+                <p className="text-xs font-semibold text-[#44403C]">Imagen del Banner Principal (Hero)</p>
+                {(() => {
+                  const heroItem = cmsItems.find((item: any) => item.type === 'HERO');
+                  return (
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={heroItem?.imageUrl?.startsWith('/uploads') ? `${API}${heroItem.imageUrl}` : (heroItem?.imageUrl || '/hero_1.jpg')}
+                        alt="Hero preview"
+                        className="w-20 h-16 rounded-lg object-cover border shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={cmsLoading || cmsError || submitting}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setSubmitting(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append('image', file);
+                              const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+                              if (!uRes.ok) throw new Error();
+                              const data = await uRes.json();
+
+                              const payload = {
+                                id: heroItem?.id || null,
+                                type: 'HERO',
+                                title: 'Hero Image',
+                                imageUrl: data.imageUrl,
+                                isActive: true
+                              };
+                              const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+                              if (r.ok) {
+                                setSuccessMsg('Imagen del Hero actualizada.');
+                                fetchCMS();
+                              } else throw new Error();
+                            } catch {
+                              setErrorMsg('Error al actualizar imagen del Hero.');
+                            } finally {
+                              setSubmitting(false);
+                            }
+                          }}
+                          className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-[#5C0632]/10 file:text-[#5C0632] hover:file:bg-[#5C0632]/20"
+                        />
+                        <p className="text-[9px] text-[#78716C]">Sube un archivo para cambiar la imagen principal (se recomienda horizontal/cuadrada).</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* EXPERIENCE IMAGE EDITOR */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-[#44403C]">Imagen de Sección "La Experiencia"</p>
+                {(() => {
+                  const expItem = cmsItems.find((item: any) => item.type === 'EXPERIENCE');
+                  return (
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={expItem?.imageUrl?.startsWith('/uploads') ? `${API}${expItem.imageUrl}` : (expItem?.imageUrl || '/winespa_interior_1.jpg')}
+                        alt="Experience preview"
+                        className="w-20 h-16 rounded-lg object-cover border shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={cmsLoading || cmsError || submitting}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setSubmitting(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append('image', file);
+                              const uRes = await fetch(`${API}/api/admin/landing/upload`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
+                              if (!uRes.ok) throw new Error();
+                              const data = await uRes.json();
+
+                              const payload = {
+                                id: expItem?.id || null,
+                                type: 'EXPERIENCE',
+                                title: 'Experience Image',
+                                imageUrl: data.imageUrl,
+                                isActive: true
+                              };
+                              const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+                              if (r.ok) {
+                                setSuccessMsg('Imagen de La Experiencia actualizada.');
+                                fetchCMS();
+                              } else throw new Error();
+                            } catch {
+                              setErrorMsg('Error al actualizar imagen de La Experiencia.');
+                            } finally {
+                              setSubmitting(false);
+                            }
+                          }}
+                          className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-[#5C0632]/10 file:text-[#5C0632] hover:file:bg-[#5C0632]/20"
+                        />
+                        <p className="text-[9px] text-[#78716C]">Sube un archivo para cambiar la imagen de "La Experiencia" (se recomienda relación de aspecto 4:3 o 16:9).</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
             {/* Lista de anuncios existentes */}
-            {cmsItems.length > 0 && (
+            {cmsItems.filter((item: any) => item.type === 'CAROUSEL').length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.length})</h3>
+                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.filter((item: any) => item.type === 'CAROUSEL').length})</h3>
                 <div className="space-y-2">
-                  {cmsItems.map((item: any) => (
+                  {cmsItems.filter((item: any) => item.type === 'CAROUSEL').map((item: any) => (
                     <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
                       <img src={item.imageUrl?.startsWith('/uploads') ? `${API}${item.imageUrl}` : item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -1237,6 +1784,7 @@ export const AdminDashboard: React.FC = () => {
             </form>
           </div>
         )}
+        </motion.div>
       </main>
     </div>
   );

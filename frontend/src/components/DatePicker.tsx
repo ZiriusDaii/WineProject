@@ -1,12 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface DatePickerProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   availableDates?: Set<string>;
+  markedDates?: Set<string>;
   minDate?: string;
   className?: string;
   disabled?: boolean;
+  // "Hoy" en la zona del negocio (YYYY-MM-DD), cuando el llamador ya la sabe
+  // (ej. el admin puede estar conectado desde otro huso horario) -- sin esto
+  // se usa la hora local del navegador, que es lo correcto para el flujo de
+  // reserva (el cliente esta fisicamente donde reserva).
+  todayKey?: string;
+  // Para vistas donde se necesita poder abrir/marcar fechas pasadas (ej. el
+  // calendario del admin, para ver citas que ya ocurrieron) en vez del
+  // comportamiento por defecto de deshabilitarlas.
+  allowPast?: boolean;
 }
 
 const MONTHS = [
@@ -22,20 +32,53 @@ const toDateKey = (year: number, month: number, day: number) => {
   return `${year}-${m}-${d}`;
 };
 
-export const DatePicker: React.FC<DatePickerProps> = ({
+export const DatePicker: React.FC<DatePickerProps> = React.memo(({
   selectedDate,
   onSelectDate,
   availableDates,
+  markedDates,
   minDate,
   className = '',
   disabled = false,
+  todayKey,
+  allowPast = false,
 }) => {
-  const today = useMemo(() => new Date(), []);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  // Sin memo: si el picker queda montado cruzando la medianoche (una
+  // pestana de admin abierta toda la noche, por ejemplo), congelar "hoy" en
+  // el primer render dejaria "Hoy", el minimo y el resaltado de hoy mal.
+  const today = new Date();
+  const todayStr = todayKey ?? toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-  const minDateStr = minDate || toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-  const todayStr = toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  // Leer `new Date()` fresco en cada render no alcanza si el picker esta
+  // inactivo (nada mas lo re-renderiza) justo cuando pasa la medianoche --
+  // este timer se auto-reprograma para forzar un re-render en ese momento.
+  const [, forceMidnightRefresh] = useState(0);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const scheduleNextMidnight = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+      timer = setTimeout(() => {
+        forceMidnightRefresh(n => n + 1);
+        scheduleNextMidnight();
+      }, nextMidnight.getTime() - now.getTime());
+    };
+    scheduleNextMidnight();
+    return () => clearTimeout(timer);
+  }, []);
+
+  // La vista inicial arranca en el mes de `selectedDate` cuando ya hay una
+  // fecha elegida (ej. el admin reabre el calendario en un dia ya marcado),
+  // en vez de siempre el mes de "hoy" del navegador.
+  const [initialYear, initialMonth] = useMemo(() => {
+    const source = selectedDate || todayStr;
+    const [y, m] = source.split('-').map(Number);
+    return y && m ? [y, m - 1] : [today.getFullYear(), today.getMonth()];
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [viewYear, setViewYear] = useState(initialYear);
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+
+  const minDateStr = allowPast ? '' : (minDate || todayStr);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
@@ -51,9 +94,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   };
 
   const goToday = () => {
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
-    onSelectDate(todayStr);
+    const [ty, tm] = todayStr.split('-').map(Number);
+    setViewYear(ty);
+    setViewMonth(tm - 1);
+    // "Hoy" navegaba el calendario Y seleccionaba la fecha sin chequear las
+    // mismas restricciones que bloquean el boton de cada dia (minDate,
+    // availableDates) -- podia seleccionar un dia sin disponibilidad real.
+    const isBlocked = (!!minDateStr && todayStr < minDateStr) || (availableDates ? !availableDates.has(todayStr) : false);
+    if (!isBlocked) onSelectDate(todayStr);
   };
 
   const days: (number | null)[] = [];
@@ -104,6 +152,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           const isToday = dateStr === todayStr;
           const isSelected = dateStr === selectedDate;
           const hasAvailability = availableDates ? availableDates.has(dateStr) : true;
+          const isMarked = markedDates?.has(dateStr);
 
           return (
             <button
@@ -111,8 +160,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               type="button"
               disabled={disabled || isPast || !hasAvailability}
               onClick={() => onSelectDate(dateStr)}
+              aria-label={`${day} de ${MONTHS[viewMonth]}${isMarked ? ', tiene citas agendadas' : ''}`}
               className={`
-                w-8 h-8 rounded-full text-[11px] font-medium mx-auto flex items-center justify-center transition-all
+                relative w-8 h-8 rounded-full text-[11px] font-medium mx-auto flex items-center justify-center transition-all
                 ${isSelected
                   ? 'bg-[#5C0632] text-white shadow-md'
                   : isPast
@@ -125,6 +175,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               `}
             >
               {day}
+              {isMarked && (
+                <span className={`absolute bottom-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-[#8E1B54]'}`} />
+              )}
             </button>
           );
         })}
@@ -143,4 +196,4 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       </div>
     </div>
   );
-};
+});
