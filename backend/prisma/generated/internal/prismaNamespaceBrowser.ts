@@ -58,7 +58,8 @@ export const ModelName = {
   ManicuristSchedule: 'ManicuristSchedule',
   Appointment: 'Appointment',
   SpecialOffer: 'SpecialOffer',
-  LandingContent: 'LandingContent'
+  LandingContent: 'LandingContent',
+  WhatsAppMessage: 'WhatsAppMessage'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -188,6 +189,21 @@ export const LandingContentScalarFieldEnum = {
 } as const
 
 export type LandingContentScalarFieldEnum = (typeof LandingContentScalarFieldEnum)[keyof typeof LandingContentScalarFieldEnum]
+
+
+export const WhatsAppMessageScalarFieldEnum = {
+  id: 'id',
+  waMessageId: 'waMessageId',
+  from: 'from',
+  to: 'to',
+  body: 'body',
+  direction: 'direction',
+  status: 'status',
+  conversationId: 'conversationId',
+  createdAt: 'createdAt'
+} as const
+
+export type WhatsAppMessageScalarFieldEnum = (typeof WhatsAppMessageScalarFieldEnum)[keyof typeof WhatsAppMessageScalarFieldEnum]
 
 
 export const SortOrder = {

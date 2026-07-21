@@ -27,3 +27,22 @@ export const AppointmentStatus = {
 } as const
 
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus]
+
+
+export const WhatsAppDirection = {
+  INBOUND: 'INBOUND',
+  OUTBOUND: 'OUTBOUND'
+} as const
+
+export type WhatsAppDirection = (typeof WhatsAppDirection)[keyof typeof WhatsAppDirection]
+
+
+export const WhatsAppMessageStatus = {
+  RECEIVED: 'RECEIVED',
+  SENT: 'SENT',
+  DELIVERED: 'DELIVERED',
+  READ: 'READ',
+  FAILED: 'FAILED'
+} as const
+
+export type WhatsAppMessageStatus = (typeof WhatsAppMessageStatus)[keyof typeof WhatsAppMessageStatus]

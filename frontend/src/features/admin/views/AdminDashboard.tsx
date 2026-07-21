@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
+import { WhatsAppChat } from '../components/WhatsAppChat';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const authHeaders = () => {
@@ -117,7 +118,7 @@ function getISOWeek(date: Date): { week: number; year: number } {
   return { week, year: d.getUTCFullYear() };
 }
 
-type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news' | 'schedule';
+type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news' | 'schedule' | 'chats';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pendiente', IN_PROGRESS: 'En Curso', COMPLETED: 'Completada', CANCELLED: 'Cancelada',
@@ -668,6 +669,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'services', label: 'Servicios' },
     { id: 'offers', label: 'Descuentos' },
     { id: 'news', label: 'CMS / Landing' },
+    { id: 'chats', label: 'Chats' },
   ];
 
   const pagination = (total: number) => (
@@ -1784,6 +1786,9 @@ export const AdminDashboard: React.FC = () => {
             </form>
           </div>
         )}
+
+        {/* CHATS */}
+        {activeTab === 'chats' && <WhatsAppChat />}
         </motion.div>
       </main>
     </div>

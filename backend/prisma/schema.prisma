@@ -21,6 +21,19 @@ enum AppointmentStatus {
   CANCELLED
 }
 
+enum WhatsAppDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppMessageStatus {
+  RECEIVED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
 model User {
   id        String   @id @default(uuid())
   phone     String   @unique
@@ -140,4 +153,21 @@ model LandingContent {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("landing_content")
+}
+
+model WhatsAppMessage {
+  id             String                @id @default(uuid())
+  waMessageId    String?               @unique @map("wa_message_id")
+  from           String
+  to             String
+  body           String
+  direction      WhatsAppDirection
+  status         WhatsAppMessageStatus @default(RECEIVED)
+  conversationId String                @map("conversation_id")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  @@index([from])
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
 }

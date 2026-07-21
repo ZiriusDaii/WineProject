@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { prisma } from "../lib/prisma.js";
 import { sendInteractiveMessage } from "../services/whatsapp.service.js";
 
 export async function verifyWebhook(req: Request, res: Response): Promise<void> {
@@ -46,7 +47,7 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
     const message = body.entry[0].changes[0].value.messages[0];
     const from: string | undefined = message?.from;
     const messageId: string | undefined = message?.id;
-    const messageBody: string = message?.text?.body || "";
+    const messageBody: string = message?.text?.body || message?.caption || "[Mensaje interactivo/multimedia]";
 
     console.log(`[WhatsApp Webhook] Mensaje de ${from} (ID: ${messageId}): "${messageBody}"`);
 
@@ -55,6 +56,25 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
     if (!from) {
       console.warn("[WhatsApp Webhook] Mensaje sin remitente (from), no se envia respuesta");
       return;
+    }
+
+    const normalizedPhone = from.replace(/\D/g, "");
+    const conversationId = `conv_${normalizedPhone}`;
+
+    try {
+      await prisma.whatsAppMessage.create({
+        data: {
+          waMessageId: messageId || `wamid.in.${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          from,
+          to: process.env.WHATSAPP_PHONE_NUMBER_ID || "WineSpa",
+          body: messageBody,
+          direction: "INBOUND",
+          status: "RECEIVED",
+          conversationId,
+        },
+      });
+    } catch (dbErr) {
+      console.error("[WhatsApp Webhook] Error guardando mensaje en DB:", dbErr);
     }
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
