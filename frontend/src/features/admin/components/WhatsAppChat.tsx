@@ -96,11 +96,10 @@ const ConversationListItem = React.memo<{
   conversation: Conversation;
   isActive: boolean;
   onSelect: (id: string) => void;
-}>(({ conversation, isActive, onSelect }) => {
-  const isRecent = useMemo(() => {
-    if (!conversation.lastMessageAt) return false;
-    return Date.now() - new Date(conversation.lastMessageAt).getTime() < 5 * 60 * 1000;
-  }, [conversation.lastMessageAt]);
+}>(({ conversation, isActive, onSelect, now }) => {
+  const isRecent = conversation.lastMessageAt
+    ? now - new Date(conversation.lastMessageAt).getTime() < 5 * 60 * 1000
+    : false;
 
   const displayTitle = conversation.clientName || conversation.phoneNumber;
 
@@ -249,6 +248,15 @@ export const WhatsAppChat: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeFetchController = useRef<AbortController | null>(null);
   const prevTotalUnread = useRef<number>(0);
+
+  const [now, setNow] = useState(0);
+
+  // Refresh `now` every 10s for online indicators
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -482,8 +490,8 @@ export const WhatsAppChat: React.FC = () => {
 
   const isSelectedOnline = useMemo(() => {
     if (!selectedConv?.lastMessageAt) return false;
-    return Date.now() - new Date(selectedConv.lastMessageAt).getTime() < 5 * 60 * 1000;
-  }, [selectedConv]);
+    return now - new Date(selectedConv.lastMessageAt).getTime() < 5 * 60 * 1000;
+  }, [selectedConv, now]);
 
   return (
     <div className="h-[calc(100vh-120px)] bg-white/70 backdrop-blur-md rounded-2xl border border-[#EADEC9]/50 shadow-lg overflow-hidden flex flex-col md:flex-row">
@@ -561,6 +569,7 @@ export const WhatsAppChat: React.FC = () => {
                 conversation={conv}
                 isActive={conv.conversationId === selectedConversationId}
                 onSelect={handleSelectConversation}
+                now={now}
               />
             ))
           )}
