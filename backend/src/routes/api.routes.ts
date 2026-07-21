@@ -48,6 +48,15 @@ import {
 } from "../controllers/manicurist.controller.js";
 import { loginStaff } from "../controllers/auth.controller.js";
 import { getLandingContent } from "../controllers/landing.controller.js";
+import {
+  listConversations,
+  getConversationMessages,
+  sendAdminReply,
+  markConversationAsRead,
+  resolveAttentionRequest,
+  deleteConversation,
+} from "../controllers/whatsapp-admin.controller.js";
+import { getTemplates, updateTemplate } from "../controllers/whatsapp-config.controller.js";
 
 const router = Router();
 
@@ -94,6 +103,17 @@ router.patch("/admin/shift-templates/:id", requireAdmin, updateShiftTemplate);
 router.delete("/admin/shift-templates/:id", requireAdmin, deleteShiftTemplate);
 router.get("/admin/manicurist-schedule", requireAdmin, getManicuristScheduleWeek);
 router.put("/admin/manicurist-schedule", requireAdmin, assignManicuristSchedule);
+
+// WhatsApp Admin routes
+router.get("/admin/whatsapp/conversations", requireAdmin, listConversations);
+router.get("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, getConversationMessages);
+router.post("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, sendAdminReply);
+router.patch("/admin/whatsapp/conversations/:conversationId/read", requireAdmin, markConversationAsRead);
+router.patch("/admin/whatsapp/conversations/:conversationId/resolve", requireAdmin, resolveAttentionRequest);
+router.delete("/admin/whatsapp/conversations/:conversationId", requireAdmin, deleteConversation);
+
+router.get("/admin/whatsapp/templates", requireAdmin, getTemplates);
+router.put("/admin/whatsapp/templates/:id", requireAdmin, updateTemplate);
 
 router.post(
   "/admin/manicurists/upload-avatar",

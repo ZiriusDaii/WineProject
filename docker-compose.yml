@@ -23,6 +23,13 @@ services:
       PORT: ${PORT:-3000}
       JWT_SECRET: ${JWT_SECRET:-winespa-jwt-dev-secret}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+      WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+      WHATSAPP_TEST_NUMBER: ${WHATSAPP_TEST_NUMBER}
+      MOCK_WHATSAPP: ${MOCK_WHATSAPP:-true}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     ports:
       - "${PORT:-3000}:3000"
     volumes:

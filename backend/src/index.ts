@@ -6,6 +6,8 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { prisma } from "./lib/prisma.js";
 import apiRoutes from "./routes/api.routes.js";
+import whatsappRoutes from "./routes/whatsapp.routes.js";
+import { startAppointmentReminderScheduler } from "./services/whatsapp-scheduler.js";
 
 dotenv.config();
 
@@ -82,6 +84,8 @@ app.post("/api/clients/auth", authLimiter);
 
 app.use("/uploads", express.static(path.resolve("uploads"), { index: false }));
 
+app.use("/api/whatsapp", whatsappRoutes);
+
 app.use("/api", apiRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
@@ -100,3 +104,5 @@ app.get("/health", async (_req: Request, res: Response) => {
 app.listen(PORT, () => {
   console.log(`Servidor WineSpa corriendo en http://localhost:${PORT}`);
 });
+
+startAppointmentReminderScheduler();

@@ -57,3 +57,8 @@ export type SpecialOffer = Prisma.SpecialOfferModel
  * 
  */
 export type LandingContent = Prisma.LandingContentModel
+/**
+ * Model WhatsAppMessage
+ * 
+ */
+export type WhatsAppMessage = Prisma.WhatsAppMessageModel
