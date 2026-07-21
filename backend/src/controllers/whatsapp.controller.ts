@@ -44,18 +44,22 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
     }
 
     const message = body.entry[0].changes[0].value.messages[0];
-    const from = message.from;
-    const messageId = message.id;
-    const messageBody = message.text?.body || "";
+    const from: string | undefined = message?.from;
+    const messageId: string | undefined = message?.id;
+    const messageBody: string = message?.text?.body || "";
 
     console.log(`[WhatsApp Webhook] Mensaje de ${from} (ID: ${messageId}): "${messageBody}"`);
 
     res.sendStatus(200);
 
+    if (!from) {
+      console.warn("[WhatsApp Webhook] Mensaje sin remitente (from), no se envia respuesta");
+      return;
+    }
+
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 
-    // Procesamiento asincrono: no bloquea la respuesta a Meta
-    setImmediate(async () => {
+    void (async () => {
       try {
         console.log(`[WhatsApp Webhook] Procesando respuesta asincrona para ${from}...`);
         await sendInteractiveMessage(
@@ -68,7 +72,7 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
       } catch (err) {
         console.error(`[WhatsApp Webhook] Error enviando respuesta asincrona a ${from}:`, err);
       }
-    });
+    })();
   } catch (error) {
     console.error("[WhatsApp Webhook] Error procesando mensaje:", error);
     res.sendStatus(200);

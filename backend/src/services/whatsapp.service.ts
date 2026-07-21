@@ -1,6 +1,10 @@
 const API_VERSION = "v18.0";
 const BASE_URL = "https://graph.facebook.com";
 
+interface MetaMessageResponse {
+  messages?: Array<{ id?: string }>;
+}
+
 function getApiUrl(): string {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!phoneNumberId) {
@@ -39,7 +43,7 @@ export async function sendMessage(to: string, messageText: string): Promise<void
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as MetaMessageResponse;
 
     if (!response.ok) {
       console.error(`[WhatsApp] Error al enviar mensaje a ${to}:`, JSON.stringify(data, null, 2));
@@ -90,7 +94,7 @@ export async function sendInteractiveMessage(
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as MetaMessageResponse;
 
     if (!response.ok) {
       console.error(`[WhatsApp] Error al enviar mensaje interactivo a ${to}:`, JSON.stringify(data, null, 2));
