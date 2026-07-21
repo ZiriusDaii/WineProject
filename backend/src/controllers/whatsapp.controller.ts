@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
-import { sendInteractiveMessage } from "../services/whatsapp.service.js";
+import { sendButtonMessage, sendInteractiveMessage, sendMessage } from "../services/whatsapp.service.js";
 
 export async function verifyWebhook(req: Request, res: Response): Promise<void> {
   try {
@@ -47,9 +47,7 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
     const message = body.entry[0].changes[0].value.messages[0];
     const from: string | undefined = message?.from;
     const messageId: string | undefined = message?.id;
-    const messageBody: string = message?.text?.body || message?.caption || "[Mensaje interactivo/multimedia]";
-
-    console.log(`[WhatsApp Webhook] Mensaje de ${from} (ID: ${messageId}): "${messageBody}"`);
+    const messageType: string = message?.type || "text";
 
     res.sendStatus(200);
 
@@ -60,6 +58,19 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
 
     const normalizedPhone = from.replace(/\D/g, "");
     const conversationId = `conv_${normalizedPhone}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    const isInteractiveReply = messageType === "interactive" && message?.interactive?.type === "button_reply";
+    const buttonId: string | null = isInteractiveReply ? message?.interactive?.button_reply?.id || null : null;
+    const buttonTitle: string = isInteractiveReply ? message?.interactive?.button_reply?.title || "" : "";
+
+    // Determine the message body to store
+    const textBody = message?.text?.body || "";
+    const displayBody = isInteractiveReply
+      ? `[Botón: ${buttonTitle}]`
+      : (textBody || message?.caption || "[Mensaje interactivo/multimedia]");
+
+    console.log(`[WhatsApp Webhook] Mensaje de ${from} (ID: ${messageId}, tipo: ${messageType}${buttonId ? `, boton: ${buttonId}` : ""}): "${displayBody}"`);
 
     try {
       await prisma.whatsAppMessage.create({
@@ -67,7 +78,7 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
           waMessageId: messageId || `wamid.in.${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           from,
           to: process.env.WHATSAPP_PHONE_NUMBER_ID || "WineSpa",
-          body: messageBody,
+          body: displayBody,
           direction: "INBOUND",
           status: "RECEIVED",
           conversationId,
@@ -77,24 +88,93 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
       console.error("[WhatsApp Webhook] Error guardando mensaje en DB:", dbErr);
     }
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-
     void (async () => {
       try {
-        console.log(`[WhatsApp Webhook] Procesando respuesta asincrona para ${from}...`);
-        await sendInteractiveMessage(
-          from,
-          "WineSpa",
-          "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. Reserva tu cita facil y rapido desde nuestra app.",
-          "Agendar Cita",
-          frontendUrl,
-        );
+        if (isInteractiveReply && buttonId) {
+          await handleButtonReply(from, buttonId, conversationId, frontendUrl);
+        } else {
+          await handleTextMessage(from, conversationId, frontendUrl);
+        }
       } catch (err) {
-        console.error(`[WhatsApp Webhook] Error enviando respuesta asincrona a ${from}:`, err);
+        console.error(`[WhatsApp Webhook] Error enviando respuesta a ${from}:`, err);
       }
     })();
   } catch (error) {
     console.error("[WhatsApp Webhook] Error procesando mensaje:", error);
     res.sendStatus(200);
+  }
+}
+
+async function handleTextMessage(to: string, conversationId: string, frontendUrl: string): Promise<void> {
+  console.log(`[WhatsApp Webhook] Enviando menu de opciones a ${to}...`);
+  await sendButtonMessage(to, "WineSpa", "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. ¿Como podemos ayudarte hoy?", [
+    { id: "agendar_cita", title: "Agendar Cita" },
+    { id: "modificar_cita", title: "Modificar Cita" },
+    { id: "solicitar_asesor", title: "Solicitar Asesor" },
+  ]);
+}
+
+async function handleButtonReply(
+  to: string,
+  buttonId: string,
+  conversationId: string,
+  frontendUrl: string,
+): Promise<void> {
+  console.log(`[WhatsApp Webhook] Procesando boton "${buttonId}" de ${to}...`);
+
+  switch (buttonId) {
+    case "agendar_cita": {
+      const bookingUrl = `${frontendUrl}?view=booking`;
+      await sendInteractiveMessage(
+        to,
+        "Agenda tu Cita",
+        "Reserva tu servicio de uñas de forma rapida y facil. Elige entre Manicure Tradicional, Semipermanente, Pedicure Premium y Unias Esculpidas en Gel.",
+        "Agendar Ahora",
+        bookingUrl,
+      );
+      break;
+    }
+
+    case "modificar_cita": {
+      const portalUrl = `${frontendUrl}?view=clientPortal`;
+      await sendInteractiveMessage(
+        to,
+        "Modifica tu Cita",
+        "Ingresa a tu portal de cliente para ver, modificar o cancelar tus citas agendadas. Necesitaras tu numero de telefono para acceder.",
+        "Ir a Mis Citas",
+        portalUrl,
+      );
+      break;
+    }
+
+    case "solicitar_asesor": {
+      // Flag the conversation so admin sees an alert
+      try {
+        await prisma.whatsAppMessage.create({
+          data: {
+            waMessageId: `wamid.flag.${Date.now()}`,
+            from: "WineSpa",
+            to,
+            body: "El cliente solicito atencion de un asesor.",
+            direction: "OUTBOUND",
+            status: "SENT",
+            conversationId,
+            flagged: true,
+          },
+        });
+      } catch (dbErr) {
+        console.error("[WhatsApp Webhook] Error guardando flag de asesor:", dbErr);
+      }
+
+      await sendMessage(
+        to,
+        "Un asesor de WineSpa revisara tu caso y te contactara por este medio lo mas pronto posible. ¡Gracias por tu paciencia!",
+      );
+      break;
+    }
+
+    default:
+      console.log(`[WhatsApp Webhook] Boton desconocido "${buttonId}", reenviando menu...`);
+      await handleTextMessage(to, conversationId, frontendUrl);
   }
 }

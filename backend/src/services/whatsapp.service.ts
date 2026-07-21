@@ -26,6 +26,65 @@ function getAuthHeader(): Record<string, string> {
   };
 }
 
+export async function sendButtonMessage(
+  to: string,
+  headerText: string,
+  bodyText: string,
+  buttons: Array<{ id: string; title: string }>,
+): Promise<void> {
+  if (isMockMode()) {
+    console.log(`[WhatsApp MOCK] Mensaje con botones a ${to}:`);
+    console.log(`[WhatsApp MOCK]   Header: "${headerText}"`);
+    console.log(`[WhatsApp MOCK]   Body: "${bodyText}"`);
+    buttons.forEach((b) => console.log(`[WhatsApp MOCK]   Boton: [${b.id}] ${b.title}`));
+    console.log(`[WhatsApp MOCK]   Message ID simulado: wamid.mock.${Date.now()}`);
+    return;
+  }
+
+  try {
+    const apiUrl = getApiUrl();
+    const maxButtons = Math.min(buttons.length, 3);
+
+    const body = {
+      messaging_product: "whatsapp",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        header: { type: "text", text: headerText },
+        body: { text: bodyText },
+        footer: { text: "WineSpa - Agendamiento Premium" },
+        action: {
+          buttons: buttons.slice(0, maxButtons).map((b) => ({
+            type: "reply",
+            reply: { id: b.id, title: b.title },
+          })),
+        },
+      },
+    };
+
+    console.log(`[WhatsApp] Enviando mensaje con ${maxButtons} botones a ${to}`);
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: JSON.stringify(body),
+    });
+
+    const data = (await response.json()) as MetaMessageResponse;
+
+    if (!response.ok) {
+      console.error(`[WhatsApp] Error al enviar mensaje con botones a ${to}:`, JSON.stringify(data, null, 2));
+      throw new Error(`Meta API error: ${response.status} - ${JSON.stringify(data)}`);
+    }
+
+    console.log(`[WhatsApp] Mensaje con botones enviado exitosamente a ${to}. Message ID: ${data.messages?.[0]?.id || "N/A"}`);
+  } catch (error) {
+    console.error(`[WhatsApp] Fallo al enviar mensaje con botones a ${to}:`, error);
+    throw error;
+  }
+}
+
 export async function sendMessage(to: string, messageText: string): Promise<void> {
   if (isMockMode()) {
     console.log(`[WhatsApp MOCK] Mensaje de texto a ${to}: "${messageText}"`);

@@ -53,6 +53,7 @@ import {
   getConversationMessages,
   sendAdminReply,
   markConversationAsRead,
+  resolveAttentionRequest,
 } from "../controllers/whatsapp-admin.controller.js";
 
 const router = Router();
@@ -106,6 +107,7 @@ router.get("/admin/whatsapp/conversations", requireAdmin, listConversations);
 router.get("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, getConversationMessages);
 router.post("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, sendAdminReply);
 router.patch("/admin/whatsapp/conversations/:conversationId/read", requireAdmin, markConversationAsRead);
+router.patch("/admin/whatsapp/conversations/:conversationId/resolve", requireAdmin, resolveAttentionRequest);
 
 router.post(
   "/admin/manicurists/upload-avatar",

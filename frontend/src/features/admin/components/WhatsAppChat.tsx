@@ -19,6 +19,7 @@ export interface Conversation {
   lastMessageAt: string;
   unreadCount: number;
   totalMessages: number;
+  hasAttentionRequest?: boolean;
 }
 
 export interface Message {
@@ -163,6 +164,17 @@ const ConversationListItem = React.memo<{
           className="shrink-0 bg-[#8E1B54] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs self-center"
         >
           {conversation.unreadCount}
+        </motion.span>
+      )}
+      {/* Attention request badge */}
+      {conversation.hasAttentionRequest && (
+        <motion.span
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="shrink-0 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-xs self-center"
+          title="Cliente solicito atencion de un asesor"
+        >
+          🛎
         </motion.span>
       )}
     </motion.button>
@@ -564,43 +576,76 @@ export const WhatsAppChat: React.FC = () => {
         {selectedConversationId && selectedConv ? (
           <>
             {/* Header */}
-            <div className="p-3.5 border-b border-[#EADEC9]/40 bg-white/80 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setMobileView('list')}
-                  className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 text-xs font-semibold"
-                >
-                  ← Volver
-                </button>
-                <div className="w-9 h-9 rounded-full bg-[#5C0632]/10 border border-[#8E1B54]/20 flex items-center justify-center font-bold text-xs text-[#5C0632]">
-                  {selectedConv.clientName
-                    ? selectedConv.clientName.slice(0, 2).toUpperCase()
-                    : '📞'}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-xs text-[#3B0019]">
-                      {selectedConv.clientName || selectedConv.phoneNumber}
-                    </h3>
-                    {selectedConv.clientRole && (
-                      <span className="px-1.5 py-0.2 bg-[#8E1B54]/10 text-[#8E1B54] text-[9px] font-bold rounded-full">
-                        {selectedConv.clientRole}
-                      </span>
-                    )}
+            <div className="p-3.5 border-b border-[#EADEC9]/40 bg-white/80 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setMobileView('list')}
+                    className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 text-xs font-semibold"
+                  >
+                    ← Volver
+                  </button>
+                  <div className="w-9 h-9 rounded-full bg-[#5C0632]/10 border border-[#8E1B54]/20 flex items-center justify-center font-bold text-xs text-[#5C0632]">
+                    {selectedConv.clientName
+                      ? selectedConv.clientName.slice(0, 2).toUpperCase()
+                      : '📞'}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-stone-400 font-mono">
-                    <span>{selectedConv.phoneNumber}</span>
-                    {isSelectedOnline ? (
-                      <span className="flex items-center gap-1 text-emerald-600 font-sans font-medium">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                        En linea
-                      </span>
-                    ) : (
-                      <span>• Ultimo mensaje {formatTime(selectedConv.lastMessageAt)}</span>
-                    )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-xs text-[#3B0019]">
+                        {selectedConv.clientName || selectedConv.phoneNumber}
+                      </h3>
+                      {selectedConv.clientRole && (
+                        <span className="px-1.5 py-0.2 bg-[#8E1B54]/10 text-[#8E1B54] text-[9px] font-bold rounded-full">
+                          {selectedConv.clientRole}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-stone-400 font-mono">
+                      <span>{selectedConv.phoneNumber}</span>
+                      {isSelectedOnline ? (
+                        <span className="flex items-center gap-1 text-emerald-600 font-sans font-medium">
+                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                          En linea
+                        </span>
+                      ) : (
+                        <span>• Ultimo mensaje {formatTime(selectedConv.lastMessageAt)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
+              {selectedConv.hasAttentionRequest && (
+                <div className="mt-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🛎</span>
+                    <div>
+                      <p className="text-[11px] font-semibold text-amber-800">Cliente solicito atencion personal</p>
+                      <p className="text-[10px] text-amber-600">Responde directamente en este chat</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fetch(
+                          `${API}/api/admin/whatsapp/conversations/${selectedConversationId}/resolve`,
+                          { method: 'PATCH', headers: authHeaders() }
+                        );
+                        setConversations((prev) =>
+                          prev.map((c) =>
+                            c.conversationId === selectedConversationId
+                              ? { ...c, hasAttentionRequest: false }
+                              : c
+                          )
+                        );
+                      } catch { /* ignore */ }
+                    }}
+                    className="shrink-0 px-2 py-1 text-[10px] font-bold bg-amber-200 hover:bg-amber-300 text-amber-800 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Atendido
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Message Thread Body */}

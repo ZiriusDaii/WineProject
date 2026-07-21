@@ -164,6 +164,7 @@ model WhatsAppMessage {
   direction      WhatsAppDirection
   status         WhatsAppMessageStatus @default(RECEIVED)
   conversationId String                @map("conversation_id")
+  flagged        Boolean               @default(false)
   createdAt      DateTime              @default(now()) @map("created_at")
 
   @@index([from])

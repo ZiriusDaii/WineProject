@@ -52,6 +52,10 @@ export async function listConversations(req: Request, res: Response): Promise<vo
           },
         });
 
+        const hasAttentionRequest = await prisma.whatsAppMessage.count({
+          where: { conversationId, flagged: true },
+        });
+
         const phoneNumber = conversationId.replace(/^conv_/, "");
         const matchedUser = userMap.get(phoneNumber) || userMap.get(`+${phoneNumber}`) || null;
 
@@ -64,6 +68,7 @@ export async function listConversations(req: Request, res: Response): Promise<vo
           lastMessageAt: lastMessageAt.toISOString(),
           unreadCount,
           totalMessages,
+          hasAttentionRequest: hasAttentionRequest > 0,
         };
       })
     );
@@ -216,5 +221,27 @@ export async function markConversationAsRead(req: Request, res: Response): Promi
   } catch (error) {
     console.error("[WhatsApp Admin Controller] Error en markConversationAsRead:", error);
     res.status(500).json({ error: "Error al marcar mensajes como leidos" });
+  }
+}
+
+export async function resolveAttentionRequest(req: Request, res: Response): Promise<void> {
+  try {
+    const rawConversationId = req.params.conversationId;
+    const conversationId = Array.isArray(rawConversationId) ? rawConversationId[0] : String(rawConversationId || "");
+
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId es requerido" });
+      return;
+    }
+
+    await prisma.whatsAppMessage.updateMany({
+      where: { conversationId, flagged: true },
+      data: { flagged: false },
+    });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("[WhatsApp Admin Controller] Error en resolveAttentionRequest:", error);
+    res.status(500).json({ error: "Error al resolver solicitud de atencion" });
   }
 }
