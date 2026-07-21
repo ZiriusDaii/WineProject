@@ -6,6 +6,7 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { prisma } from "./lib/prisma.js";
 import apiRoutes from "./routes/api.routes.js";
+import whatsappRoutes from "./routes/whatsapp.routes.js";
 
 dotenv.config();
 
@@ -81,6 +82,8 @@ app.post("/api/clients", authLimiter);
 app.post("/api/clients/auth", authLimiter);
 
 app.use("/uploads", express.static(path.resolve("uploads"), { index: false }));
+
+app.use("/api/whatsapp", whatsappRoutes);
 
 app.use("/api", apiRoutes);
 
