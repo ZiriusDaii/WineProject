@@ -5,6 +5,8 @@ interface MetaMessageResponse {
   messages?: Array<{ id?: string }>;
 }
 
+const isMockMode = (): boolean => process.env.MOCK_WHATSAPP === "true";
+
 function getApiUrl(): string {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!phoneNumberId) {
@@ -25,6 +27,12 @@ function getAuthHeader(): Record<string, string> {
 }
 
 export async function sendMessage(to: string, messageText: string): Promise<void> {
+  if (isMockMode()) {
+    console.log(`[WhatsApp MOCK] Mensaje de texto a ${to}: "${messageText}"`);
+    console.log(`[WhatsApp MOCK] Message ID simulado: wamid.mock.${Date.now()}`);
+    return;
+  }
+
   try {
     const url = getApiUrl();
 
@@ -64,6 +72,15 @@ export async function sendInteractiveMessage(
   buttonText: string,
   url: string,
 ): Promise<void> {
+  if (isMockMode()) {
+    console.log(`[WhatsApp MOCK] Mensaje interactivo a ${to}:`);
+    console.log(`[WhatsApp MOCK]   Header: "${headerText}"`);
+    console.log(`[WhatsApp MOCK]   Body: "${bodyText}"`);
+    console.log(`[WhatsApp MOCK]   Button: "${buttonText}" -> ${url}`);
+    console.log(`[WhatsApp MOCK]   Message ID simulado: wamid.mock.${Date.now()}`);
+    return;
+  }
+
   try {
     const apiUrl = getApiUrl();
 
