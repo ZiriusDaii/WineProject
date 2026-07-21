@@ -268,11 +268,13 @@ export async function authClient(
     const { phone } = req.body as { phone?: string };
 
     if (!phone) {
+      console.warn(`Input rechazado (authClient): campo=phone ip=${req.ip}`);
       res.status(400).json({ error: "El campo 'phone' es requerido" });
       return;
     }
 
     if (!isValidPhone(phone)) {
+      console.warn(`Input rechazado (authClient): campo=phone (formato) ip=${req.ip}`);
       res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
       return;
     }
@@ -328,6 +330,7 @@ export async function createClient(
     };
 
     if (!phone || !name) {
+      console.warn(`Input rechazado (createClient): campo=phone/name ip=${req.ip}`);
       res
         .status(400)
         .json({ error: "Los campos 'phone' y 'name' son requeridos" });
@@ -335,16 +338,19 @@ export async function createClient(
     }
 
     if (!isValidPhone(phone)) {
+      console.warn(`Input rechazado (createClient): campo=phone (formato) ip=${req.ip}`);
       res.status(400).json({ error: "El campo 'phone' debe tener entre 7 y 10 digitos" });
       return;
     }
 
     if (name.length > 60) {
+      console.warn(`Input rechazado (createClient): campo=name (longitud) ip=${req.ip}`);
       res.status(400).json({ error: "El campo 'name' es demasiado largo" });
       return;
     }
 
     if (age != null && (age < 0 || age > 100)) {
+      console.warn(`Input rechazado (createClient): campo=age (rango) ip=${req.ip}`);
       res.status(400).json({ error: "El campo 'age' esta fuera de rango" });
       return;
     }
@@ -410,7 +416,7 @@ export async function createAppointment(
     }
 
     if (missing.length > 0) {
-      console.error("createAppointment - campos faltantes:", missing, "body:", req.body);
+      console.warn(`Input rechazado (createAppointment): campo=${missing.join("/")} ip=${req.ip}`);
       res.status(400).json({
         error: `Faltan campos requeridos: ${missing.join(", ")}`,
         missing,
@@ -428,6 +434,7 @@ export async function createAppointment(
     });
 
     if (services.length !== serviceIds!.length) {
+      console.warn(`Input rechazado (createAppointment): campo=serviceIds (inexistentes) ip=${req.ip}`);
       res.status(400).json({ error: "Uno o más serviceIds no existen" });
       return;
     }
@@ -440,16 +447,19 @@ export async function createAppointment(
     const parsedDate = new Date(date!);
 
     if (Number.isNaN(parsedDate.getTime()) || parsedDate.getTime() < Date.now()) {
+      console.warn(`Input rechazado (createAppointment): campo=date (pasada/invalida) ip=${req.ip}`);
       res.status(400).json({ error: "No es posible agendar una cita en una fecha u hora pasada" });
       return;
     }
 
     if (!isWithinBusinessHours(parsedDate, totalDuration)) {
+      console.warn(`Input rechazado (createAppointment): campo=date (fuera de horario del local) ip=${req.ip}`);
       res.status(400).json({ error: "El horario elegido esta fuera del horario del local" });
       return;
     }
 
     if (!(await isWithinManicuristShift(manicuristId!, parsedDate, totalDuration))) {
+      console.warn(`Input rechazado (createAppointment): campo=date (fuera del turno) ip=${req.ip}`);
       res.status(400).json({ error: "El horario elegido esta fuera del turno de la manicurista" });
       return;
     }
@@ -470,6 +480,7 @@ export async function createAppointment(
     for (const [, svcs] of categoryGroups) {
       if (svcs.length > 1) {
         const names = svcs.map((s) => `'${s.name}'`).join(" y ");
+        console.warn(`Input rechazado (createAppointment): campo=serviceIds (categoria duplicada) ip=${req.ip}`);
         res.status(400).json({
           error: `No podés agendar ${names} juntos: son de la misma categoría`,
         });

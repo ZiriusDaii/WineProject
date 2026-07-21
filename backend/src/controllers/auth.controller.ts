@@ -14,6 +14,7 @@ export async function loginStaff(
     };
 
     if (!username || !password) {
+      console.warn(`Input rechazado (loginStaff): campo=username/password ip=${req.ip}`);
       res
         .status(400)
         .json({ error: "Los campos 'username' y 'password' son requeridos" });
@@ -21,6 +22,7 @@ export async function loginStaff(
     }
 
     if (username.length > 30 || password.length > 64) {
+      console.warn(`Input rechazado (loginStaff): campo=username/password (longitud) ip=${req.ip}`);
       res.status(400).json({ error: "Usuario o contraseña demasiado largos" });
       return;
     }
@@ -41,11 +43,13 @@ export async function loginStaff(
     });
 
     if (!user) {
+      console.warn(`Login fallido: username=${username} ip=${req.ip}`);
       res.status(401).json({ error: "Credenciales inválidas" });
       return;
     }
 
     if (!user.password || !(await bcrypt.compare(password, user.password))) {
+      console.warn(`Login fallido: username=${username} ip=${req.ip}`);
       res.status(401).json({ error: "Credenciales inválidas" });
       return;
     }

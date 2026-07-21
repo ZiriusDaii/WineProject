@@ -9,6 +9,11 @@ import apiRoutes from "./routes/api.routes.js";
 
 dotenv.config();
 
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL es obligatorio (ver backend/.env.example)");
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 
@@ -48,6 +53,10 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiadas solicitudes, intente de nuevo mas tarde" },
+  handler: (req, res, _next, options) => {
+    console.warn(`Rate limit excedido: ip=${req.ip} ruta=${req.originalUrl}`);
+    res.status(options.statusCode).json(options.message);
+  },
 });
 app.use(globalLimiter);
 
@@ -57,6 +66,10 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiados intentos, intente de nuevo mas tarde" },
+  handler: (req, res, _next, options) => {
+    console.warn(`Rate limit excedido: ip=${req.ip} ruta=${req.originalUrl}`);
+    res.status(options.statusCode).json(options.message);
+  },
 });
 app.use("/api/auth", authLimiter);
 // Solo registro y login de cliente, no todo /api/clients (ese prefijo tambien
