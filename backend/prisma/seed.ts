@@ -101,6 +101,35 @@ async function main() {
   await seedUser("3001110005", "Laura Jiménez", "MANICURISTA", "laura_jimenez", "test123");
   await seedUser("3001110006", "Sofía Restrepo", "MANICURISTA", "sofia_restrepo", "test123");
 
+  console.log("\n📱 WhatsApp Templates:");
+  const welcomeTemplate = await prisma.whatsAppTemplate.upsert({
+    where: { name: "welcome" },
+    update: {
+      headerText: "WineSpa",
+      bodyText: "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. ¿Como podemos ayudarte hoy?",
+      button1Id: "agendar_cita",
+      button1Title: "Agendar Cita",
+      button2Id: "modificar_cita",
+      button2Title: "Modificar Cita",
+      button3Id: "solicitar_asesor",
+      button3Title: "Solicitar Asesor",
+      isActive: true,
+    },
+    create: {
+      name: "welcome",
+      headerText: "WineSpa",
+      bodyText: "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. ¿Como podemos ayudarte hoy?",
+      button1Id: "agendar_cita",
+      button1Title: "Agendar Cita",
+      button2Id: "modificar_cita",
+      button2Title: "Modificar Cita",
+      button3Id: "solicitar_asesor",
+      button3Title: "Solicitar Asesor",
+      isActive: true,
+    },
+  });
+  console.log(`  WhatsAppTemplate creado: ${welcomeTemplate.name}`);
+
   console.log("\n✅ Seed completado exitosamente.");
 }
 

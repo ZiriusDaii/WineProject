@@ -107,11 +107,20 @@ export async function receiveMessage(req: Request, res: Response): Promise<void>
 
 async function handleTextMessage(to: string, conversationId: string, frontendUrl: string): Promise<void> {
   console.log(`[WhatsApp Webhook] Enviando menu de opciones a ${to}...`);
-  await sendButtonMessage(to, "WineSpa", "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. ¿Como podemos ayudarte hoy?", [
-    { id: "agendar_cita", title: "Agendar Cita" },
-    { id: "modificar_cita", title: "Modificar Cita" },
-    { id: "solicitar_asesor", title: "Solicitar Asesor" },
-  ]);
+
+  const template = await prisma.whatsAppTemplate.findFirst({
+    where: { name: "welcome", isActive: true },
+  });
+
+  const headerText = template?.headerText || "WineSpa";
+  const bodyText = template?.bodyText || "¡Bienvenida a WineSpa! Tu espacio premium para el cuidado de uñas. ¿Como podemos ayudarte hoy?";
+  const buttons = [
+    { id: template?.button1Id || "agendar_cita", title: template?.button1Title || "Agendar Cita" },
+    { id: template?.button2Id || "modificar_cita", title: template?.button2Title || "Modificar Cita" },
+    { id: template?.button3Id || "solicitar_asesor", title: template?.button3Title || "Solicitar Asesor" },
+  ];
+
+  await sendButtonMessage(to, headerText, bodyText, buttons);
 }
 
 async function handleButtonReply(

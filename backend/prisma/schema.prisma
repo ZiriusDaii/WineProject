@@ -172,3 +172,20 @@ model WhatsAppMessage {
   @@index([createdAt])
   @@map("whatsapp_messages")
 }
+
+model WhatsAppTemplate {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  headerText   String   @map("header_text")
+  bodyText     String   @map("body_text")
+  button1Id    String   @default("agendar_cita") @map("button1_id")
+  button1Title String   @default("Agendar Cita") @map("button1_title")
+  button2Id    String   @default("modificar_cita") @map("button2_id")
+  button2Title String   @default("Modificar Cita") @map("button2_title")
+  button3Id    String   @default("solicitar_asesor") @map("button3_id")
+  button3Title String   @default("Solicitar Asesor") @map("button3_title")
+  isActive     Boolean  @default(true) @map("is_active")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapp_templates")
+}

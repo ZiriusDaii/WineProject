@@ -55,6 +55,7 @@ import {
   markConversationAsRead,
   resolveAttentionRequest,
 } from "../controllers/whatsapp-admin.controller.js";
+import { getTemplates, updateTemplate } from "../controllers/whatsapp-config.controller.js";
 
 const router = Router();
 
@@ -108,6 +109,9 @@ router.get("/admin/whatsapp/conversations/:conversationId/messages", requireAdmi
 router.post("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, sendAdminReply);
 router.patch("/admin/whatsapp/conversations/:conversationId/read", requireAdmin, markConversationAsRead);
 router.patch("/admin/whatsapp/conversations/:conversationId/resolve", requireAdmin, resolveAttentionRequest);
+
+router.get("/admin/whatsapp/templates", requireAdmin, getTemplates);
+router.put("/admin/whatsapp/templates/:id", requireAdmin, updateTemplate);
 
 router.post(
   "/admin/manicurists/upload-avatar",
