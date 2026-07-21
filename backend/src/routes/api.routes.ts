@@ -54,6 +54,7 @@ import {
   sendAdminReply,
   markConversationAsRead,
   resolveAttentionRequest,
+  deleteConversation,
 } from "../controllers/whatsapp-admin.controller.js";
 import { getTemplates, updateTemplate } from "../controllers/whatsapp-config.controller.js";
 
@@ -109,6 +110,7 @@ router.get("/admin/whatsapp/conversations/:conversationId/messages", requireAdmi
 router.post("/admin/whatsapp/conversations/:conversationId/messages", requireAdmin, sendAdminReply);
 router.patch("/admin/whatsapp/conversations/:conversationId/read", requireAdmin, markConversationAsRead);
 router.patch("/admin/whatsapp/conversations/:conversationId/resolve", requireAdmin, resolveAttentionRequest);
+router.delete("/admin/whatsapp/conversations/:conversationId", requireAdmin, deleteConversation);
 
 router.get("/admin/whatsapp/templates", requireAdmin, getTemplates);
 router.put("/admin/whatsapp/templates/:id", requireAdmin, updateTemplate);

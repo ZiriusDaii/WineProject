@@ -614,6 +614,25 @@ export const WhatsAppChat: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('¿Eliminar toda la conversacion? Esta accion no se puede deshacer.')) return;
+                    try {
+                      await fetch(
+                        `${API}/api/admin/whatsapp/conversations/${selectedConversationId}`,
+                        { method: 'DELETE', headers: authHeaders() }
+                      );
+                      setConversations((prev) => prev.filter((c) => c.conversationId !== selectedConversationId));
+                      setSelectedConversationId(null);
+                      setMessages([]);
+                      setMobileView('list');
+                    } catch { /* ignore */ }
+                  }}
+                  className="px-2 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  title="Eliminar conversacion"
+                >
+                  🗑 Eliminar
+                </button>
               </div>
               {selectedConv.hasAttentionRequest && (
                 <div className="mt-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

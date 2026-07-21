@@ -245,3 +245,25 @@ export async function resolveAttentionRequest(req: Request, res: Response): Prom
     res.status(500).json({ error: "Error al resolver solicitud de atencion" });
   }
 }
+
+export async function deleteConversation(req: Request, res: Response): Promise<void> {
+  try {
+    const rawConversationId = req.params.conversationId;
+    const conversationId = Array.isArray(rawConversationId) ? rawConversationId[0] : String(rawConversationId || "");
+
+    if (!conversationId) {
+      res.status(400).json({ error: "conversationId es requerido" });
+      return;
+    }
+
+    await prisma.whatsAppMessage.deleteMany({
+      where: { conversationId },
+    });
+
+    console.log(`[WhatsApp Admin Controller] Conversacion eliminada: ${conversationId}`);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("[WhatsApp Admin Controller] Error en deleteConversation:", error);
+    res.status(500).json({ error: "Error al eliminar la conversacion" });
+  }
+}
