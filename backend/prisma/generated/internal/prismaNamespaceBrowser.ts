@@ -91,7 +91,13 @@ export const UserScalarFieldEnum = {
   role: 'role',
   isActive: 'isActive',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  rotationType: 'rotationType',
+  defaultShiftId: 'defaultShiftId',
+  rotationShift1Id: 'rotationShift1Id',
+  rotationShift2Id: 'rotationShift2Id',
+  anchorWeek: 'anchorWeek',
+  anchorYear: 'anchorYear'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]

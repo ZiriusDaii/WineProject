@@ -28,10 +28,14 @@ export type AggregateUser = {
 
 export type UserAvgAggregateOutputType = {
   age: number | null
+  anchorWeek: number | null
+  anchorYear: number | null
 }
 
 export type UserSumAggregateOutputType = {
   age: number | null
+  anchorWeek: number | null
+  anchorYear: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -47,6 +51,12 @@ export type UserMinAggregateOutputType = {
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
+  rotationType: string | null
+  defaultShiftId: string | null
+  rotationShift1Id: string | null
+  rotationShift2Id: string | null
+  anchorWeek: number | null
+  anchorYear: number | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -62,6 +72,12 @@ export type UserMaxAggregateOutputType = {
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
+  rotationType: string | null
+  defaultShiftId: string | null
+  rotationShift1Id: string | null
+  rotationShift2Id: string | null
+  anchorWeek: number | null
+  anchorYear: number | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -77,16 +93,26 @@ export type UserCountAggregateOutputType = {
   isActive: number
   createdAt: number
   updatedAt: number
+  rotationType: number
+  defaultShiftId: number
+  rotationShift1Id: number
+  rotationShift2Id: number
+  anchorWeek: number
+  anchorYear: number
   _all: number
 }
 
 
 export type UserAvgAggregateInputType = {
   age?: true
+  anchorWeek?: true
+  anchorYear?: true
 }
 
 export type UserSumAggregateInputType = {
   age?: true
+  anchorWeek?: true
+  anchorYear?: true
 }
 
 export type UserMinAggregateInputType = {
@@ -102,6 +128,12 @@ export type UserMinAggregateInputType = {
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  rotationType?: true
+  defaultShiftId?: true
+  rotationShift1Id?: true
+  rotationShift2Id?: true
+  anchorWeek?: true
+  anchorYear?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -117,6 +149,12 @@ export type UserMaxAggregateInputType = {
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  rotationType?: true
+  defaultShiftId?: true
+  rotationShift1Id?: true
+  rotationShift2Id?: true
+  anchorWeek?: true
+  anchorYear?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -132,6 +170,12 @@ export type UserCountAggregateInputType = {
   isActive?: true
   createdAt?: true
   updatedAt?: true
+  rotationType?: true
+  defaultShiftId?: true
+  rotationShift1Id?: true
+  rotationShift2Id?: true
+  anchorWeek?: true
+  anchorYear?: true
   _all?: true
 }
 
@@ -234,6 +278,12 @@ export type UserGroupByOutputType = {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+  rotationType: string | null
+  defaultShiftId: string | null
+  rotationShift1Id: string | null
+  rotationShift2Id: string | null
+  anchorWeek: number | null
+  anchorYear: number | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -272,6 +322,15 @@ export type UserWhereInput = {
   isActive?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  rotationType?: Prisma.StringNullableFilter<"User"> | string | null
+  defaultShiftId?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift1Id?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift2Id?: Prisma.StringNullableFilter<"User"> | string | null
+  anchorWeek?: Prisma.IntNullableFilter<"User"> | number | null
+  anchorYear?: Prisma.IntNullableFilter<"User"> | number | null
+  defaultShift?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
+  rotationShift1?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
+  rotationShift2?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
   schedules?: Prisma.ManicuristScheduleListRelationFilter
   clientAppointments?: Prisma.AppointmentListRelationFilter
   manicuristAppointments?: Prisma.AppointmentListRelationFilter
@@ -290,6 +349,15 @@ export type UserOrderByWithRelationInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  rotationType?: Prisma.SortOrderInput | Prisma.SortOrder
+  defaultShiftId?: Prisma.SortOrderInput | Prisma.SortOrder
+  rotationShift1Id?: Prisma.SortOrderInput | Prisma.SortOrder
+  rotationShift2Id?: Prisma.SortOrderInput | Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrderInput | Prisma.SortOrder
+  anchorYear?: Prisma.SortOrderInput | Prisma.SortOrder
+  defaultShift?: Prisma.ShiftTemplateOrderByWithRelationInput
+  rotationShift1?: Prisma.ShiftTemplateOrderByWithRelationInput
+  rotationShift2?: Prisma.ShiftTemplateOrderByWithRelationInput
   schedules?: Prisma.ManicuristScheduleOrderByRelationAggregateInput
   clientAppointments?: Prisma.AppointmentOrderByRelationAggregateInput
   manicuristAppointments?: Prisma.AppointmentOrderByRelationAggregateInput
@@ -311,6 +379,15 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   isActive?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  rotationType?: Prisma.StringNullableFilter<"User"> | string | null
+  defaultShiftId?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift1Id?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift2Id?: Prisma.StringNullableFilter<"User"> | string | null
+  anchorWeek?: Prisma.IntNullableFilter<"User"> | number | null
+  anchorYear?: Prisma.IntNullableFilter<"User"> | number | null
+  defaultShift?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
+  rotationShift1?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
+  rotationShift2?: Prisma.XOR<Prisma.ShiftTemplateNullableScalarRelationFilter, Prisma.ShiftTemplateWhereInput> | null
   schedules?: Prisma.ManicuristScheduleListRelationFilter
   clientAppointments?: Prisma.AppointmentListRelationFilter
   manicuristAppointments?: Prisma.AppointmentListRelationFilter
@@ -329,6 +406,12 @@ export type UserOrderByWithAggregationInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  rotationType?: Prisma.SortOrderInput | Prisma.SortOrder
+  defaultShiftId?: Prisma.SortOrderInput | Prisma.SortOrder
+  rotationShift1Id?: Prisma.SortOrderInput | Prisma.SortOrder
+  rotationShift2Id?: Prisma.SortOrderInput | Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrderInput | Prisma.SortOrder
+  anchorYear?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -352,6 +435,12 @@ export type UserScalarWhereWithAggregatesInput = {
   isActive?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  rotationType?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  defaultShiftId?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  rotationShift1Id?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  rotationShift2Id?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  anchorWeek?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
+  anchorYear?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
 }
 
 export type UserCreateInput = {
@@ -367,6 +456,12 @@ export type UserCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
   clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
   manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
@@ -385,6 +480,12 @@ export type UserUncheckedCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
   clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
   manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
@@ -403,6 +504,12 @@ export type UserUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
   clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
   manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
@@ -421,6 +528,12 @@ export type UserUncheckedUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
   clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
   manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
@@ -439,6 +552,12 @@ export type UserCreateManyInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -454,6 +573,9 @@ export type UserUpdateManyMutationInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -469,6 +591,12 @@ export type UserUncheckedUpdateManyInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 export type UserCountOrderByAggregateInput = {
@@ -484,10 +612,18 @@ export type UserCountOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  rotationType?: Prisma.SortOrder
+  defaultShiftId?: Prisma.SortOrder
+  rotationShift1Id?: Prisma.SortOrder
+  rotationShift2Id?: Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrder
+  anchorYear?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
   age?: Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrder
+  anchorYear?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -503,6 +639,12 @@ export type UserMaxOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  rotationType?: Prisma.SortOrder
+  defaultShiftId?: Prisma.SortOrder
+  rotationShift1Id?: Prisma.SortOrder
+  rotationShift2Id?: Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrder
+  anchorYear?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -518,10 +660,28 @@ export type UserMinOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  rotationType?: Prisma.SortOrder
+  defaultShiftId?: Prisma.SortOrder
+  rotationShift1Id?: Prisma.SortOrder
+  rotationShift2Id?: Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrder
+  anchorYear?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
   age?: Prisma.SortOrder
+  anchorWeek?: Prisma.SortOrder
+  anchorYear?: Prisma.SortOrder
+}
+
+export type UserListRelationFilter = {
+  every?: Prisma.UserWhereInput
+  some?: Prisma.UserWhereInput
+  none?: Prisma.UserWhereInput
+}
+
+export type UserOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -555,6 +715,132 @@ export type BoolFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
+}
+
+export type UserCreateNestedManyWithoutDefaultShiftInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput> | Prisma.UserCreateWithoutDefaultShiftInput[] | Prisma.UserUncheckedCreateWithoutDefaultShiftInput[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDefaultShiftInput | Prisma.UserCreateOrConnectWithoutDefaultShiftInput[]
+  createMany?: Prisma.UserCreateManyDefaultShiftInputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserCreateNestedManyWithoutRotationShift1Input = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input> | Prisma.UserCreateWithoutRotationShift1Input[] | Prisma.UserUncheckedCreateWithoutRotationShift1Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift1Input | Prisma.UserCreateOrConnectWithoutRotationShift1Input[]
+  createMany?: Prisma.UserCreateManyRotationShift1InputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserCreateNestedManyWithoutRotationShift2Input = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input> | Prisma.UserCreateWithoutRotationShift2Input[] | Prisma.UserUncheckedCreateWithoutRotationShift2Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift2Input | Prisma.UserCreateOrConnectWithoutRotationShift2Input[]
+  createMany?: Prisma.UserCreateManyRotationShift2InputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserUncheckedCreateNestedManyWithoutDefaultShiftInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput> | Prisma.UserCreateWithoutDefaultShiftInput[] | Prisma.UserUncheckedCreateWithoutDefaultShiftInput[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDefaultShiftInput | Prisma.UserCreateOrConnectWithoutDefaultShiftInput[]
+  createMany?: Prisma.UserCreateManyDefaultShiftInputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserUncheckedCreateNestedManyWithoutRotationShift1Input = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input> | Prisma.UserCreateWithoutRotationShift1Input[] | Prisma.UserUncheckedCreateWithoutRotationShift1Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift1Input | Prisma.UserCreateOrConnectWithoutRotationShift1Input[]
+  createMany?: Prisma.UserCreateManyRotationShift1InputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserUncheckedCreateNestedManyWithoutRotationShift2Input = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input> | Prisma.UserCreateWithoutRotationShift2Input[] | Prisma.UserUncheckedCreateWithoutRotationShift2Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift2Input | Prisma.UserCreateOrConnectWithoutRotationShift2Input[]
+  createMany?: Prisma.UserCreateManyRotationShift2InputEnvelope
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+}
+
+export type UserUpdateManyWithoutDefaultShiftNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput> | Prisma.UserCreateWithoutDefaultShiftInput[] | Prisma.UserUncheckedCreateWithoutDefaultShiftInput[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDefaultShiftInput | Prisma.UserCreateOrConnectWithoutDefaultShiftInput[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutDefaultShiftInput | Prisma.UserUpsertWithWhereUniqueWithoutDefaultShiftInput[]
+  createMany?: Prisma.UserCreateManyDefaultShiftInputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutDefaultShiftInput | Prisma.UserUpdateWithWhereUniqueWithoutDefaultShiftInput[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutDefaultShiftInput | Prisma.UserUpdateManyWithWhereWithoutDefaultShiftInput[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+}
+
+export type UserUpdateManyWithoutRotationShift1NestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input> | Prisma.UserCreateWithoutRotationShift1Input[] | Prisma.UserUncheckedCreateWithoutRotationShift1Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift1Input | Prisma.UserCreateOrConnectWithoutRotationShift1Input[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutRotationShift1Input | Prisma.UserUpsertWithWhereUniqueWithoutRotationShift1Input[]
+  createMany?: Prisma.UserCreateManyRotationShift1InputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutRotationShift1Input | Prisma.UserUpdateWithWhereUniqueWithoutRotationShift1Input[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutRotationShift1Input | Prisma.UserUpdateManyWithWhereWithoutRotationShift1Input[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+}
+
+export type UserUpdateManyWithoutRotationShift2NestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input> | Prisma.UserCreateWithoutRotationShift2Input[] | Prisma.UserUncheckedCreateWithoutRotationShift2Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift2Input | Prisma.UserCreateOrConnectWithoutRotationShift2Input[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutRotationShift2Input | Prisma.UserUpsertWithWhereUniqueWithoutRotationShift2Input[]
+  createMany?: Prisma.UserCreateManyRotationShift2InputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutRotationShift2Input | Prisma.UserUpdateWithWhereUniqueWithoutRotationShift2Input[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutRotationShift2Input | Prisma.UserUpdateManyWithWhereWithoutRotationShift2Input[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+}
+
+export type UserUncheckedUpdateManyWithoutDefaultShiftNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput> | Prisma.UserCreateWithoutDefaultShiftInput[] | Prisma.UserUncheckedCreateWithoutDefaultShiftInput[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDefaultShiftInput | Prisma.UserCreateOrConnectWithoutDefaultShiftInput[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutDefaultShiftInput | Prisma.UserUpsertWithWhereUniqueWithoutDefaultShiftInput[]
+  createMany?: Prisma.UserCreateManyDefaultShiftInputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutDefaultShiftInput | Prisma.UserUpdateWithWhereUniqueWithoutDefaultShiftInput[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutDefaultShiftInput | Prisma.UserUpdateManyWithWhereWithoutDefaultShiftInput[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+}
+
+export type UserUncheckedUpdateManyWithoutRotationShift1NestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input> | Prisma.UserCreateWithoutRotationShift1Input[] | Prisma.UserUncheckedCreateWithoutRotationShift1Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift1Input | Prisma.UserCreateOrConnectWithoutRotationShift1Input[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutRotationShift1Input | Prisma.UserUpsertWithWhereUniqueWithoutRotationShift1Input[]
+  createMany?: Prisma.UserCreateManyRotationShift1InputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutRotationShift1Input | Prisma.UserUpdateWithWhereUniqueWithoutRotationShift1Input[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutRotationShift1Input | Prisma.UserUpdateManyWithWhereWithoutRotationShift1Input[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+}
+
+export type UserUncheckedUpdateManyWithoutRotationShift2NestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input> | Prisma.UserCreateWithoutRotationShift2Input[] | Prisma.UserUncheckedCreateWithoutRotationShift2Input[]
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRotationShift2Input | Prisma.UserCreateOrConnectWithoutRotationShift2Input[]
+  upsert?: Prisma.UserUpsertWithWhereUniqueWithoutRotationShift2Input | Prisma.UserUpsertWithWhereUniqueWithoutRotationShift2Input[]
+  createMany?: Prisma.UserCreateManyRotationShift2InputEnvelope
+  set?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  disconnect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  delete?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  connect?: Prisma.UserWhereUniqueInput | Prisma.UserWhereUniqueInput[]
+  update?: Prisma.UserUpdateWithWhereUniqueWithoutRotationShift2Input | Prisma.UserUpdateWithWhereUniqueWithoutRotationShift2Input[]
+  updateMany?: Prisma.UserUpdateManyWithWhereWithoutRotationShift2Input | Prisma.UserUpdateManyWithWhereWithoutRotationShift2Input[]
+  deleteMany?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
 }
 
 export type UserCreateNestedOneWithoutSchedulesInput = {
@@ -599,6 +885,246 @@ export type UserUpdateOneRequiredWithoutManicuristAppointmentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutManicuristAppointmentsInput, Prisma.UserUpdateWithoutManicuristAppointmentsInput>, Prisma.UserUncheckedUpdateWithoutManicuristAppointmentsInput>
 }
 
+export type UserCreateWithoutDefaultShiftInput = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
+}
+
+export type UserUncheckedCreateWithoutDefaultShiftInput = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
+}
+
+export type UserCreateOrConnectWithoutDefaultShiftInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput>
+}
+
+export type UserCreateManyDefaultShiftInputEnvelope = {
+  data: Prisma.UserCreateManyDefaultShiftInput | Prisma.UserCreateManyDefaultShiftInput[]
+  skipDuplicates?: boolean
+}
+
+export type UserCreateWithoutRotationShift1Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
+}
+
+export type UserUncheckedCreateWithoutRotationShift1Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
+}
+
+export type UserCreateOrConnectWithoutRotationShift1Input = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input>
+}
+
+export type UserCreateManyRotationShift1InputEnvelope = {
+  data: Prisma.UserCreateManyRotationShift1Input | Prisma.UserCreateManyRotationShift1Input[]
+  skipDuplicates?: boolean
+}
+
+export type UserCreateWithoutRotationShift2Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
+}
+
+export type UserUncheckedCreateWithoutRotationShift2Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
+  clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
+}
+
+export type UserCreateOrConnectWithoutRotationShift2Input = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input>
+}
+
+export type UserCreateManyRotationShift2InputEnvelope = {
+  data: Prisma.UserCreateManyRotationShift2Input | Prisma.UserCreateManyRotationShift2Input[]
+  skipDuplicates?: boolean
+}
+
+export type UserUpsertWithWhereUniqueWithoutDefaultShiftInput = {
+  where: Prisma.UserWhereUniqueInput
+  update: Prisma.XOR<Prisma.UserUpdateWithoutDefaultShiftInput, Prisma.UserUncheckedUpdateWithoutDefaultShiftInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutDefaultShiftInput, Prisma.UserUncheckedCreateWithoutDefaultShiftInput>
+}
+
+export type UserUpdateWithWhereUniqueWithoutDefaultShiftInput = {
+  where: Prisma.UserWhereUniqueInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutDefaultShiftInput, Prisma.UserUncheckedUpdateWithoutDefaultShiftInput>
+}
+
+export type UserUpdateManyWithWhereWithoutDefaultShiftInput = {
+  where: Prisma.UserScalarWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateManyMutationInput, Prisma.UserUncheckedUpdateManyWithoutDefaultShiftInput>
+}
+
+export type UserScalarWhereInput = {
+  AND?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+  OR?: Prisma.UserScalarWhereInput[]
+  NOT?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[]
+  id?: Prisma.StringFilter<"User"> | string
+  phone?: Prisma.StringFilter<"User"> | string
+  username?: Prisma.StringNullableFilter<"User"> | string | null
+  password?: Prisma.StringNullableFilter<"User"> | string | null
+  avatarPath?: Prisma.StringNullableFilter<"User"> | string | null
+  name?: Prisma.StringFilter<"User"> | string
+  age?: Prisma.IntNullableFilter<"User"> | number | null
+  gender?: Prisma.StringNullableFilter<"User"> | string | null
+  role?: Prisma.EnumRoleFilter<"User"> | $Enums.Role
+  isActive?: Prisma.BoolFilter<"User"> | boolean
+  createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  rotationType?: Prisma.StringNullableFilter<"User"> | string | null
+  defaultShiftId?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift1Id?: Prisma.StringNullableFilter<"User"> | string | null
+  rotationShift2Id?: Prisma.StringNullableFilter<"User"> | string | null
+  anchorWeek?: Prisma.IntNullableFilter<"User"> | number | null
+  anchorYear?: Prisma.IntNullableFilter<"User"> | number | null
+}
+
+export type UserUpsertWithWhereUniqueWithoutRotationShift1Input = {
+  where: Prisma.UserWhereUniqueInput
+  update: Prisma.XOR<Prisma.UserUpdateWithoutRotationShift1Input, Prisma.UserUncheckedUpdateWithoutRotationShift1Input>
+  create: Prisma.XOR<Prisma.UserCreateWithoutRotationShift1Input, Prisma.UserUncheckedCreateWithoutRotationShift1Input>
+}
+
+export type UserUpdateWithWhereUniqueWithoutRotationShift1Input = {
+  where: Prisma.UserWhereUniqueInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutRotationShift1Input, Prisma.UserUncheckedUpdateWithoutRotationShift1Input>
+}
+
+export type UserUpdateManyWithWhereWithoutRotationShift1Input = {
+  where: Prisma.UserScalarWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateManyMutationInput, Prisma.UserUncheckedUpdateManyWithoutRotationShift1Input>
+}
+
+export type UserUpsertWithWhereUniqueWithoutRotationShift2Input = {
+  where: Prisma.UserWhereUniqueInput
+  update: Prisma.XOR<Prisma.UserUpdateWithoutRotationShift2Input, Prisma.UserUncheckedUpdateWithoutRotationShift2Input>
+  create: Prisma.XOR<Prisma.UserCreateWithoutRotationShift2Input, Prisma.UserUncheckedCreateWithoutRotationShift2Input>
+}
+
+export type UserUpdateWithWhereUniqueWithoutRotationShift2Input = {
+  where: Prisma.UserWhereUniqueInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutRotationShift2Input, Prisma.UserUncheckedUpdateWithoutRotationShift2Input>
+}
+
+export type UserUpdateManyWithWhereWithoutRotationShift2Input = {
+  where: Prisma.UserScalarWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateManyMutationInput, Prisma.UserUncheckedUpdateManyWithoutRotationShift2Input>
+}
+
 export type UserCreateWithoutSchedulesInput = {
   id?: string
   phone: string
@@ -612,6 +1138,12 @@ export type UserCreateWithoutSchedulesInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
   clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
   manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
 }
@@ -629,6 +1161,12 @@ export type UserUncheckedCreateWithoutSchedulesInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
   clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
   manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
 }
@@ -662,6 +1200,12 @@ export type UserUpdateWithoutSchedulesInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
   clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
   manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
 }
@@ -679,6 +1223,12 @@ export type UserUncheckedUpdateWithoutSchedulesInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
   manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
 }
@@ -696,6 +1246,12 @@ export type UserCreateWithoutClientAppointmentsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
   manicuristAppointments?: Prisma.AppointmentCreateNestedManyWithoutManicuristInput
 }
@@ -713,6 +1269,12 @@ export type UserUncheckedCreateWithoutClientAppointmentsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
   manicuristAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutManicuristInput
 }
@@ -735,6 +1297,12 @@ export type UserCreateWithoutManicuristAppointmentsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+  defaultShift?: Prisma.ShiftTemplateCreateNestedOneWithoutDefaultUsersInput
+  rotationShift1?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation1UsersInput
+  rotationShift2?: Prisma.ShiftTemplateCreateNestedOneWithoutRotation2UsersInput
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
   clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
 }
@@ -752,6 +1320,12 @@ export type UserUncheckedCreateWithoutManicuristAppointmentsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
   clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
 }
@@ -785,6 +1359,12 @@ export type UserUpdateWithoutClientAppointmentsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
   manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
 }
@@ -802,6 +1382,12 @@ export type UserUncheckedUpdateWithoutClientAppointmentsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
   manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
 }
@@ -830,6 +1416,12 @@ export type UserUpdateWithoutManicuristAppointmentsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
   clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
 }
@@ -847,8 +1439,272 @@ export type UserUncheckedUpdateWithoutManicuristAppointmentsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
   clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
+}
+
+export type UserCreateManyDefaultShiftInput = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  rotationShift1Id?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+}
+
+export type UserCreateManyRotationShift1Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift2Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+}
+
+export type UserCreateManyRotationShift2Input = {
+  id?: string
+  phone: string
+  username?: string | null
+  password?: string | null
+  avatarPath?: string | null
+  name: string
+  age?: number | null
+  gender?: string | null
+  role?: $Enums.Role
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rotationType?: string | null
+  defaultShiftId?: string | null
+  rotationShift1Id?: string | null
+  anchorWeek?: number | null
+  anchorYear?: number | null
+}
+
+export type UserUpdateWithoutDefaultShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateWithoutDefaultShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateManyWithoutDefaultShiftInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+}
+
+export type UserUpdateWithoutRotationShift1Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift2?: Prisma.ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateWithoutRotationShift1Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateManyWithoutRotationShift1Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift2Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+}
+
+export type UserUpdateWithoutRotationShift2Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  defaultShift?: Prisma.ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput
+  rotationShift1?: Prisma.ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateWithoutRotationShift2Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
+  clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
+  manicuristAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutManicuristNestedInput
+}
+
+export type UserUncheckedUpdateManyWithoutRotationShift2Input = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  password?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarPath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rotationType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  defaultShiftId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rotationShift1Id?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  anchorWeek?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  anchorYear?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
 }
 
 
@@ -913,6 +1769,15 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  rotationType?: boolean
+  defaultShiftId?: boolean
+  rotationShift1Id?: boolean
+  rotationShift2Id?: boolean
+  anchorWeek?: boolean
+  anchorYear?: boolean
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
   clientAppointments?: boolean | Prisma.User$clientAppointmentsArgs<ExtArgs>
   manicuristAppointments?: boolean | Prisma.User$manicuristAppointmentsArgs<ExtArgs>
@@ -932,6 +1797,15 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  rotationType?: boolean
+  defaultShiftId?: boolean
+  rotationShift1Id?: boolean
+  rotationShift2Id?: boolean
+  anchorWeek?: boolean
+  anchorYear?: boolean
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -947,6 +1821,15 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  rotationType?: boolean
+  defaultShiftId?: boolean
+  rotationShift1Id?: boolean
+  rotationShift2Id?: boolean
+  anchorWeek?: boolean
+  anchorYear?: boolean
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
 export type UserSelectScalar = {
@@ -962,21 +1845,41 @@ export type UserSelectScalar = {
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  rotationType?: boolean
+  defaultShiftId?: boolean
+  rotationShift1Id?: boolean
+  rotationShift2Id?: boolean
+  anchorWeek?: boolean
+  anchorYear?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "username" | "password" | "avatarPath" | "name" | "age" | "gender" | "role" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "username" | "password" | "avatarPath" | "name" | "age" | "gender" | "role" | "isActive" | "createdAt" | "updatedAt" | "rotationType" | "defaultShiftId" | "rotationShift1Id" | "rotationShift2Id" | "anchorWeek" | "anchorYear", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
   clientAppointments?: boolean | Prisma.User$clientAppointmentsArgs<ExtArgs>
   manicuristAppointments?: boolean | Prisma.User$manicuristAppointmentsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
+}
+export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  defaultShift?: boolean | Prisma.User$defaultShiftArgs<ExtArgs>
+  rotationShift1?: boolean | Prisma.User$rotationShift1Args<ExtArgs>
+  rotationShift2?: boolean | Prisma.User$rotationShift2Args<ExtArgs>
+}
 
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
   objects: {
+    defaultShift: Prisma.$ShiftTemplatePayload<ExtArgs> | null
+    rotationShift1: Prisma.$ShiftTemplatePayload<ExtArgs> | null
+    rotationShift2: Prisma.$ShiftTemplatePayload<ExtArgs> | null
     schedules: Prisma.$ManicuristSchedulePayload<ExtArgs>[]
     clientAppointments: Prisma.$AppointmentPayload<ExtArgs>[]
     manicuristAppointments: Prisma.$AppointmentPayload<ExtArgs>[]
@@ -994,6 +1897,12 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     isActive: boolean
     createdAt: Date
     updatedAt: Date
+    rotationType: string | null
+    defaultShiftId: string | null
+    rotationShift1Id: string | null
+    rotationShift2Id: string | null
+    anchorWeek: number | null
+    anchorYear: number | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -1388,6 +2297,9 @@ readonly fields: UserFieldRefs;
  */
 export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  defaultShift<T extends Prisma.User$defaultShiftArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$defaultShiftArgs<ExtArgs>>): Prisma.Prisma__ShiftTemplateClient<runtime.Types.Result.GetResult<Prisma.$ShiftTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  rotationShift1<T extends Prisma.User$rotationShift1Args<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$rotationShift1Args<ExtArgs>>): Prisma.Prisma__ShiftTemplateClient<runtime.Types.Result.GetResult<Prisma.$ShiftTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  rotationShift2<T extends Prisma.User$rotationShift2Args<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$rotationShift2Args<ExtArgs>>): Prisma.Prisma__ShiftTemplateClient<runtime.Types.Result.GetResult<Prisma.$ShiftTemplatePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   schedules<T extends Prisma.User$schedulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$schedulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ManicuristSchedulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   clientAppointments<T extends Prisma.User$clientAppointmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$clientAppointmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AppointmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   manicuristAppointments<T extends Prisma.User$manicuristAppointmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$manicuristAppointmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AppointmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -1432,6 +2344,12 @@ export interface UserFieldRefs {
   readonly isActive: Prisma.FieldRef<"User", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly rotationType: Prisma.FieldRef<"User", 'String'>
+  readonly defaultShiftId: Prisma.FieldRef<"User", 'String'>
+  readonly rotationShift1Id: Prisma.FieldRef<"User", 'String'>
+  readonly rotationShift2Id: Prisma.FieldRef<"User", 'String'>
+  readonly anchorWeek: Prisma.FieldRef<"User", 'Int'>
+  readonly anchorYear: Prisma.FieldRef<"User", 'Int'>
 }
     
 
@@ -1686,6 +2604,10 @@ export type UserCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    */
   data: Prisma.UserCreateManyInput | Prisma.UserCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1756,6 +2678,10 @@ export type UserUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    * Limit how many Users to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1822,6 +2748,63 @@ export type UserDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Limit how many Users to delete.
    */
   limit?: number
+}
+
+/**
+ * User.defaultShift
+ */
+export type User$defaultShiftArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ShiftTemplate
+   */
+  select?: Prisma.ShiftTemplateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ShiftTemplate
+   */
+  omit?: Prisma.ShiftTemplateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftTemplateInclude<ExtArgs> | null
+  where?: Prisma.ShiftTemplateWhereInput
+}
+
+/**
+ * User.rotationShift1
+ */
+export type User$rotationShift1Args<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ShiftTemplate
+   */
+  select?: Prisma.ShiftTemplateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ShiftTemplate
+   */
+  omit?: Prisma.ShiftTemplateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftTemplateInclude<ExtArgs> | null
+  where?: Prisma.ShiftTemplateWhereInput
+}
+
+/**
+ * User.rotationShift2
+ */
+export type User$rotationShift2Args<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ShiftTemplate
+   */
+  select?: Prisma.ShiftTemplateSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ShiftTemplate
+   */
+  omit?: Prisma.ShiftTemplateOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ShiftTemplateInclude<ExtArgs> | null
+  where?: Prisma.ShiftTemplateWhereInput
 }
 
 /**

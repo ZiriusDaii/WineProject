@@ -175,6 +175,9 @@ export type ShiftTemplateWhereInput = {
   startTime?: Prisma.StringFilter<"ShiftTemplate"> | string
   endTime?: Prisma.StringFilter<"ShiftTemplate"> | string
   schedules?: Prisma.ManicuristScheduleListRelationFilter
+  defaultUsers?: Prisma.UserListRelationFilter
+  rotation1Users?: Prisma.UserListRelationFilter
+  rotation2Users?: Prisma.UserListRelationFilter
 }
 
 export type ShiftTemplateOrderByWithRelationInput = {
@@ -183,6 +186,9 @@ export type ShiftTemplateOrderByWithRelationInput = {
   startTime?: Prisma.SortOrder
   endTime?: Prisma.SortOrder
   schedules?: Prisma.ManicuristScheduleOrderByRelationAggregateInput
+  defaultUsers?: Prisma.UserOrderByRelationAggregateInput
+  rotation1Users?: Prisma.UserOrderByRelationAggregateInput
+  rotation2Users?: Prisma.UserOrderByRelationAggregateInput
 }
 
 export type ShiftTemplateWhereUniqueInput = Prisma.AtLeast<{
@@ -194,6 +200,9 @@ export type ShiftTemplateWhereUniqueInput = Prisma.AtLeast<{
   startTime?: Prisma.StringFilter<"ShiftTemplate"> | string
   endTime?: Prisma.StringFilter<"ShiftTemplate"> | string
   schedules?: Prisma.ManicuristScheduleListRelationFilter
+  defaultUsers?: Prisma.UserListRelationFilter
+  rotation1Users?: Prisma.UserListRelationFilter
+  rotation2Users?: Prisma.UserListRelationFilter
 }, "id">
 
 export type ShiftTemplateOrderByWithAggregationInput = {
@@ -222,6 +231,9 @@ export type ShiftTemplateCreateInput = {
   startTime: string
   endTime: string
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserCreateNestedManyWithoutRotationShift2Input
 }
 
 export type ShiftTemplateUncheckedCreateInput = {
@@ -230,6 +242,9 @@ export type ShiftTemplateUncheckedCreateInput = {
   startTime: string
   endTime: string
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserUncheckedCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift2Input
 }
 
 export type ShiftTemplateUpdateInput = {
@@ -238,6 +253,9 @@ export type ShiftTemplateUpdateInput = {
   startTime?: Prisma.StringFieldUpdateOperationsInput | string
   endTime?: Prisma.StringFieldUpdateOperationsInput | string
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUpdateManyWithoutRotationShift2NestedInput
 }
 
 export type ShiftTemplateUncheckedUpdateInput = {
@@ -246,6 +264,9 @@ export type ShiftTemplateUncheckedUpdateInput = {
   startTime?: Prisma.StringFieldUpdateOperationsInput | string
   endTime?: Prisma.StringFieldUpdateOperationsInput | string
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUncheckedUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift2NestedInput
 }
 
 export type ShiftTemplateCreateManyInput = {
@@ -267,6 +288,11 @@ export type ShiftTemplateUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   startTime?: Prisma.StringFieldUpdateOperationsInput | string
   endTime?: Prisma.StringFieldUpdateOperationsInput | string
+}
+
+export type ShiftTemplateNullableScalarRelationFilter = {
+  is?: Prisma.ShiftTemplateWhereInput | null
+  isNot?: Prisma.ShiftTemplateWhereInput | null
 }
 
 export type ShiftTemplateCountOrderByAggregateInput = {
@@ -295,6 +321,54 @@ export type ShiftTemplateScalarRelationFilter = {
   isNot?: Prisma.ShiftTemplateWhereInput
 }
 
+export type ShiftTemplateCreateNestedOneWithoutDefaultUsersInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutDefaultUsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutDefaultUsersInput
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+}
+
+export type ShiftTemplateCreateNestedOneWithoutRotation1UsersInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation1UsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutRotation1UsersInput
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+}
+
+export type ShiftTemplateCreateNestedOneWithoutRotation2UsersInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation2UsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutRotation2UsersInput
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+}
+
+export type ShiftTemplateUpdateOneWithoutDefaultUsersNestedInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutDefaultUsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutDefaultUsersInput
+  upsert?: Prisma.ShiftTemplateUpsertWithoutDefaultUsersInput
+  disconnect?: Prisma.ShiftTemplateWhereInput | boolean
+  delete?: Prisma.ShiftTemplateWhereInput | boolean
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ShiftTemplateUpdateToOneWithWhereWithoutDefaultUsersInput, Prisma.ShiftTemplateUpdateWithoutDefaultUsersInput>, Prisma.ShiftTemplateUncheckedUpdateWithoutDefaultUsersInput>
+}
+
+export type ShiftTemplateUpdateOneWithoutRotation1UsersNestedInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation1UsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutRotation1UsersInput
+  upsert?: Prisma.ShiftTemplateUpsertWithoutRotation1UsersInput
+  disconnect?: Prisma.ShiftTemplateWhereInput | boolean
+  delete?: Prisma.ShiftTemplateWhereInput | boolean
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ShiftTemplateUpdateToOneWithWhereWithoutRotation1UsersInput, Prisma.ShiftTemplateUpdateWithoutRotation1UsersInput>, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation1UsersInput>
+}
+
+export type ShiftTemplateUpdateOneWithoutRotation2UsersNestedInput = {
+  create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation2UsersInput>
+  connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutRotation2UsersInput
+  upsert?: Prisma.ShiftTemplateUpsertWithoutRotation2UsersInput
+  disconnect?: Prisma.ShiftTemplateWhereInput | boolean
+  delete?: Prisma.ShiftTemplateWhereInput | boolean
+  connect?: Prisma.ShiftTemplateWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ShiftTemplateUpdateToOneWithWhereWithoutRotation2UsersInput, Prisma.ShiftTemplateUpdateWithoutRotation2UsersInput>, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation2UsersInput>
+}
+
 export type ShiftTemplateCreateNestedOneWithoutSchedulesInput = {
   create?: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutSchedulesInput, Prisma.ShiftTemplateUncheckedCreateWithoutSchedulesInput>
   connectOrCreate?: Prisma.ShiftTemplateCreateOrConnectWithoutSchedulesInput
@@ -309,11 +383,182 @@ export type ShiftTemplateUpdateOneRequiredWithoutSchedulesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ShiftTemplateUpdateToOneWithWhereWithoutSchedulesInput, Prisma.ShiftTemplateUpdateWithoutSchedulesInput>, Prisma.ShiftTemplateUncheckedUpdateWithoutSchedulesInput>
 }
 
+export type ShiftTemplateCreateWithoutDefaultUsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutShiftTemplateInput
+  rotation1Users?: Prisma.UserCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserCreateNestedManyWithoutRotationShift2Input
+}
+
+export type ShiftTemplateUncheckedCreateWithoutDefaultUsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutShiftTemplateInput
+  rotation1Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift2Input
+}
+
+export type ShiftTemplateCreateOrConnectWithoutDefaultUsersInput = {
+  where: Prisma.ShiftTemplateWhereUniqueInput
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutDefaultUsersInput>
+}
+
+export type ShiftTemplateCreateWithoutRotation1UsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserCreateNestedManyWithoutDefaultShiftInput
+  rotation2Users?: Prisma.UserCreateNestedManyWithoutRotationShift2Input
+}
+
+export type ShiftTemplateUncheckedCreateWithoutRotation1UsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserUncheckedCreateNestedManyWithoutDefaultShiftInput
+  rotation2Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift2Input
+}
+
+export type ShiftTemplateCreateOrConnectWithoutRotation1UsersInput = {
+  where: Prisma.ShiftTemplateWhereUniqueInput
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation1UsersInput>
+}
+
+export type ShiftTemplateCreateWithoutRotation2UsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserCreateNestedManyWithoutRotationShift1Input
+}
+
+export type ShiftTemplateUncheckedCreateWithoutRotation2UsersInput = {
+  id?: string
+  name: string
+  startTime: string
+  endTime: string
+  schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutShiftTemplateInput
+  defaultUsers?: Prisma.UserUncheckedCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift1Input
+}
+
+export type ShiftTemplateCreateOrConnectWithoutRotation2UsersInput = {
+  where: Prisma.ShiftTemplateWhereUniqueInput
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation2UsersInput>
+}
+
+export type ShiftTemplateUpsertWithoutDefaultUsersInput = {
+  update: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutDefaultUsersInput>
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutDefaultUsersInput>
+  where?: Prisma.ShiftTemplateWhereInput
+}
+
+export type ShiftTemplateUpdateToOneWithWhereWithoutDefaultUsersInput = {
+  where?: Prisma.ShiftTemplateWhereInput
+  data: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutDefaultUsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutDefaultUsersInput>
+}
+
+export type ShiftTemplateUpdateWithoutDefaultUsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutShiftTemplateNestedInput
+  rotation1Users?: Prisma.UserUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUpdateManyWithoutRotationShift2NestedInput
+}
+
+export type ShiftTemplateUncheckedUpdateWithoutDefaultUsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutShiftTemplateNestedInput
+  rotation1Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift2NestedInput
+}
+
+export type ShiftTemplateUpsertWithoutRotation1UsersInput = {
+  update: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation1UsersInput>
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation1UsersInput>
+  where?: Prisma.ShiftTemplateWhereInput
+}
+
+export type ShiftTemplateUpdateToOneWithWhereWithoutRotation1UsersInput = {
+  where?: Prisma.ShiftTemplateWhereInput
+  data: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutRotation1UsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation1UsersInput>
+}
+
+export type ShiftTemplateUpdateWithoutRotation1UsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUpdateManyWithoutDefaultShiftNestedInput
+  rotation2Users?: Prisma.UserUpdateManyWithoutRotationShift2NestedInput
+}
+
+export type ShiftTemplateUncheckedUpdateWithoutRotation1UsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUncheckedUpdateManyWithoutDefaultShiftNestedInput
+  rotation2Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift2NestedInput
+}
+
+export type ShiftTemplateUpsertWithoutRotation2UsersInput = {
+  update: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation2UsersInput>
+  create: Prisma.XOR<Prisma.ShiftTemplateCreateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedCreateWithoutRotation2UsersInput>
+  where?: Prisma.ShiftTemplateWhereInput
+}
+
+export type ShiftTemplateUpdateToOneWithWhereWithoutRotation2UsersInput = {
+  where?: Prisma.ShiftTemplateWhereInput
+  data: Prisma.XOR<Prisma.ShiftTemplateUpdateWithoutRotation2UsersInput, Prisma.ShiftTemplateUncheckedUpdateWithoutRotation2UsersInput>
+}
+
+export type ShiftTemplateUpdateWithoutRotation2UsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUpdateManyWithoutRotationShift1NestedInput
+}
+
+export type ShiftTemplateUncheckedUpdateWithoutRotation2UsersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startTime?: Prisma.StringFieldUpdateOperationsInput | string
+  endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutShiftTemplateNestedInput
+  defaultUsers?: Prisma.UserUncheckedUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift1NestedInput
+}
+
 export type ShiftTemplateCreateWithoutSchedulesInput = {
   id?: string
   name: string
   startTime: string
   endTime: string
+  defaultUsers?: Prisma.UserCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserCreateNestedManyWithoutRotationShift2Input
 }
 
 export type ShiftTemplateUncheckedCreateWithoutSchedulesInput = {
@@ -321,6 +566,9 @@ export type ShiftTemplateUncheckedCreateWithoutSchedulesInput = {
   name: string
   startTime: string
   endTime: string
+  defaultUsers?: Prisma.UserUncheckedCreateNestedManyWithoutDefaultShiftInput
+  rotation1Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift1Input
+  rotation2Users?: Prisma.UserUncheckedCreateNestedManyWithoutRotationShift2Input
 }
 
 export type ShiftTemplateCreateOrConnectWithoutSchedulesInput = {
@@ -344,6 +592,9 @@ export type ShiftTemplateUpdateWithoutSchedulesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   startTime?: Prisma.StringFieldUpdateOperationsInput | string
   endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  defaultUsers?: Prisma.UserUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUpdateManyWithoutRotationShift2NestedInput
 }
 
 export type ShiftTemplateUncheckedUpdateWithoutSchedulesInput = {
@@ -351,6 +602,9 @@ export type ShiftTemplateUncheckedUpdateWithoutSchedulesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   startTime?: Prisma.StringFieldUpdateOperationsInput | string
   endTime?: Prisma.StringFieldUpdateOperationsInput | string
+  defaultUsers?: Prisma.UserUncheckedUpdateManyWithoutDefaultShiftNestedInput
+  rotation1Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift1NestedInput
+  rotation2Users?: Prisma.UserUncheckedUpdateManyWithoutRotationShift2NestedInput
 }
 
 
@@ -360,10 +614,16 @@ export type ShiftTemplateUncheckedUpdateWithoutSchedulesInput = {
 
 export type ShiftTemplateCountOutputType = {
   schedules: number
+  defaultUsers: number
+  rotation1Users: number
+  rotation2Users: number
 }
 
 export type ShiftTemplateCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   schedules?: boolean | ShiftTemplateCountOutputTypeCountSchedulesArgs
+  defaultUsers?: boolean | ShiftTemplateCountOutputTypeCountDefaultUsersArgs
+  rotation1Users?: boolean | ShiftTemplateCountOutputTypeCountRotation1UsersArgs
+  rotation2Users?: boolean | ShiftTemplateCountOutputTypeCountRotation2UsersArgs
 }
 
 /**
@@ -383,6 +643,27 @@ export type ShiftTemplateCountOutputTypeCountSchedulesArgs<ExtArgs extends runti
   where?: Prisma.ManicuristScheduleWhereInput
 }
 
+/**
+ * ShiftTemplateCountOutputType without action
+ */
+export type ShiftTemplateCountOutputTypeCountDefaultUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * ShiftTemplateCountOutputType without action
+ */
+export type ShiftTemplateCountOutputTypeCountRotation1UsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * ShiftTemplateCountOutputType without action
+ */
+export type ShiftTemplateCountOutputTypeCountRotation2UsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.UserWhereInput
+}
+
 
 export type ShiftTemplateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -390,6 +671,9 @@ export type ShiftTemplateSelect<ExtArgs extends runtime.Types.Extensions.Interna
   startTime?: boolean
   endTime?: boolean
   schedules?: boolean | Prisma.ShiftTemplate$schedulesArgs<ExtArgs>
+  defaultUsers?: boolean | Prisma.ShiftTemplate$defaultUsersArgs<ExtArgs>
+  rotation1Users?: boolean | Prisma.ShiftTemplate$rotation1UsersArgs<ExtArgs>
+  rotation2Users?: boolean | Prisma.ShiftTemplate$rotation2UsersArgs<ExtArgs>
   _count?: boolean | Prisma.ShiftTemplateCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["shiftTemplate"]>
 
@@ -417,6 +701,9 @@ export type ShiftTemplateSelectScalar = {
 export type ShiftTemplateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "startTime" | "endTime", ExtArgs["result"]["shiftTemplate"]>
 export type ShiftTemplateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   schedules?: boolean | Prisma.ShiftTemplate$schedulesArgs<ExtArgs>
+  defaultUsers?: boolean | Prisma.ShiftTemplate$defaultUsersArgs<ExtArgs>
+  rotation1Users?: boolean | Prisma.ShiftTemplate$rotation1UsersArgs<ExtArgs>
+  rotation2Users?: boolean | Prisma.ShiftTemplate$rotation2UsersArgs<ExtArgs>
   _count?: boolean | Prisma.ShiftTemplateCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ShiftTemplateIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -426,6 +713,9 @@ export type $ShiftTemplatePayload<ExtArgs extends runtime.Types.Extensions.Inter
   name: "ShiftTemplate"
   objects: {
     schedules: Prisma.$ManicuristSchedulePayload<ExtArgs>[]
+    defaultUsers: Prisma.$UserPayload<ExtArgs>[]
+    rotation1Users: Prisma.$UserPayload<ExtArgs>[]
+    rotation2Users: Prisma.$UserPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -827,6 +1117,9 @@ readonly fields: ShiftTemplateFieldRefs;
 export interface Prisma__ShiftTemplateClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   schedules<T extends Prisma.ShiftTemplate$schedulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ShiftTemplate$schedulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ManicuristSchedulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  defaultUsers<T extends Prisma.ShiftTemplate$defaultUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ShiftTemplate$defaultUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  rotation1Users<T extends Prisma.ShiftTemplate$rotation1UsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ShiftTemplate$rotation1UsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  rotation2Users<T extends Prisma.ShiftTemplate$rotation2UsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ShiftTemplate$rotation2UsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1274,6 +1567,78 @@ export type ShiftTemplate$schedulesArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.ManicuristScheduleScalarFieldEnum | Prisma.ManicuristScheduleScalarFieldEnum[]
+}
+
+/**
+ * ShiftTemplate.defaultUsers
+ */
+export type ShiftTemplate$defaultUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+  orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+  cursor?: Prisma.UserWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[]
+}
+
+/**
+ * ShiftTemplate.rotation1Users
+ */
+export type ShiftTemplate$rotation1UsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+  orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+  cursor?: Prisma.UserWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[]
+}
+
+/**
+ * ShiftTemplate.rotation2Users
+ */
+export type ShiftTemplate$rotation2UsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+  orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[]
+  cursor?: Prisma.UserWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[]
 }
 
 /**
