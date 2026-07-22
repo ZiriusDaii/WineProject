@@ -18,7 +18,5 @@ EXPOSE 3000
 # ejecucion (src/index.ts): sin esto, un deploy real que se olvide de setear
 # NODE_ENV=production por su cuenta se queda con CORS abierto por defecto.
 ENV NODE_ENV=production
-# Aplica migraciones pendientes antes de arrancar -- evita el paso manual de
-# correr `prisma migrate deploy` aparte cada vez que se levanta un container
-# nuevo. Es idempotente (prisma la sabe correr de nuevo sin duplicar nada).
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/src/index.js"]
+RUN apk add --no-cache postgresql-client
+CMD ["sh", "-c", "until pg_isready -h postgres -U postgres -d winespa; do echo 'Esperando postgres...'; sleep 3; done && npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/src/index.js"]
