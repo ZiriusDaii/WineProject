@@ -892,11 +892,14 @@ export default function App() {
         const carousel = items
           .filter((i) => i.type === 'CAROUSEL')
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        if (carousel.length === 0) throw new Error();
-        setLandingContent({
-          images: carousel.map((i) => i.imageUrl.startsWith('/uploads') ? `${API_URL}${i.imageUrl}` : i.imageUrl),
-          news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
-        });
+        if (carousel.length === 0) {
+          setLandingContent(null);
+        } else {
+          setLandingContent({
+            images: carousel.map((i) => i.imageUrl.startsWith('/uploads') ? `${API_URL}${i.imageUrl}` : i.imageUrl),
+            news: carousel.map((i) => ({ title: i.title, description: i.description || '' })),
+          });
+        }
       } catch {
         setHeroImage('/hero_1.jpg');
         setExperienceImage('/winespa_interior_1.jpg');
