@@ -68,10 +68,11 @@ app.use(
 );
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 500, // 500 solicitudes por minuto
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.originalUrl.includes('/admin') || Boolean(req.headers.authorization?.startsWith('Bearer ')),
   message: { error: "Demasiadas solicitudes, intente de nuevo mas tarde" },
   handler: (req, res, _next, options) => {
     console.warn(`Rate limit excedido: ip=${req.ip} ruta=${req.originalUrl}`);
@@ -82,7 +83,7 @@ app.use(globalLimiter);
 
 const staffAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiados intentos, intente de nuevo mas tarde" },

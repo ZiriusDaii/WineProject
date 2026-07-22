@@ -261,7 +261,13 @@ export const AdminDashboard: React.FC = () => {
   const [adminLoginUser, setAdminLoginUser] = useState('');
   const [adminLoginPass, setAdminLoginPass] = useState('');
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(() => {
+      loadData();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'schedule') fetchWeekSchedule(); }, [activeTab, scheduleWeek, scheduleYear]);
   useEffect(() => {
