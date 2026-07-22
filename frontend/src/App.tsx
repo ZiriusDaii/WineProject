@@ -517,6 +517,26 @@ export default function App() {
 
   // Carrusel Landing
   const [activeSlide, setActiveSlide] = useState(0);
+  const carouselTouchStartX = useRef<number | null>(null);
+
+  const handleCarouselTouchStart = (e: React.TouchEvent) => {
+    carouselTouchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleCarouselTouchEnd = (e: React.TouchEvent) => {
+    if (carouselTouchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = carouselTouchStartX.current - touchEndX;
+    const count = landingContent?.images?.length || 0;
+    if (count > 1) {
+      if (diff > 35) {
+        setActiveSlide((prev) => (prev + 1) % count);
+      } else if (diff < -35) {
+        setActiveSlide((prev) => (prev - 1 + count) % count);
+      }
+    }
+    carouselTouchStartX.current = null;
+  };
 
   // Autoplay: avanza sola cada 6s si hay mas de un slide. Se reinicia cada vez
   // que el usuario cambia de slide (swipe, flecha o punto) para no pelearse
@@ -1798,10 +1818,15 @@ export default function App() {
         >
           {/* Banner CMS como hero visual */}
           {landingContent && landingContent.images && landingContent.images.length > 0 && (
-            <div id="promos" className="relative w-full bg-[#3B0019] overflow-hidden">
+            <div
+              id="promos"
+              className="relative w-full bg-[#3B0019] overflow-hidden"
+              onTouchStart={handleCarouselTouchStart}
+              onTouchEnd={handleCarouselTouchEnd}
+            >
               <div className="max-w-5xl mx-auto">
                 <div className="relative flex flex-col md:flex-row items-center gap-0 md:gap-6">
-                  <div className="w-full md:w-3/5 aspect-[21/9] md:aspect-[16/6] relative overflow-hidden bg-neutral-900 cursor-grab active:cursor-grabbing">
+                  <div className="w-full md:w-3/5 aspect-[4/3] sm:aspect-[16/8] md:aspect-[16/6] relative overflow-hidden bg-neutral-900 cursor-grab active:cursor-grabbing">
                     <motion.img
                       key={activeSlide}
                       src={landingContent.images[activeSlide]}
@@ -1816,9 +1841,9 @@ export default function App() {
                       onDragEnd={(_, info) => {
                         const swipe = info.offset.x;
                         const count = landingContent.images.length;
-                        if (swipe < -80) {
+                        if (swipe < -35) {
                           setActiveSlide((activeSlide + 1) % count);
-                        } else if (swipe > 80) {
+                        } else if (swipe > 35) {
                           setActiveSlide((activeSlide - 1 + count) % count);
                         }
                       }}
@@ -1828,26 +1853,26 @@ export default function App() {
                       <>
                         <button
                           type="button"
-                          onClick={() => setActiveSlide((activeSlide - 1 + slideCount) % slideCount)}
+                          onClick={(e) => { e.stopPropagation(); setActiveSlide((activeSlide - 1 + slideCount) % slideCount); }}
                           aria-label="Anuncio anterior"
-                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors cursor-pointer"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer z-20"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveSlide((activeSlide + 1) % slideCount)}
+                          onClick={(e) => { e.stopPropagation(); setActiveSlide((activeSlide + 1) % slideCount); }}
                           aria-label="Siguiente anuncio"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors cursor-pointer"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer z-20"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
                       </>
                     )}
                   </div>
                   <motion.div
                     key={activeSlide}
-                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 pt-10 md:p-6 text-left z-10 bg-gradient-to-t from-[#3B0019]/95 via-[#3B0019]/70 to-transparent md:bg-none"
+                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 pt-12 md:p-6 text-left z-10 bg-gradient-to-t from-[#3B0019]/95 via-[#3B0019]/80 to-transparent md:bg-none pointer-events-none"
                     initial={{ opacity: 0, x: 15 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
@@ -1861,9 +1886,9 @@ export default function App() {
                     ) : (
                       <h3 className="serif-title text-lg md:text-xl text-white font-medium">Novedades WineSpa</h3>
                     )}
-                    <div className="flex gap-2 mt-4">
+                    <div className="flex gap-2 mt-4 pointer-events-auto">
                       {landingContent.images.map((_, idx) => (
-                        <button key={idx} onClick={() => setActiveSlide(idx)} className={`h-2 rounded-full transition-all ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                        <button key={idx} onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }} className={`h-2 rounded-full transition-all cursor-pointer ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
                       ))}
                     </div>
                   </motion.div>
