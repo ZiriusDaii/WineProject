@@ -610,6 +610,24 @@ export const AdminDashboard: React.FC = () => {
       if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
     } catch { setErrorMsg('Error.'); }
   };
+  const handleToggleCmsActive = async (item: any) => {
+    try {
+      const nextActive = item.isActive === false;
+      const payload = {
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        isActive: nextActive
+      };
+      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+      if (r.ok) {
+        setSuccessMsg(nextActive ? 'Anuncio reactivado.' : 'Anuncio deshabilitado.');
+        fetchCMS();
+      } else setErrorMsg('No se pudo cambiar el estado del anuncio.');
+    } catch { setErrorMsg('Error al cambiar el estado del anuncio.'); }
+  };
   const editCms = (item: any) => {
     setEditingCmsId(item.id);
     setCmsTitle(item.title || '');
@@ -1323,13 +1341,13 @@ export const AdminDashboard: React.FC = () => {
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {page.map(m => (
-                      <div key={m.id} className="bg-white border border-[#EADEC9]/40 p-4 rounded-2xl space-y-3">
+                      <div key={m.id} className={`border p-4 rounded-2xl space-y-3 transition-all ${m.isActive === false ? 'bg-stone-50/70 border-stone-200 opacity-75' : 'bg-white border-[#EADEC9]/40'}`}>
                         <div className="flex items-center gap-3">
                           {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <h4 className="font-semibold text-sm text-[#3B0019] truncate">{m.name}</h4>
-                              {m.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-600 rounded-full font-bold shrink-0">DESHABILITADA</span>}
+                              {m.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded-full font-bold shrink-0">DESHABILITADA</span>}
                             </div>
                             <p className="text-[11px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} años` : ''}</p>
                           </div>
@@ -1341,7 +1359,16 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         <div className="flex gap-2">
                           <button onClick={() => { editMan(m); setShowManForm(true); }} className="flex-1 py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
-                          <button onClick={() => handleToggleManicuristActive(m)} className="flex-1 py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-amber-600 font-semibold hover:bg-amber-50">{m.isActive === false ? 'Habilitar' : 'Deshabilitar'}</button>
+                          <button
+                            onClick={() => handleToggleManicuristActive(m)}
+                            className={`flex-1 py-1.5 border rounded-lg text-[10px] font-bold transition-colors ${
+                              m.isActive === false
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                : 'border-[#EADEC9] text-amber-600 font-semibold hover:bg-amber-50'
+                            }`}
+                          >
+                            {m.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1595,11 +1622,11 @@ export const AdminDashboard: React.FC = () => {
                   <>
                     <div className="space-y-2">
                       {page.map(s => (
-                        <div key={s.id} className="p-3 rounded-xl bg-white border border-[#EADEC9]/30 flex justify-between items-center text-xs">
+                        <div key={s.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs transition-all ${s.isActive === false ? 'bg-stone-50/70 border-stone-200 opacity-75' : 'bg-white border-[#EADEC9]/30'}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               {s.trending && <span className="text-[9px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
-                              {s.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-600 rounded-full font-bold">DESHABILITADO</span>}
+                              {s.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded-full font-bold">DESHABILITADO</span>}
                               <span className="font-semibold text-sm text-[#3B0019] truncate">{s.name}</span>
                             </div>
                             <div className="flex gap-2 mt-0.5">
@@ -1609,9 +1636,18 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-bold text-sm text-[#8E1B54]">{priceFmt(s.price)}</span>
-                            <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
-                            <button onClick={() => handleToggleServiceActive(s)} className="text-[10px] text-amber-600 font-semibold">{s.isActive === false ? 'Habilitar' : 'Deshabilitar'}</button>
-                            <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
+                            <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] font-semibold">Editar</button>
+                            <button
+                              onClick={() => handleToggleServiceActive(s)}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                                s.isActive === false
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                                  : 'text-amber-600 hover:text-amber-700 font-semibold'
+                              }`}
+                            >
+                              {s.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
+                            </button>
+                            <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
                           </div>
                         </div>
                       ))}
@@ -1679,7 +1715,16 @@ export const AdminDashboard: React.FC = () => {
                         {o.newUsersOnly && <span className="text-[9px] text-blue-500 font-medium">Solo nuevos clientes</span>}
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => handleToggleOffer(o)} className={`px-2 py-1 text-[9px] rounded font-semibold ${o.isActive ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>{o.isActive ? 'Desactivar' : 'Activar'}</button>
+                        <button
+                          onClick={() => handleToggleOffer(o)}
+                          className={`px-2.5 py-1 text-[9px] rounded-lg font-bold transition-colors ${
+                            o.isActive
+                              ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {o.isActive ? 'Desactivar' : '✓ Reactivar'}
+                        </button>
                         <button onClick={() => editOff(o)} className="px-2 py-1 text-[9px] text-[#A68F63] font-semibold">Editar</button>
                         <button onClick={() => handleDeleteOffer(o.id)} className="px-2 py-1 text-[9px] text-red-400 font-semibold">Eliminar</button>
                       </div>
@@ -1828,15 +1873,28 @@ export const AdminDashboard: React.FC = () => {
                 <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.filter((item: any) => item.type === 'CAROUSEL').length})</h3>
                 <div className="space-y-2">
                   {cmsItems.filter((item: any) => item.type === 'CAROUSEL').map((item: any) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 bg-white border border-[#EADEC9]/40 rounded-xl">
+                    <div key={item.id} className={`flex items-center gap-3 p-3 border rounded-xl transition-all ${item.isActive === false ? 'bg-stone-50/70 border-stone-200 opacity-75' : 'bg-white border-[#EADEC9]/40'}`}>
                       <img src={item.imageUrl?.startsWith('/uploads') ? `${API}${item.imageUrl}` : item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#44403C] truncate">{item.title || 'Sin titulo'}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-[#44403C] truncate">{item.title || 'Sin titulo'}</p>
+                          {item.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded-full font-bold shrink-0">DESHABILITADO</span>}
+                        </div>
                         <p className="text-[9px] text-[#78716C] truncate">{item.description || 'Sin descripcion'}</p>
-                        <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive ? '· Activo' : '· Inactivo'}</span>
+                        <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive !== false ? '· Activo' : '· Inactivo'}</span>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => editCms(item)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
+                        <button
+                          onClick={() => handleToggleCmsActive(item)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                            item.isActive === false
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                              : 'text-amber-600 hover:text-amber-700 font-semibold'
+                          }`}
+                        >
+                          {item.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
+                        </button>
                         <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Quitar</button>
                       </div>
                     </div>
