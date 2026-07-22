@@ -968,7 +968,8 @@ export const AdminDashboard: React.FC = () => {
     if (val === undefined || val === null || val === '') return '$0';
     const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
     if (isNaN(num)) return `$${val}`;
-    return `$${Math.round(num).toLocaleString('es-CO').replace(/,/g, '.')}`;
+    const rounded = Math.round(num);
+    return `$${rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
   };
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;

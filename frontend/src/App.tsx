@@ -125,7 +125,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const formatPrice = (price: string | number | undefined | null): string => {
   if (price === undefined || price === null || price === '') return '$0';
   const num = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.-]+/g, '')) || 0;
-  return `$${num.toLocaleString('es-CO')}`;
+  const rounded = Math.round(num);
+  return `$${rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 };
 
 const timeToMinutes = (hhmm: string) => {
@@ -1700,7 +1701,7 @@ export default function App() {
                         {appt.total && (
                           <div className="flex justify-between text-xs font-bold text-[#3B0019] pt-1 border-t border-[#EADEC9]/10">
                             <span>Total Cita:</span>
-                            <span>${Number(appt.total).toLocaleString('es-CO')}</span>
+                            <span>{formatPrice(appt.total)}</span>
                           </div>
                         )}
                       </div>
@@ -1799,7 +1800,7 @@ export default function App() {
                       {appt.total && (
                         <div className="flex justify-between text-xs font-bold text-[#3B0019] pt-1 border-t border-[#EADEC9]/10">
                           <span>Total Cita:</span>
-                          <span>${Number(appt.total).toLocaleString('es-CO')}</span>
+                          <span>{formatPrice(appt.total)}</span>
                         </div>
                       )}
                     </div>
