@@ -80,7 +80,7 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-const authLimiter = rateLimit({
+const staffAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
@@ -91,14 +91,30 @@ const authLimiter = rateLimit({
     res.status(options.statusCode).json(options.message);
   },
 });
-app.use("/api/auth", authLimiter);
+app.use("/api/auth", staffAuthLimiter);
+
+// Limiter separado del de staff: comparten IP con clientes reservando desde
+// la misma red (wifi del local, mismo NAT) -- si compartieran presupuesto,
+// varios clientes reservando podian agotarlo y bloquear el login de un
+// admin que no hizo nada mal. Mismo limite, cupo propio.
+const clientAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Demasiados intentos, intente de nuevo mas tarde" },
+  handler: (req, res, _next, options) => {
+    console.warn(`Rate limit excedido: ip=${req.ip} ruta=${req.originalUrl}`);
+    res.status(options.statusCode).json(options.message);
+  },
+});
 // Solo registro y login de cliente, no todo /api/clients (ese prefijo tambien
 // cubre GET /api/clients/:clientId/appointments, que un cliente real puede
 // llamar mas de 10 veces por minuto en uso normal). Los dos POST si responden
 // distinto segun si el telefono ya tiene cuenta (exists/409), asi que ambos
 // son un oraculo para enumerar clientes a fuerza bruta.
-app.post("/api/clients", authLimiter);
-app.post("/api/clients/auth", authLimiter);
+app.post("/api/clients", clientAuthLimiter);
+app.post("/api/clients/auth", clientAuthLimiter);
 
 app.use("/uploads", express.static(path.resolve("uploads"), { index: false }));
 

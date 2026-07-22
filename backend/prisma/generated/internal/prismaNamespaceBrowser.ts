@@ -89,6 +89,7 @@ export const UserScalarFieldEnum = {
   age: 'age',
   gender: 'gender',
   role: 'role',
+  isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -106,6 +107,7 @@ export const ServiceScalarFieldEnum = {
   price: 'price',
   durationInMinutes: 'durationInMinutes',
   trending: 'trending',
+  isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

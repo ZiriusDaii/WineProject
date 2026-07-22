@@ -20,8 +20,10 @@ import {
   createService,
   createSpecialOffer,
   getAdminUsers,
+  deleteClient,
   getAdminManicurists,
   updateManicuristStatus,
+  toggleManicuristStatus,
   manageLandingContent,
   deleteLandingContent,
   updateService,
@@ -61,7 +63,7 @@ import { getTemplates, updateTemplate } from "../controllers/whatsapp-config.con
 const router = Router();
 
 // Public routes
-router.get("/services", getServices);
+router.get("/services", optionalAuth, getServices);
 router.get("/manicurists", getManicurists);
 router.get("/offers", getOffers);
 router.get("/landing/content", getLandingContent);
@@ -91,9 +93,11 @@ router.get("/admin/offers", requireAdmin, getAdminOffers);
 router.put("/admin/offers/:id", requireAdmin, updateSpecialOffer);
 router.delete("/admin/offers/:id", requireAdmin, deleteSpecialOffer);
 router.get("/admin/clients", requireAdmin, getAdminUsers);
+router.delete("/admin/clients/:id", requireAdmin, deleteClient);
 router.get("/admin/manicurists", requireAdmin, getAdminManicurists);
 router.post("/admin/manicurists", requireAdmin, updateManicuristStatus);
 router.put("/admin/manicurists/:id", requireAdmin, updateManicuristStatus);
+router.patch("/admin/manicurists/:id/status", requireAdmin, toggleManicuristStatus);
 router.post("/admin/landing-cms", requireAdmin, manageLandingContent);
 router.delete("/admin/landing-cms/:id", requireAdmin, deleteLandingContent);
 router.put("/admin/appointments/:id/status", requireAdmin, updateAppointmentStatus);

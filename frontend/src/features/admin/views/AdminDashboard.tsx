@@ -55,6 +55,7 @@ interface ServiceCatalogItem {
   category?: string;
   imageUrl?: string;
   trending?: boolean;
+  isActive?: boolean;
 }
 
 interface Manicurist {
@@ -67,6 +68,7 @@ interface Manicurist {
   avatarUrl?: string;
   avatarPath?: string;
   role?: string;
+  isActive?: boolean;
   schedules?: { shiftTemplate?: { name: string; startTime: string; endTime: string } }[];
 }
 
@@ -117,6 +119,20 @@ function getISOWeek(date: Date): { week: number; year: number } {
   firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
   const week = 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
   return { week, year: d.getUTCFullYear() };
+}
+
+const MONTH_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+// Inversa de getISOWeek: dado semana+anio ISO, calcula el lunes de esa semana
+// (el 4 de enero siempre cae en la semana 1 del estandar ISO 8601).
+function formatWeekRange(week: number, year: number): string {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4Day * 86400000);
+  const start = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+  const end = new Date(start.getTime() + 6 * 86400000);
+  const sameMonth = start.getUTCMonth() === end.getUTCMonth();
+  const startLabel = sameMonth ? `${start.getUTCDate()}` : `${start.getUTCDate()} ${MONTH_ABBR[start.getUTCMonth()]}`;
+  return `${startLabel} - ${end.getUTCDate()} ${MONTH_ABBR[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
 }
 
 type Tab = 'metrics' | 'appointments' | 'calendar' | 'manicurists' | 'clients' | 'services' | 'offers' | 'news' | 'schedule' | 'chats' | 'whatsapp_config';
@@ -390,6 +406,15 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Eliminar?')) return;
     try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
   };
+  // Alternativa al delete duro para servicios con citas historicas (el
+  // backend bloquea el DELETE en ese caso) -- oculta del catalogo publico
+  // sin borrar el registro.
+  const handleToggleServiceActive = async (s: ServiceCatalogItem) => {
+    try {
+      const r = await fetch(`${API}/api/admin/services/${s.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !(s.isActive !== false) }) });
+      if (r.ok) { setSuccessMsg(s.isActive !== false ? 'Servicio deshabilitado.' : 'Servicio habilitado.'); loadData(); } else setErrorMsg('No se pudo.');
+    } catch { setErrorMsg('Error.'); }
+  };
   const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
 
@@ -469,6 +494,16 @@ export const AdminDashboard: React.FC = () => {
   };
   const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManAvatarFile(null); };
+  // Deshabilitar bloquea su login y la oculta del selector de especialista
+  // en el booking, sin borrar su historial de citas.
+  const handleToggleManicuristActive = async (m: Manicurist) => {
+    const nextActive = m.isActive === false;
+    if (!nextActive && !confirm(`¿Deshabilitar a ${m.name}? No podra iniciar sesion ni aparecera en el booking.`)) return;
+    try {
+      const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: nextActive }) });
+      if (r.ok) { setSuccessMsg(nextActive ? 'Manicurista habilitada.' : 'Manicurista deshabilitada.'); loadData(); } else setErrorMsg('No se pudo.');
+    } catch { setErrorMsg('Error.'); }
+  };
 
   // --- Turnos ---
   const fetchWeekSchedule = async () => {
@@ -541,6 +576,21 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(`${API}/api/appointments?clientId=${c.id}`);
       if (res.ok) setClientAppts(await res.json());
     } catch { setClientAppts([]); }
+  };
+
+  const handleDeleteClient = async (c: Client) => {
+    if (!confirm(`¿Eliminar a ${c.name}? Esta accion no se puede deshacer.`)) return;
+    try {
+      const r = await fetch(`${API}/api/admin/clients/${c.id}`, { method: 'DELETE', headers: authHeaders() });
+      if (r.ok) {
+        setSuccessMsg('Cliente eliminado.');
+        setSelectedClient(null);
+        setClients(prev => prev.filter(x => String(x.id) !== String(c.id)));
+      } else {
+        const e = await r.json().catch(() => ({}));
+        setErrorMsg(e.error || 'No se pudo eliminar.');
+      }
+    } catch { setErrorMsg('Error.'); }
   };
 
   // --- CMS ---
@@ -1277,8 +1327,11 @@ export const AdminDashboard: React.FC = () => {
                         <div className="flex items-center gap-3">
                           {m.avatarUrl ? <img src={m.avatarUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover border" /> : <FallbackAvatar className="w-10 h-10" />}
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-sm text-[#3B0019] truncate">{m.name}</h4>
-                            <p className="text-[11px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} anos` : ''}</p>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-semibold text-sm text-[#3B0019] truncate">{m.name}</h4>
+                              {m.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-600 rounded-full font-bold shrink-0">DESHABILITADA</span>}
+                            </div>
+                            <p className="text-[11px] text-[#78716C]">@{m.username} {m.age ? `· ${m.age} años` : ''}</p>
                           </div>
                         </div>
                         {m.schedules && m.schedules.length > 0 && (
@@ -1286,7 +1339,10 @@ export const AdminDashboard: React.FC = () => {
                             {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[10px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
                           </div>
                         )}
-                        <button onClick={() => { editMan(m); setShowManForm(true); }} className="w-full py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+                        <div className="flex gap-2">
+                          <button onClick={() => { editMan(m); setShowManForm(true); }} className="flex-1 py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+                          <button onClick={() => handleToggleManicuristActive(m)} className="flex-1 py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-amber-600 font-semibold hover:bg-amber-50">{m.isActive === false ? 'Habilitar' : 'Deshabilitar'}</button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1344,7 +1400,10 @@ export const AdminDashboard: React.FC = () => {
                 <h3 className="text-xs font-bold text-[#3B0019] uppercase">Asignar por semana</h3>
                 <div className="flex items-center gap-2 text-xs">
                   <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63]">‹</button>
-                  <span className="font-semibold text-[#3B0019]">Semana {scheduleWeek} · {scheduleYear}</span>
+                  <span className="text-center">
+                    <span className="block font-semibold text-[#3B0019]">{formatWeekRange(scheduleWeek, scheduleYear)}</span>
+                    <span className="block text-[9px] text-[#A68F63] uppercase tracking-wide">Semana {scheduleWeek}</span>
+                  </span>
                   <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63]">›</button>
                 </div>
               </div>
@@ -1389,7 +1448,7 @@ export const AdminDashboard: React.FC = () => {
                     <h4 className="font-semibold text-sm text-[#44403C]">{c.name}</h4>
                     <p className="text-xs font-mono text-[#8E1B54]">{c.phone}</p>
                     <div className="flex justify-between text-[10px] text-[#78716C] pt-2 border-t border-[#EADEC9]/20">
-                      <span>{c.age ? `${c.age} anos` : '—'} · {c.gender || '—'}</span>
+                      <span>{c.age ? `${c.age} años` : '—'} · {c.gender || '—'}</span>
                     </div>
                     <button onClick={() => viewClient(c)} className="w-full py-1.5 bg-[#5C0632]/5 text-[#5C0632] rounded-lg text-[10px] font-bold hover:bg-[#8E1B54] hover:text-white">Ver Perfil</button>
                   </div>
@@ -1403,7 +1462,10 @@ export const AdminDashboard: React.FC = () => {
                   <button onClick={() => setSelectedClient(null)} className="absolute top-3 right-3 text-sm text-[#78716C]">✕</button>
                   <h3 className="serif-title text-xl text-[#3B0019]">{selectedClient.name}</h3>
                   <p className="text-xs font-mono text-[#8E1B54]">{selectedClient.phone}</p>
-                  <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} anos · {selectedClient.gender || '—'}</p>
+                  <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} años · {selectedClient.gender || '—'}</p>
+                  {clientAppts.length === 0 && (
+                    <button onClick={() => handleDeleteClient(selectedClient)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar cliente</button>
+                  )}
                   <div className="border-t pt-3 space-y-2">
                     <h4 className="text-xs font-bold text-[#3B0019] uppercase">Historial de Citas ({clientAppts.length})</h4>
                     {clientAppts.length === 0 ? <p className="text-xs text-[#78716C]">Sin citas registradas.</p> :
@@ -1537,6 +1599,7 @@ export const AdminDashboard: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               {s.trending && <span className="text-[9px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
+                              {s.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-600 rounded-full font-bold">DESHABILITADO</span>}
                               <span className="font-semibold text-sm text-[#3B0019] truncate">{s.name}</span>
                             </div>
                             <div className="flex gap-2 mt-0.5">
@@ -1547,6 +1610,7 @@ export const AdminDashboard: React.FC = () => {
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-bold text-sm text-[#8E1B54]">{priceFmt(s.price)}</span>
                             <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] font-semibold">Editar</button>
+                            <button onClick={() => handleToggleServiceActive(s)} className="text-[10px] text-amber-600 font-semibold">{s.isActive === false ? 'Habilitar' : 'Deshabilitar'}</button>
                             <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 font-semibold">Eliminar</button>
                           </div>
                         </div>
@@ -1754,6 +1818,11 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Lista de anuncios existentes */}
+            {!cmsLoading && !cmsError && cmsItems.filter((item: any) => item.type === 'CAROUSEL').length === 0 && (
+              <div className="p-3 bg-[#EADEC9]/20 border border-[#EADEC9]/50 rounded-xl text-[11px] text-[#78716C]">
+                Todavía no publicaste ningún anuncio. Mientras tanto, el sitio muestra un carrusel de ejemplo (no editable, no viene de aquí) -- publica uno abajo para reemplazarlo.
+              </div>
+            )}
             {cmsItems.filter((item: any) => item.type === 'CAROUSEL').length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-[#3B0019] uppercase">Anuncios publicados ({cmsItems.filter((item: any) => item.type === 'CAROUSEL').length})</h3>

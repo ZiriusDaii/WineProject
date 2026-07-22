@@ -44,6 +44,10 @@ model User {
   age       Int?
   gender    String?
   role      Role     @default(CLIENTE)
+  // Solo aplica a MANICURISTA/ADMIN -- deshabilitar oculta a la manicurista
+  // del catalogo publico y le bloquea el login sin borrar su historial de
+  // citas (un delete real rompe la relacion con Appointment).
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -64,6 +68,10 @@ model Service {
   price               Decimal  @db.Decimal(10, 2)
   durationInMinutes   Int      @map("duration_in_minutes")
   trending            Boolean  @default(false)
+  // Deshabilitar oculta el servicio del catalogo publico sin borrarlo --
+  // necesario para servicios con citas historicas, donde el delete real
+  // esta bloqueado (ver deleteService).
+  isActive            Boolean  @default(true) @map("is_active")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

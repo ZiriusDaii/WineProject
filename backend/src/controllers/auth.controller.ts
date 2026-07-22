@@ -39,6 +39,7 @@ export async function loginStaff(
         avatarPath: true,
         age: true,
         gender: true,
+        isActive: true,
       },
     });
 
@@ -48,7 +49,7 @@ export async function loginStaff(
       return;
     }
 
-    if (!user.password || !(await bcrypt.compare(password, user.password))) {
+    if (!user.password || !(await bcrypt.compare(password, user.password)) || !user.isActive) {
       console.warn(`Login fallido: username=${username} ip=${req.ip}`);
       res.status(401).json({ error: "Credenciales inválidas" });
       return;

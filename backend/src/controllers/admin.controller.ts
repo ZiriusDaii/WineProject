@@ -263,6 +263,39 @@ export async function getAdminUsers(
   }
 }
 
+export async function deleteClient(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+
+    const existing = await prisma.user.findUnique({
+      where: { id: id! },
+      include: { clientAppointments: { select: { id: true } } },
+    });
+
+    if (!existing || existing.role !== "CLIENTE") {
+      res.status(404).json({ error: "Cliente no encontrado" });
+      return;
+    }
+
+    if (existing.clientAppointments.length > 0) {
+      res.status(409).json({
+        error: "No se puede eliminar el cliente porque tiene citas asociadas",
+      });
+      return;
+    }
+
+    await prisma.user.delete({ where: { id: id! } });
+
+    res.json({ message: "Cliente eliminado exitosamente" });
+  } catch (error) {
+    console.error("Error eliminando cliente:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
 export async function getAdminManicurists(
   _req: Request,
   res: Response,
@@ -279,6 +312,7 @@ export async function getAdminManicurists(
         gender: true,
         avatarPath: true,
         role: true,
+        isActive: true,
         createdAt: true,
         schedules: {
           include: { shiftTemplate: true },
@@ -418,6 +452,41 @@ export async function updateManicuristStatus(
   }
 }
 
+// Separado de updateManicuristStatus (que exige phone/username/name) porque
+// el toggle "activar/desactivar" del panel debe poder mandar solo isActive
+// sin reenviar todo el formulario de perfil.
+export async function toggleManicuristStatus(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const { isActive } = req.body as { isActive?: boolean };
+
+    if (typeof isActive !== "boolean") {
+      res.status(400).json({ error: "El campo 'isActive' es requerido y debe ser booleano" });
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id: id! } });
+    if (!existing || existing.role === "CLIENTE") {
+      res.status(404).json({ error: "Manicurista no encontrada" });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: id! },
+      data: { isActive },
+      select: { id: true, name: true, isActive: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando estado de manicurista:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
 export async function manageLandingContent(
   req: Request,
   res: Response,
@@ -500,7 +569,7 @@ export async function updateService(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending } =
+    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending, isActive } =
       req.body as {
         name?: string;
         shortDescription?: string | null;
@@ -510,6 +579,7 @@ export async function updateService(
         price?: number;
         durationInMinutes?: number;
         trending?: boolean;
+        isActive?: boolean;
       };
 
     const existing = await prisma.service.findUnique({ where: { id: id! } });
@@ -541,6 +611,7 @@ export async function updateService(
         ...(price !== undefined && { price }),
         ...(durationInMinutes !== undefined && { durationInMinutes }),
         ...(trending !== undefined && { trending }),
+        ...(isActive !== undefined && { isActive }),
       },
     });
 

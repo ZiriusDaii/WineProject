@@ -40,7 +40,10 @@ services:
       - backend_uploads:/app/uploads
 
   frontend-web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://150.136.219.252}
     container_name: winespa_frontend
     restart: always
     depends_on:

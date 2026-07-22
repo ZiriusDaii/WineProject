@@ -44,6 +44,7 @@ export type UserMinAggregateOutputType = {
   age: number | null
   gender: string | null
   role: $Enums.Role | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -58,6 +59,7 @@ export type UserMaxAggregateOutputType = {
   age: number | null
   gender: string | null
   role: $Enums.Role | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -72,6 +74,7 @@ export type UserCountAggregateOutputType = {
   age: number
   gender: number
   role: number
+  isActive: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -96,6 +99,7 @@ export type UserMinAggregateInputType = {
   age?: true
   gender?: true
   role?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -110,6 +114,7 @@ export type UserMaxAggregateInputType = {
   age?: true
   gender?: true
   role?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -124,6 +129,7 @@ export type UserCountAggregateInputType = {
   age?: true
   gender?: true
   role?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -225,6 +231,7 @@ export type UserGroupByOutputType = {
   age: number | null
   gender: string | null
   role: $Enums.Role
+  isActive: boolean
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
@@ -262,6 +269,7 @@ export type UserWhereInput = {
   age?: Prisma.IntNullableFilter<"User"> | number | null
   gender?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.EnumRoleFilter<"User"> | $Enums.Role
+  isActive?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   schedules?: Prisma.ManicuristScheduleListRelationFilter
@@ -279,6 +287,7 @@ export type UserOrderByWithRelationInput = {
   age?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   schedules?: Prisma.ManicuristScheduleOrderByRelationAggregateInput
@@ -299,6 +308,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   age?: Prisma.IntNullableFilter<"User"> | number | null
   gender?: Prisma.StringNullableFilter<"User"> | string | null
   role?: Prisma.EnumRoleFilter<"User"> | $Enums.Role
+  isActive?: Prisma.BoolFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   schedules?: Prisma.ManicuristScheduleListRelationFilter
@@ -316,6 +326,7 @@ export type UserOrderByWithAggregationInput = {
   age?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -338,6 +349,7 @@ export type UserScalarWhereWithAggregatesInput = {
   age?: Prisma.IntNullableWithAggregatesFilter<"User"> | number | null
   gender?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   role?: Prisma.EnumRoleWithAggregatesFilter<"User"> | $Enums.Role
+  isActive?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -352,6 +364,7 @@ export type UserCreateInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
@@ -369,6 +382,7 @@ export type UserUncheckedCreateInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
@@ -386,6 +400,7 @@ export type UserUpdateInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
@@ -403,6 +418,7 @@ export type UserUncheckedUpdateInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
@@ -420,6 +436,7 @@ export type UserCreateManyInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -434,6 +451,7 @@ export type UserUpdateManyMutationInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -448,6 +466,7 @@ export type UserUncheckedUpdateManyInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -462,6 +481,7 @@ export type UserCountOrderByAggregateInput = {
   age?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -480,6 +500,7 @@ export type UserMaxOrderByAggregateInput = {
   age?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -494,6 +515,7 @@ export type UserMinOrderByAggregateInput = {
   age?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -525,6 +547,10 @@ export type NullableIntFieldUpdateOperationsInput = {
 
 export type EnumRoleFieldUpdateOperationsInput = {
   set?: $Enums.Role
+}
+
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -583,6 +609,7 @@ export type UserCreateWithoutSchedulesInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   clientAppointments?: Prisma.AppointmentCreateNestedManyWithoutClientInput
@@ -599,6 +626,7 @@ export type UserUncheckedCreateWithoutSchedulesInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   clientAppointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutClientInput
@@ -631,6 +659,7 @@ export type UserUpdateWithoutSchedulesInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   clientAppointments?: Prisma.AppointmentUpdateManyWithoutClientNestedInput
@@ -647,6 +676,7 @@ export type UserUncheckedUpdateWithoutSchedulesInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   clientAppointments?: Prisma.AppointmentUncheckedUpdateManyWithoutClientNestedInput
@@ -663,6 +693,7 @@ export type UserCreateWithoutClientAppointmentsInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
@@ -679,6 +710,7 @@ export type UserUncheckedCreateWithoutClientAppointmentsInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
@@ -700,6 +732,7 @@ export type UserCreateWithoutManicuristAppointmentsInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleCreateNestedManyWithoutManicuristInput
@@ -716,6 +749,7 @@ export type UserUncheckedCreateWithoutManicuristAppointmentsInput = {
   age?: number | null
   gender?: string | null
   role?: $Enums.Role
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedCreateNestedManyWithoutManicuristInput
@@ -748,6 +782,7 @@ export type UserUpdateWithoutClientAppointmentsInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
@@ -764,6 +799,7 @@ export type UserUncheckedUpdateWithoutClientAppointmentsInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
@@ -791,6 +827,7 @@ export type UserUpdateWithoutManicuristAppointmentsInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUpdateManyWithoutManicuristNestedInput
@@ -807,6 +844,7 @@ export type UserUncheckedUpdateWithoutManicuristAppointmentsInput = {
   age?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   schedules?: Prisma.ManicuristScheduleUncheckedUpdateManyWithoutManicuristNestedInput
@@ -872,6 +910,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   age?: boolean
   gender?: boolean
   role?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
@@ -890,6 +929,7 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   age?: boolean
   gender?: boolean
   role?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -904,6 +944,7 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   age?: boolean
   gender?: boolean
   role?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -918,11 +959,12 @@ export type UserSelectScalar = {
   age?: boolean
   gender?: boolean
   role?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "username" | "password" | "avatarPath" | "name" | "age" | "gender" | "role" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "username" | "password" | "avatarPath" | "name" | "age" | "gender" | "role" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
   clientAppointments?: boolean | Prisma.User$clientAppointmentsArgs<ExtArgs>
@@ -949,6 +991,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     age: number | null
     gender: string | null
     role: $Enums.Role
+    isActive: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -1386,6 +1429,7 @@ export interface UserFieldRefs {
   readonly age: Prisma.FieldRef<"User", 'Int'>
   readonly gender: Prisma.FieldRef<"User", 'String'>
   readonly role: Prisma.FieldRef<"User", 'Role'>
+  readonly isActive: Prisma.FieldRef<"User", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }

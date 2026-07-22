@@ -518,6 +518,18 @@ export default function App() {
   // Carrusel Landing
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // Autoplay: avanza sola cada 6s si hay mas de un slide. Se reinicia cada vez
+  // que el usuario cambia de slide (swipe, flecha o punto) para no pelearse
+  // con la interaccion manual a mitad de intervalo.
+  const slideCount = landingContent?.images?.length || 0;
+  useEffect(() => {
+    if (slideCount < 2) return;
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % slideCount);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slideCount, activeSlide]);
+
   // Estados del Formulario de Booking
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedSpecialist, setSelectedSpecialist] = useState<string | null>(null);
@@ -1119,7 +1131,10 @@ export default function App() {
         setView('clientPortal');
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Error de autenticación.');
+      // fetch() lanza TypeError ("Failed to fetch") cuando no hay conexion al
+      // servidor -- eso no se le muestra crudo al usuario, es un mensaje de
+      // dev tools, no un error de negocio.
+      setAuthError(err instanceof TypeError ? 'No pudimos conectar con el servidor. Intenta de nuevo.' : (err.message || 'Error de autenticación.'));
     } finally {
       setAuthSubmitting(false);
     }
@@ -1174,10 +1189,15 @@ export default function App() {
         setStaffUser('');
         setStaffPassword('');
       } else {
-        throw new Error('Credenciales invalidas.');
+        // El backend a proposito no distingue "usuario no existe" de
+        // "contrasena incorrecta" (evita que alguien use el login para
+        // averiguar que usernames existen) -- mostramos su mensaje tal cual,
+        // ya viene en español y sin datos sensibles.
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Credenciales inválidas.');
       }
     } catch (err: any) {
-      setAuthError(err.message || 'Credenciales incorrectas.');
+      setAuthError(err instanceof TypeError ? 'No pudimos conectar con el servidor. Intenta de nuevo.' : (err.message || 'Credenciales incorrectas.'));
     } finally {
       setAuthSubmitting(false);
     }
@@ -1805,10 +1825,30 @@ export default function App() {
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-[#3B0019]/80 via-transparent to-transparent md:bg-gradient-to-r md:from-[#3B0019]/80 md:via-[#3B0019]/20 md:to-transparent pointer-events-none" />
+                    {landingContent.images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSlide((activeSlide - 1 + slideCount) % slideCount)}
+                          aria-label="Anuncio anterior"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSlide((activeSlide + 1) % slideCount)}
+                          aria-label="Siguiente anuncio"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
+                      </>
+                    )}
                   </div>
                   <motion.div
                     key={activeSlide}
-                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 md:p-6 text-left z-10"
+                    className="absolute md:relative bottom-0 left-0 right-0 md:flex-1 p-4 pt-10 md:p-6 text-left z-10 bg-gradient-to-t from-[#3B0019]/95 via-[#3B0019]/70 to-transparent md:bg-none"
                     initial={{ opacity: 0, x: 15 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}

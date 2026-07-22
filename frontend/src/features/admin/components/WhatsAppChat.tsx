@@ -10,6 +10,48 @@ const authHeaders = () => {
     : ({ 'Content-Type': 'application/json' } as Record<string, string>);
 };
 
+// Iconos de linea (mismo estilo que AdminDashboard: stroke="currentColor", sin
+// libreria de iconos instalada) -- reemplazan los emoji nativos, que se
+// renderizan con la fuente de emoji del sistema y desentonaban con el resto
+// del panel (letra y tamaño distintos al texto que los rodea).
+const iconProps = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', viewBox: '0 0 24 24' } as const;
+const PhoneIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+);
+const BellIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+);
+const MessageCircleIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+);
+const Volume2Icon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" /></svg>
+);
+const VolumeXIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+);
+const SearchIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+);
+const InboxIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+);
+const TrashIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+);
+const SmartphoneIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+);
+const SendIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+);
+const XCircleIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+);
+const Spinner = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <span className={`${className} inline-block rounded-full border-2 border-current border-t-transparent animate-spin`} />
+);
+
 export interface Conversation {
   conversationId: string;
   phoneNumber: string;
@@ -120,7 +162,7 @@ const ConversationListItem = React.memo<{
         <div className="w-10 h-10 rounded-full bg-[#5C0632]/10 border border-[#8E1B54]/20 flex items-center justify-center font-bold text-xs text-[#5C0632]">
           {conversation.clientName
             ? conversation.clientName.slice(0, 2).toUpperCase()
-            : '📞'}
+            : <PhoneIcon className="w-4 h-4" />}
         </div>
         {isRecent && (
           <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
@@ -171,10 +213,10 @@ const ConversationListItem = React.memo<{
         <motion.span
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="shrink-0 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-xs self-center"
+          className="shrink-0 bg-amber-500 text-white p-1 rounded-full shadow-xs self-center flex items-center justify-center"
           title="Cliente solicito atencion de un asesor"
         >
-          🛎
+          <BellIcon className="w-2.5 h-2.5" />
         </motion.span>
       )}
     </motion.button>
@@ -209,13 +251,13 @@ const MessageBubble = React.memo<{
         {isOutbound && (
           <span className="ml-0.5">
             {message.isOptimistic ? (
-              <span className="animate-pulse">⏳</span>
+              <Spinner className="w-2.5 h-2.5" />
             ) : message.status === 'FAILED' ? (
               <button
                 onClick={() => onRetry?.(message)}
                 className="text-red-500 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
               >
-                ❌ Error (Reintentar)
+                <XCircleIcon className="w-2.5 h-2.5" /> Error (Reintentar)
               </button>
             ) : message.status === 'READ' ? (
               <span className="text-amber-400 font-bold">✓✓</span>
@@ -506,14 +548,15 @@ export const WhatsAppChat: React.FC = () => {
         <div className="p-4 border-b border-[#EADEC9]/40 space-y-3 shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="serif-title text-lg text-[#3B0019] flex items-center gap-2">
-              <span>💬 Chats WhatsApp</span>
+              <MessageCircleIcon className="w-4 h-4 text-[#8E1B54]" />
+              <span>Chats WhatsApp</span>
             </h2>
             <button
               onClick={() => setSoundEnabled((prev) => !prev)}
               title={soundEnabled ? 'Sonido activado' : 'Sonido silenciado'}
-              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-xs text-stone-600 cursor-pointer transition-colors"
+              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer transition-colors"
             >
-              {soundEnabled ? '🔊' : '🔇'}
+              {soundEnabled ? <Volume2Icon className="w-3.5 h-3.5" /> : <VolumeXIcon className="w-3.5 h-3.5" />}
             </button>
           </div>
 
@@ -526,7 +569,7 @@ export const WhatsAppChat: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-xl text-xs bg-white/90 focus:outline-none focus:ring-2 focus:ring-[#8E1B54]/30"
             />
-            <span className="absolute left-3 top-2.5 text-xs text-stone-400">🔍</span>
+            <SearchIcon className="absolute left-3 top-2.5 w-3.5 h-3.5 text-stone-400" />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
@@ -557,7 +600,7 @@ export const WhatsAppChat: React.FC = () => {
             </div>
           ) : conversations.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center text-stone-400 space-y-2">
-              <span className="text-3xl">📥</span>
+              <InboxIcon className="w-8 h-8" />
               <p className="text-xs font-medium">No hay conversaciones activas</p>
               <p className="text-[10px] text-stone-400">
                 Los mensajes entrantes de WhatsApp apareceran aqui
@@ -598,7 +641,7 @@ export const WhatsAppChat: React.FC = () => {
                   <div className="w-9 h-9 rounded-full bg-[#5C0632]/10 border border-[#8E1B54]/20 flex items-center justify-center font-bold text-xs text-[#5C0632]">
                     {selectedConv.clientName
                       ? selectedConv.clientName.slice(0, 2).toUpperCase()
-                      : '📞'}
+                      : <PhoneIcon className="w-4 h-4" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -641,13 +684,13 @@ export const WhatsAppChat: React.FC = () => {
                   className="px-2 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                   title="Eliminar conversacion"
                 >
-                  🗑 Eliminar
+                  <TrashIcon className="w-3 h-3" /> Eliminar
                 </button>
               </div>
               {selectedConv.hasAttentionRequest && (
                 <div className="mt-2 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">🛎</span>
+                    <BellIcon className="w-4 h-4 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-[11px] font-semibold text-amber-800">Cliente solicito atencion personal</p>
                       <p className="text-[10px] text-amber-600">Responde directamente en este chat</p>
@@ -687,7 +730,7 @@ export const WhatsAppChat: React.FC = () => {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 text-stone-400 space-y-2">
-                  <span className="text-3xl">💬</span>
+                  <MessageCircleIcon className="w-8 h-8" />
                   <p className="text-xs font-medium">
                     Envía un mensaje para iniciar la conversación
                   </p>
@@ -732,19 +775,15 @@ export const WhatsAppChat: React.FC = () => {
                   disabled={!inputText.trim() || sending}
                   className="px-4 py-2.5 bg-[#8E1B54] hover:bg-[#5C0632] disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer shrink-0 flex items-center justify-center min-w-12 h-[38px]"
                 >
-                  {sending ? (
-                    <span className="animate-spin text-xs">⏳</span>
-                  ) : (
-                    <span>➤</span>
-                  )}
+                  {sending ? <Spinner className="w-3.5 h-3.5" /> : <SendIcon className="w-3.5 h-3.5" />}
                 </button>
               </form>
             </div>
           </>
         ) : (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center text-stone-400 space-y-3">
-            <div className="w-16 h-16 rounded-full bg-[#EADEC9]/30 flex items-center justify-center text-2xl">
-              📱
+            <div className="w-16 h-16 rounded-full bg-[#EADEC9]/30 flex items-center justify-center">
+              <SmartphoneIcon className="w-7 h-7" />
             </div>
             <h3 className="serif-title text-base text-[#3B0019]">
               Selecciona una conversación

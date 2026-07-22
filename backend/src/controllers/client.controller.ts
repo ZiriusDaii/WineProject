@@ -148,10 +148,18 @@ async function findOverlappingAppointment(
 
 export async function getServices(req: AuthRequest, res: Response): Promise<void> {
   try {
+    // El panel de admin reusa este mismo endpoint publico para su propia
+    // lista de servicios (para no duplicar el fetch) -- staff autenticado
+    // necesita ver tambien los deshabilitados para poder reactivarlos, el
+    // catalogo publico/booking no.
+    const isStaffRequest = req.user?.role === "ADMIN" || req.user?.role === "OWNER" || req.user?.role === "MANICURISTA";
+    const activeFilter = isStaffRequest ? {} : { isActive: true };
+
     const hasPagination = req.query.page || req.query.limit || req.query.search;
 
     if (!hasPagination) {
       const services = await prisma.service.findMany({
+        where: activeFilter,
         select: {
           id: true,
           name: true,
@@ -162,6 +170,7 @@ export async function getServices(req: AuthRequest, res: Response): Promise<void
           price: true,
           durationInMinutes: true,
           trending: true,
+          isActive: true,
         },
         orderBy: { name: "asc" },
       });
@@ -174,9 +183,10 @@ export async function getServices(req: AuthRequest, res: Response): Promise<void
     const skip = (page - 1) * limit;
     const search = (req.query.search as string)?.trim() || null;
 
-    const where = search
-      ? { name: { contains: search, mode: "insensitive" as const } }
-      : {};
+    const where = {
+      ...activeFilter,
+      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+    };
 
     const [data, totalCount] = await Promise.all([
       prisma.service.findMany({
@@ -191,6 +201,7 @@ export async function getServices(req: AuthRequest, res: Response): Promise<void
           price: true,
           durationInMinutes: true,
           trending: true,
+          isActive: true,
         },
         skip,
         take: limit,
@@ -217,7 +228,7 @@ export async function getManicurists(
 ): Promise<void> {
   try {
     const manicurists = await prisma.user.findMany({
-      where: { role: "MANICURISTA" },
+      where: { role: "MANICURISTA", isActive: true },
       select: { id: true, name: true, avatarPath: true, age: true, gender: true },
     });
 

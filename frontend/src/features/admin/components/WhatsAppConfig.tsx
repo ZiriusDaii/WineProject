@@ -9,6 +9,15 @@ const authHeaders = () => {
     : ({ 'Content-Type': 'application/json' } as Record<string, string>);
 };
 
+// Mismo estilo de icono de linea que WhatsAppChat.tsx / AdminDashboard.tsx.
+const iconProps = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', viewBox: '0 0 24 24' } as const;
+const SmartphoneIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+);
+const FileTextIcon = ({ className = 'w-6 h-6' }: { className?: string }) => (
+  <svg className={className} {...iconProps}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
+);
+
 interface Template {
   id: string;
   name: string;
@@ -152,7 +161,7 @@ export const WhatsAppConfig: React.FC = () => {
               {/* Template Header */}
               <div className="p-4 border-b border-[#EADEC9]/40 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">📱</span>
+                  <SmartphoneIcon className="w-4 h-4 text-[#8E1B54]" />
                   <div>
                     <h3 className="font-semibold text-sm text-[#3B0019] capitalize">
                       {template.name === 'welcome' ? 'Mensaje de Bienvenida' : template.name}
@@ -298,8 +307,8 @@ export const WhatsAppConfig: React.FC = () => {
         })}
 
         {templates.length === 0 && (
-          <div className="text-center py-12 text-stone-400">
-            <span className="text-3xl">📝</span>
+          <div className="text-center py-12 text-stone-400 flex flex-col items-center gap-2">
+            <FileTextIcon className="w-8 h-8" />
             <p className="text-xs mt-2">No hay templates configurados.</p>
             <p className="text-[10px] mt-1">Ejecuta el seed para crear el template por defecto.</p>
           </div>

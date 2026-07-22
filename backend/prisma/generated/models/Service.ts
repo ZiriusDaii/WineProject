@@ -46,6 +46,7 @@ export type ServiceMinAggregateOutputType = {
   price: runtime.Decimal | null
   durationInMinutes: number | null
   trending: boolean | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -60,6 +61,7 @@ export type ServiceMaxAggregateOutputType = {
   price: runtime.Decimal | null
   durationInMinutes: number | null
   trending: boolean | null
+  isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -74,6 +76,7 @@ export type ServiceCountAggregateOutputType = {
   price: number
   durationInMinutes: number
   trending: number
+  isActive: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -100,6 +103,7 @@ export type ServiceMinAggregateInputType = {
   price?: true
   durationInMinutes?: true
   trending?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -114,6 +118,7 @@ export type ServiceMaxAggregateInputType = {
   price?: true
   durationInMinutes?: true
   trending?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -128,6 +133,7 @@ export type ServiceCountAggregateInputType = {
   price?: true
   durationInMinutes?: true
   trending?: true
+  isActive?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -229,6 +235,7 @@ export type ServiceGroupByOutputType = {
   price: runtime.Decimal
   durationInMinutes: number
   trending: boolean
+  isActive: boolean
   createdAt: Date
   updatedAt: Date
   _count: ServiceCountAggregateOutputType | null
@@ -266,6 +273,7 @@ export type ServiceWhereInput = {
   price?: Prisma.DecimalFilter<"Service"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFilter<"Service"> | number
   trending?: Prisma.BoolFilter<"Service"> | boolean
+  isActive?: Prisma.BoolFilter<"Service"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Service"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Service"> | Date | string
   appointments?: Prisma.AppointmentListRelationFilter
@@ -281,6 +289,7 @@ export type ServiceOrderByWithRelationInput = {
   price?: Prisma.SortOrder
   durationInMinutes?: Prisma.SortOrder
   trending?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   appointments?: Prisma.AppointmentOrderByRelationAggregateInput
@@ -299,6 +308,7 @@ export type ServiceWhereUniqueInput = Prisma.AtLeast<{
   price?: Prisma.DecimalFilter<"Service"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFilter<"Service"> | number
   trending?: Prisma.BoolFilter<"Service"> | boolean
+  isActive?: Prisma.BoolFilter<"Service"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Service"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Service"> | Date | string
   appointments?: Prisma.AppointmentListRelationFilter
@@ -314,6 +324,7 @@ export type ServiceOrderByWithAggregationInput = {
   price?: Prisma.SortOrder
   durationInMinutes?: Prisma.SortOrder
   trending?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ServiceCountOrderByAggregateInput
@@ -336,6 +347,7 @@ export type ServiceScalarWhereWithAggregatesInput = {
   price?: Prisma.DecimalWithAggregatesFilter<"Service"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntWithAggregatesFilter<"Service"> | number
   trending?: Prisma.BoolWithAggregatesFilter<"Service"> | boolean
+  isActive?: Prisma.BoolWithAggregatesFilter<"Service"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Service"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Service"> | Date | string
 }
@@ -350,6 +362,7 @@ export type ServiceCreateInput = {
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes: number
   trending?: boolean
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   appointments?: Prisma.AppointmentCreateNestedManyWithoutServicesInput
@@ -365,6 +378,7 @@ export type ServiceUncheckedCreateInput = {
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes: number
   trending?: boolean
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutServicesInput
@@ -380,6 +394,7 @@ export type ServiceUpdateInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   appointments?: Prisma.AppointmentUpdateManyWithoutServicesNestedInput
@@ -395,6 +410,7 @@ export type ServiceUncheckedUpdateInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutServicesNestedInput
@@ -410,6 +426,7 @@ export type ServiceCreateManyInput = {
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes: number
   trending?: boolean
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -424,6 +441,7 @@ export type ServiceUpdateManyMutationInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -438,6 +456,7 @@ export type ServiceUncheckedUpdateManyInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -452,6 +471,7 @@ export type ServiceCountOrderByAggregateInput = {
   price?: Prisma.SortOrder
   durationInMinutes?: Prisma.SortOrder
   trending?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -471,6 +491,7 @@ export type ServiceMaxOrderByAggregateInput = {
   price?: Prisma.SortOrder
   durationInMinutes?: Prisma.SortOrder
   trending?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -485,6 +506,7 @@ export type ServiceMinOrderByAggregateInput = {
   price?: Prisma.SortOrder
   durationInMinutes?: Prisma.SortOrder
   trending?: Prisma.SortOrder
+  isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -518,10 +540,6 @@ export type IntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
-}
-
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
 }
 
 export type ServiceCreateNestedManyWithoutAppointmentsInput = {
@@ -572,6 +590,7 @@ export type ServiceCreateWithoutAppointmentsInput = {
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes: number
   trending?: boolean
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -586,6 +605,7 @@ export type ServiceUncheckedCreateWithoutAppointmentsInput = {
   price: runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes: number
   trending?: boolean
+  isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -624,6 +644,7 @@ export type ServiceScalarWhereInput = {
   price?: Prisma.DecimalFilter<"Service"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFilter<"Service"> | number
   trending?: Prisma.BoolFilter<"Service"> | boolean
+  isActive?: Prisma.BoolFilter<"Service"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Service"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Service"> | Date | string
 }
@@ -638,6 +659,7 @@ export type ServiceUpdateWithoutAppointmentsInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -652,6 +674,7 @@ export type ServiceUncheckedUpdateWithoutAppointmentsInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -666,6 +689,7 @@ export type ServiceUncheckedUpdateManyWithoutAppointmentsInput = {
   price?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   durationInMinutes?: Prisma.IntFieldUpdateOperationsInput | number
   trending?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -711,6 +735,7 @@ export type ServiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   price?: boolean
   durationInMinutes?: boolean
   trending?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   appointments?: boolean | Prisma.Service$appointmentsArgs<ExtArgs>
@@ -727,6 +752,7 @@ export type ServiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   price?: boolean
   durationInMinutes?: boolean
   trending?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["service"]>
@@ -741,6 +767,7 @@ export type ServiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   price?: boolean
   durationInMinutes?: boolean
   trending?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["service"]>
@@ -755,11 +782,12 @@ export type ServiceSelectScalar = {
   price?: boolean
   durationInMinutes?: boolean
   trending?: boolean
+  isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ServiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "shortDescription" | "includesDescription" | "category" | "imageUrl" | "price" | "durationInMinutes" | "trending" | "createdAt" | "updatedAt", ExtArgs["result"]["service"]>
+export type ServiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "shortDescription" | "includesDescription" | "category" | "imageUrl" | "price" | "durationInMinutes" | "trending" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["service"]>
 export type ServiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   appointments?: boolean | Prisma.Service$appointmentsArgs<ExtArgs>
   _count?: boolean | Prisma.ServiceCountOutputTypeDefaultArgs<ExtArgs>
@@ -782,6 +810,7 @@ export type $ServicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     price: runtime.Decimal
     durationInMinutes: number
     trending: boolean
+    isActive: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["service"]>
@@ -1217,6 +1246,7 @@ export interface ServiceFieldRefs {
   readonly price: Prisma.FieldRef<"Service", 'Decimal'>
   readonly durationInMinutes: Prisma.FieldRef<"Service", 'Int'>
   readonly trending: Prisma.FieldRef<"Service", 'Boolean'>
+  readonly isActive: Prisma.FieldRef<"Service", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Service", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Service", 'DateTime'>
 }
