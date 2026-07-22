@@ -16,6 +16,14 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  // lib/jwt.ts cae a un secreto hardcodeado en el codigo fuente si falta esta
+  // var -- en produccion eso equivale a firmar sesiones con una clave publica:
+  // cualquiera podria forjar un JWT valido de ADMIN. Mejor no arrancar.
+  console.error("JWT_SECRET es obligatorio con NODE_ENV=production (ver backend/.env.example)");
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 

@@ -1,8 +1,9 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
 export async function getManicuristDashboard(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -15,6 +16,14 @@ export async function getManicuristDashboard(
 
     if (!manicuristId) {
       res.status(400).json({ error: "El query param 'manicuristId' es requerido" });
+      return;
+    }
+
+    // requireStaff deja pasar a cualquier ADMIN/OWNER/MANICURISTA -- sin esto,
+    // una manicurista autenticada podia pasar el id de OTRA manicurista y ver
+    // su agenda completa (nombre y telefono de sus clientes incluidos).
+    if (req.user?.role === "MANICURISTA" && manicuristId !== req.user.userId) {
+      res.status(403).json({ error: "No autorizado para ver la agenda de otra manicurista" });
       return;
     }
 
@@ -72,7 +81,7 @@ export async function getManicuristDashboard(
 }
 
 export async function completeAppointment(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -80,6 +89,17 @@ export async function completeAppointment(
 
     if (!id) {
       res.status(400).json({ error: "El parámetro 'id' es requerido" });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    if (req.user?.role === "MANICURISTA" && existing.manicuristId !== req.user.userId) {
+      res.status(403).json({ error: "No autorizado para completar una cita de otra manicurista" });
       return;
     }
 
@@ -101,7 +121,7 @@ export async function completeAppointment(
 }
 
 export async function updateManicuristProfile(
-  req: Request,
+  req: AuthRequest,
   res: Response,
 ): Promise<void> {
   try {
@@ -115,6 +135,15 @@ export async function updateManicuristProfile(
 
     if (!id) {
       res.status(400).json({ error: "El campo 'id' es requerido" });
+      return;
+    }
+
+    // Sin esto, cualquier manicurista autenticada podia mandar el id de OTRO
+    // usuario (otra manicurista, un admin) en el body y sobreescribir su
+    // nombre/edad/genero/avatar -- este endpoint es de autoedicion de perfil,
+    // no de gestion (eso ya existe aparte en /admin/manicurists, con requireAdmin).
+    if (req.user?.role === "MANICURISTA" && id !== req.user.userId) {
+      res.status(403).json({ error: "No autorizado para editar el perfil de otro usuario" });
       return;
     }
 
