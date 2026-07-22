@@ -324,7 +324,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const [mRes, sRes, cRes, oRes] = await Promise.all([
         fetch(`${API}/api/admin/manicurists`, { headers: h }),
-        fetch(`${API}/api/services`, { headers: h }),
+        fetch(`${API}/api/admin/services`, { headers: h }),
         fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
         fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
       ]);
@@ -699,7 +699,7 @@ export const AdminDashboard: React.FC = () => {
     setCmsLoading(true);
     setCmsError(false);
     try {
-      const res = await fetch(`${API}/api/landing/content`, { headers: authHeaders() });
+      const res = await fetch(`${API}/api/admin/landing-cms`, { headers: authHeaders() });
       if (res.ok) { setCmsItems(await res.json()); } else { setCmsError(true); }
     } catch { setCmsError(true); }
     finally { setCmsLoading(false); }

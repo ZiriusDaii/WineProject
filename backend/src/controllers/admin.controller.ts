@@ -555,10 +555,38 @@ export async function deleteLandingContent(
     }
 
     await prisma.landingContent.delete({ where: { id: id! } });
-
     res.json({ message: "Contenido eliminado exitosamente" });
   } catch (error) {
     console.error("Error eliminando landing content:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+export async function getAdminLandingContent(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const content = await prisma.landingContent.findMany({
+      orderBy: { order: "asc" },
+    });
+    res.json(content);
+  } catch (error) {
+    console.error("Error obteniendo landing content de admin:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function getAdminServices(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const services = await prisma.service.findMany({
+      orderBy: { name: "asc" },
+    });
+    res.json(services);
+  } catch (error) {
+    console.error("Error obteniendo servicios de admin:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

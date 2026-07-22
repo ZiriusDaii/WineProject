@@ -26,6 +26,8 @@ import {
   toggleManicuristStatus,
   manageLandingContent,
   deleteLandingContent,
+  getAdminLandingContent,
+  getAdminServices,
   updateService,
   deleteService,
   updateSpecialOffer,
@@ -81,6 +83,7 @@ router.put("/appointments/:id", optionalAuth, updateAppointment);
 // Admin routes (require auth)
 router.get("/admin/stats", requireAdmin, getDashboardStats);
 router.get("/admin/appointments", requireAdmin, getAllAppointments);
+router.get("/admin/services", requireAdmin, getAdminServices);
 router.post("/admin/services", requireAdmin, createService);
 router.put("/admin/services/:id", requireAdmin, updateService);
 router.delete("/admin/services/:id", requireAdmin, deleteService);
@@ -98,6 +101,7 @@ router.get("/admin/manicurists", requireAdmin, getAdminManicurists);
 router.post("/admin/manicurists", requireAdmin, updateManicuristStatus);
 router.put("/admin/manicurists/:id", requireAdmin, updateManicuristStatus);
 router.patch("/admin/manicurists/:id/status", requireAdmin, toggleManicuristStatus);
+router.get("/admin/landing-cms", requireAdmin, getAdminLandingContent);
 router.post("/admin/landing-cms", requireAdmin, manageLandingContent);
 router.delete("/admin/landing-cms/:id", requireAdmin, deleteLandingContent);
 router.put("/admin/appointments/:id/status", requireAdmin, updateAppointmentStatus);
