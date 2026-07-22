@@ -62,9 +62,9 @@ jobs:
             ENVEOF
 
             # --- Construir y levantar contenedores ---
-            docker compose -f docker-compose.prod.yml up -d --build
+            sudo docker compose -f docker-compose.prod.yml up -d --build
 
             # --- Limpiar imágenes viejas ---
-            docker image prune -f
+            sudo docker image prune -f
 
             echo "Deploy completado exitosamente."
