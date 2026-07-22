@@ -177,6 +177,17 @@ export const AdminDashboard: React.FC = () => {
   const [calendarDate, setCalendarDate] = useState(toLocalDateKey(new Date()));
   const itemsPerPage = 5;
 
+  // Custom modal de confirmacion elegante
+  interface ConfirmModalState {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+    onConfirm: () => void;
+  }
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
+
   // Turnos
   const [shiftTemplates, setShiftTemplates] = useState<{ id: string; name: string; startTime: string; endTime: string }[]>([]);
   const [weekSchedule, setWeekSchedule] = useState<{ manicuristId: string; shiftTemplateId: string }[]>([]);
@@ -307,7 +318,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const [mRes, sRes, cRes, oRes] = await Promise.all([
         fetch(`${API}/api/admin/manicurists`, { headers: h }),
-        fetch(`${API}/api/services`),
+        fetch(`${API}/api/services`, { headers: h }),
         fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
         fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
       ]);
@@ -402,18 +413,43 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteService = async (id: string | number) => {
-    if (!confirm('Eliminar?')) return;
-    try { const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else { const e = await r.json().catch(() => ({})); setErrorMsg(e.error || 'No se pudo.'); } } catch { setErrorMsg('Error.'); }
+  const handleDeleteService = (id: string | number) => {
+    const s = servicesCatalog.find(x => String(x.id) === String(id));
+    setConfirmModal({
+      title: 'Eliminar Servicio',
+      message: `¿Seguro que deseas eliminar "${s?.name || 'este servicio'}"?`,
+      confirmText: 'Eliminar Servicio',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) {
+            setSuccessMsg('Servicio eliminado.');
+            loadData();
+          } else {
+            const e = await r.json().catch(() => ({}));
+            if (r.status === 409 && s) {
+              setConfirmModal({
+                title: 'Servicio con Citas Registradas',
+                message: `${e.error || 'No se puede eliminar porque tiene citas asociadas'}. ¿Deseas deshabilitarlo en su lugar para ocultarlo de la carta pública sin borrar su historial?`,
+                confirmText: 'Deshabilitar Servicio',
+                isDanger: false,
+                onConfirm: () => handleToggleServiceActive(s)
+              });
+            } else {
+              setErrorMsg(e.error || 'No se pudo eliminar.');
+            }
+          }
+        } catch { setErrorMsg('Error al conectar.'); }
+      }
+    });
   };
-  // Alternativa al delete duro para servicios con citas historicas (el
-  // backend bloquea el DELETE en ese caso) -- oculta del catalogo publico
-  // sin borrar el registro.
   const handleToggleServiceActive = async (s: ServiceCatalogItem) => {
     try {
-      const r = await fetch(`${API}/api/admin/services/${s.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !(s.isActive !== false) }) });
-      if (r.ok) { setSuccessMsg(s.isActive !== false ? 'Servicio deshabilitado.' : 'Servicio habilitado.'); loadData(); } else setErrorMsg('No se pudo.');
-    } catch { setErrorMsg('Error.'); }
+      const nextActive = s.isActive === false;
+      const r = await fetch(`${API}/api/admin/services/${s.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: nextActive }) });
+      if (r.ok) { setSuccessMsg(nextActive ? 'Servicio reactivado.' : 'Servicio deshabilitado.'); loadData(); } else setErrorMsg('No se pudo modificar el servicio.');
+    } catch { setErrorMsg('Error al conectar.'); }
   };
   const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
@@ -431,7 +467,20 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteOffer = async (id: string) => { if (!confirm('Eliminar?')) return; try { const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() }); if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.'); } catch { setErrorMsg('Error.'); } };
+  const handleDeleteOffer = (id: string) => {
+    setConfirmModal({
+      title: 'Eliminar Descuento',
+      message: '¿Seguro que deseas eliminar esta oferta o código de descuento?',
+      confirmText: 'Eliminar',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo eliminar.');
+        } catch { setErrorMsg('Error al conectar.'); }
+      }
+    });
+  };
   const handleToggleOffer = async (o: Offer) => { try { const r = await fetch(`${API}/api/admin/offers/${o.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: !o.isActive }) }); if (r.ok) setOffers(prev => prev.map(x => x.id === o.id ? { ...x, isActive: !o.isActive } : x)); } catch { /* */ } };
   const editOff = (o: Offer) => { setOffId(o.id); setOffTitle(o.title); setOffDesc(o.description || ''); setOffDiscount(String(o.discountPercentage)); setOffCode(o.code); setOffValidFrom(o.validFrom ? o.validFrom.slice(0, 10) : ''); setOffValidUntil(o.validUntil ? o.validUntil.slice(0, 10) : ''); setOffNewUsersOnly(o.newUsersOnly || false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetOff = () => { setOffId(null); setOffTitle(''); setOffDesc(''); setOffDiscount(''); setOffCode(''); setOffValidFrom(''); setOffValidUntil(''); setOffNewUsersOnly(false); };
@@ -459,12 +508,19 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Eliminar esta categoria? Los servicios en ella quedaran sin categoria.')) return;
-    try {
-      const r = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders() });
-      if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo.');
-    } catch { setErrorMsg('Error.'); }
+  const handleDeleteCategory = (id: string) => {
+    setConfirmModal({
+      title: 'Eliminar Categoría',
+      message: '¿Eliminar esta categoría? Los servicios en ella quedarán sin categoría.',
+      confirmText: 'Eliminar',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo eliminar.');
+        } catch { setErrorMsg('Error.'); }
+      }
+    });
   };
   const editCat = (c: Category) => { setEditingCatId(c.id); setCatName(c.name); setShowCategoriesPanel(true); };
 
@@ -488,7 +544,6 @@ export const AdminDashboard: React.FC = () => {
         await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
       }
       setSuccessMsg(manId ? 'Actualizada.' : 'Creada.');
-      resetMan(); loadData();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -496,13 +551,29 @@ export const AdminDashboard: React.FC = () => {
   const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManAvatarFile(null); };
   // Deshabilitar bloquea su login y la oculta del selector de especialista
   // en el booking, sin borrar su historial de citas.
-  const handleToggleManicuristActive = async (m: Manicurist) => {
+  const handleToggleManicuristActive = (m: Manicurist) => {
     const nextActive = m.isActive === false;
-    if (!nextActive && !confirm(`¿Deshabilitar a ${m.name}? No podra iniciar sesion ni aparecera en el booking.`)) return;
-    try {
-      const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: nextActive }) });
-      if (r.ok) { setSuccessMsg(nextActive ? 'Manicurista habilitada.' : 'Manicurista deshabilitada.'); loadData(); } else setErrorMsg('No se pudo.');
-    } catch { setErrorMsg('Error.'); }
+    if (!nextActive) {
+      setConfirmModal({
+        title: 'Deshabilitar Manicurista',
+        message: `¿Deseas deshabilitar a ${m.name}? No podrá recibir nuevas citas en el agendamiento público, pero su historial y turnos guardados se mantendrán intactos.`,
+        confirmText: 'Deshabilitar',
+        isDanger: true,
+        onConfirm: async () => {
+          try {
+            const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: false }) });
+            if (r.ok) { setSuccessMsg('Manicurista deshabilitada.'); loadData(); } else setErrorMsg('No se pudo deshabilitar.');
+          } catch { setErrorMsg('Error al conectar.'); }
+        }
+      });
+      return;
+    }
+    (async () => {
+      try {
+        const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: true }) });
+        if (r.ok) { setSuccessMsg('Manicurista reactivada.'); loadData(); } else setErrorMsg('No se pudo reactivar.');
+      } catch { setErrorMsg('Error.'); }
+    })();
   };
 
   // --- Turnos ---
@@ -537,15 +608,22 @@ export const AdminDashboard: React.FC = () => {
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
-  const handleDeleteShiftTemplate = async (id: string) => {
-    if (!confirm('Eliminar este turno? Las manicuristas que lo tengan asignado quedaran sin turno esa semana.')) return;
-    try {
-      const r = await fetch(`${API}/api/admin/shift-templates/${id}`, { method: 'DELETE', headers: authHeaders() });
-      if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else {
-        const err = await r.json().catch(() => null);
-        setErrorMsg(err?.error || 'No se pudo eliminar.');
+  const handleDeleteShiftTemplate = (id: string) => {
+    setConfirmModal({
+      title: 'Eliminar Turno',
+      message: '¿Eliminar este turno? Las manicuristas que lo tengan asignado quedarán sin turno esa semana.',
+      confirmText: 'Eliminar Turno',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/shift-templates/${id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else {
+            const err = await r.json().catch(() => null);
+            setErrorMsg(err?.error || 'No se pudo eliminar.');
+          }
+        } catch { setErrorMsg('Error.'); }
       }
-    } catch { setErrorMsg('Error.'); }
+    });
   };
   const editShiftTemplate = (s: { id: string; name: string; startTime: string; endTime: string }) => {
     setEditingShiftId(s.id); setShiftName(s.name); setShiftStart(s.startTime); setShiftEnd(s.endTime);
@@ -558,8 +636,8 @@ export const AdminDashboard: React.FC = () => {
         headers: authHeaders(),
         body: JSON.stringify({ manicuristId, week: scheduleWeek, year: scheduleYear, shiftTemplateId: shiftTemplateId || null }),
       });
-      if (res.ok) fetchWeekSchedule();
-    } catch { /* */ }
+      if (res.ok) { setSuccessMsg('Turno asignado.'); fetchWeekSchedule(); } else setErrorMsg('No se pudo asignar.');
+    } catch { setErrorMsg('Error.'); }
   };
   const changeScheduleWeek = (delta: number) => {
     let w = scheduleWeek + delta;
@@ -569,28 +647,45 @@ export const AdminDashboard: React.FC = () => {
     setScheduleWeek(w); setScheduleYear(y);
   };
 
-  // --- Client detail ---
+  // --- Clients ---
   const viewClient = async (c: Client) => {
     setSelectedClient(c);
     try {
-      const res = await fetch(`${API}/api/appointments?clientId=${c.id}`);
+      const res = await fetch(`${API}/api/appointments?clientId=${c.id}`, { headers: authHeaders() });
       if (res.ok) setClientAppts(await res.json());
     } catch { setClientAppts([]); }
   };
 
-  const handleDeleteClient = async (c: Client) => {
-    if (!confirm(`¿Eliminar a ${c.name}? Esta accion no se puede deshacer.`)) return;
-    try {
-      const r = await fetch(`${API}/api/admin/clients/${c.id}`, { method: 'DELETE', headers: authHeaders() });
-      if (r.ok) {
-        setSuccessMsg('Cliente eliminado.');
-        setSelectedClient(null);
-        setClients(prev => prev.filter(x => String(x.id) !== String(c.id)));
-      } else {
-        const e = await r.json().catch(() => ({}));
-        setErrorMsg(e.error || 'No se pudo eliminar.');
+  const handleDeleteClient = (c: Client) => {
+    setConfirmModal({
+      title: 'Eliminar Cliente',
+      message: `¿Eliminar a ${c.name}? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar Cliente',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/clients/${c.id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) {
+            setSuccessMsg('Cliente eliminado.');
+            setSelectedClient(null);
+            loadData();
+          } else {
+            const e = await r.json().catch(() => ({}));
+            if (r.status === 409) {
+              setConfirmModal({
+                title: 'Cliente con Citas Registradas',
+                message: `${e.error || 'No se puede eliminar este cliente porque tiene citas asociadas'}. El historial de citas se mantiene resguardado por seguridad.`,
+                confirmText: 'Entendido',
+                isDanger: false,
+                onConfirm: () => {}
+              });
+            } else {
+              setErrorMsg(e.error || 'No se pudo eliminar.');
+            }
+          }
+        } catch { setErrorMsg('Error al conectar.'); }
       }
-    } catch { setErrorMsg('Error.'); }
+    });
   };
 
   // --- CMS ---
@@ -603,12 +698,19 @@ export const AdminDashboard: React.FC = () => {
     } catch { setCmsError(true); }
     finally { setCmsLoading(false); }
   };
-  const handleDeleteCMS = async (id: string) => {
-    if (!confirm('Eliminar este anuncio?')) return;
-    try {
-      const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE', headers: authHeaders() });
-      if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
-    } catch { setErrorMsg('Error.'); }
+  const handleDeleteCMS = (id: string) => {
+    setConfirmModal({
+      title: 'Quitar Anuncio',
+      message: '¿Seguro que deseas quitar este anuncio del carrusel de la página principal?',
+      confirmText: 'Quitar Anuncio',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/landing-cms/${id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) { setSuccessMsg('Eliminado.'); fetchCMS(); } else setErrorMsg('No se pudo eliminar.');
+        } catch { setErrorMsg('Error.'); }
+      }
+    });
   };
   const handleToggleCmsActive = async (item: any) => {
     try {
@@ -1921,6 +2023,43 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'whatsapp_config' && <WhatsAppConfig />}
         </motion.div>
       </main>
+
+      {/* POP-UP ELEGANTE DE CONFIRMACION Y AUDITORIA */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" onClick={() => setConfirmModal(null)}>
+          <div className="bg-[#FDFBF7] border border-[#EADEC9] rounded-3xl p-6 shadow-2xl max-w-md w-full text-left space-y-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start">
+              <h3 className="serif-title text-xl text-[#3B0019] font-medium">{confirmModal.title}</h3>
+              <button type="button" onClick={() => setConfirmModal(null)} className="w-7 h-7 bg-neutral-200/50 rounded-full text-xs flex items-center justify-center text-[#78716C]">✕</button>
+            </div>
+            <p className="text-xs text-[#57534E] leading-relaxed">{confirmModal.message}</p>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 border border-[#EADEC9] rounded-xl text-xs text-[#78716C] font-semibold hover:bg-neutral-100 transition-colors"
+              >
+                {confirmModal.cancelText || 'Cancelar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const action = confirmModal.onConfirm;
+                  setConfirmModal(null);
+                  action();
+                }}
+                className={`px-5 py-2 rounded-xl text-xs text-white font-semibold shadow-sm transition-all ${
+                  confirmModal.isDanger
+                    ? 'bg-red-700 hover:bg-red-800'
+                    : 'bg-[#8E1B54] hover:bg-[#5C0632]'
+                }`}
+              >
+                {confirmModal.confirmText || 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

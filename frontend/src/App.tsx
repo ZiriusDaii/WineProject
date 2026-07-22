@@ -122,6 +122,12 @@ const PER_PAGE = 5;
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+const formatPrice = (price: string | number | undefined | null): string => {
+  if (price === undefined || price === null || price === '') return '$0';
+  const num = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.-]+/g, '')) || 0;
+  return `$${num.toLocaleString('es-CO')}`;
+};
+
 const timeToMinutes = (hhmm: string) => {
   const [h, m] = hhmm.split(':');
   return Number(h) * 60 + Number(m);
@@ -396,7 +402,7 @@ const ServiceSelectionGrid: React.FC<{
                   {(s as any).trending && <span className="text-[7px] px-1 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
                   <span className="text-xs font-bold text-[#44403C]">{s.name}</span>
                 </div>
-                <span className="text-xs font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                <span className="text-xs font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
               </div>
               <div className="flex gap-2 mt-0.5">
                 <span className="text-[9px] text-[#A68F63]">{s.durationInMinutes || 60} min</span>
@@ -1004,7 +1010,7 @@ export default function App() {
           <div key={s.id} className="flex justify-between text-[11px] text-[#57534E]">
             <span>• {s.name}</span>
             <span className="font-semibold text-[#8E1B54]">
-              {typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}
+              {formatPrice(s.price)}
             </span>
           </div>
         ))}
@@ -1945,7 +1951,7 @@ export default function App() {
                         <h3 className="serif-title text-sm text-[#3B0019] font-medium">{s.name}</h3>
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
-                        <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                        <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
                         <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
@@ -2025,7 +2031,7 @@ export default function App() {
                       <p className="text-xs text-[#78716C] leading-normal font-light line-clamp-2">{s.description || 'Cuidado integral diseñado para nutrir y estilizar.'}</p>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
-                      <span className="text-sm font-bold text-[#8E1B54]">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                      <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
                       <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
@@ -2084,7 +2090,7 @@ export default function App() {
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
                     <div key={s.id} className="flex justify-between items-center text-[11px]">
                       <span className="text-[#44403C] truncate max-w-[55%]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
-                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                      <span className="text-[#8E1B54] font-semibold">{formatPrice(s.price)}</span>
                     </div>
                   ))}
                 </div>
@@ -2390,7 +2396,7 @@ export default function App() {
                   {services.filter(s => selectedServiceIds.includes(String(s.id))).map(s => (
                     <div key={s.id} className="flex justify-between text-xs">
                       <span className="text-[#44403C]">{s.name} <span className="text-[#A68F63]">· {s.durationInMinutes || 60} min</span></span>
-                      <span className="text-[#8E1B54] font-semibold">{typeof s.price === 'number' ? `$${s.price.toLocaleString('es-CO')}` : s.price}</span>
+                      <span className="text-[#8E1B54] font-semibold">{formatPrice(s.price)}</span>
                     </div>
                   ))}
                 </div>
