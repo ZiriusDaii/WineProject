@@ -253,7 +253,7 @@ const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = R
           manos y pies.
         </motion.h1>
         <motion.p variants={heroItemVariants} className="text-[#57534E] text-xs leading-relaxed max-w-sm font-light">
-          Un spa boutique premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
+          Un spa premium donde combinamos las mejores técnicas de nail design con el placer de una selecta copa de vino en un ambiente de confort absoluto.
         </motion.p>
         <motion.div variants={heroItemVariants} className="pt-2">
           <button
@@ -315,7 +315,7 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
         <div className="space-y-4 pt-2">
           {[
             {
-              title: "Nail Art & Cuidado Boutique",
+              title: "Nail Art & Cuidado Especializado",
               desc: "Esmaltados semipermanentes y tradicionales con los más altos estándares de higiene y diseño de vanguardia."
             },
             {
@@ -881,8 +881,8 @@ export default function App() {
             '/hero_3.jpg'
           ],
           news: [
-            { title: 'Inauguración El Poblado', description: 'Disfruta de nuestras nuevas estaciones boutique con aromaterapia.' },
-            { title: 'Ritual de Bienvenida', description: 'Conocé nuestros tratamientos de manicura y pedicura boutique.' }
+            { title: 'Inauguración El Poblado', description: 'Disfruta de nuestras nuevas estaciones exclusivas con aromaterapia.' },
+            { title: 'Ritual de Bienvenida', description: 'Conocé nuestros tratamientos de manicura y pedicura.' }
           ]
         });
       }
@@ -1593,7 +1593,6 @@ export default function App() {
             <img src="/logo.png" alt="WineSpa Logo" className="w-8 h-8 object-contain" />
             <div className="flex flex-col">
               <span className="serif-title text-2xl font-normal tracking-wider text-[#3B0019] leading-none">WineSpa</span>
-              <span className="text-[8px] uppercase tracking-[0.22em] text-[#A68F63] font-semibold">Boutique</span>
             </div>
           </div>
 
@@ -2030,7 +2029,7 @@ export default function App() {
                 <span className="serif-title text-2xl text-[#3B0019] leading-none">WineSpa Booking</span>
               </div>
               <p className="text-xs text-[#78716C] font-light max-w-xs">
-                Configura tu cita boutique. Selecciona tus tratamientos favoritos de la carta, tu manicurista preferida y tus turnos estimados.
+                Configura tu cita. Selecciona tus tratamientos favoritos de la carta, tu manicurista preferida y tus turnos estimados.
               </p>
             </div>
 
@@ -2046,7 +2045,7 @@ export default function App() {
                   <div>
                     <h4 className="text-xs font-bold text-[#3B0019]">{activeSpecialistDetails.name}</h4>
                     <p className="text-[10px] text-[#78716C]">{activeSpecialistDetails.age ? `${activeSpecialistDetails.age} años` : 'Especialista'}</p>
-                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Salón Boutique'}</p>
+                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Especialista'}</p>
                   </div>
                 </div>
               </div>
