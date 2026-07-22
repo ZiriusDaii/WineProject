@@ -29,6 +29,11 @@ jobs:
             REPO_DIR="/var/www/winespa"
             REPO_URL="https://github.com/ZiriusDaii/WineProject.git"
 
+            if [ ! -d "$REPO_DIR" ]; then
+              sudo mkdir -p "$REPO_DIR"
+              sudo chown -R $USER:$USER "$REPO_DIR"
+            fi
+
             if [ ! -d "$REPO_DIR/.git" ]; then
               git clone "$REPO_URL" "$REPO_DIR"
             fi
@@ -36,7 +41,7 @@ jobs:
             cd "$REPO_DIR"
             git fetch origin main
             git checkout main
-            git pull origin main
+            git reset --hard origin/main
 
             # --- Generar .env con los secretos de GitHub ---
             cat > .env << 'ENVEOF'
