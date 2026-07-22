@@ -248,6 +248,13 @@ export const AdminDashboard: React.FC = () => {
   const [cmsError, setCmsError] = useState(false);
   const [editingCmsId, setEditingCmsId] = useState<string | null>(null);
 
+  // Estados para Modal de Reglas de Rotación de Manicurista
+  const [rotationModalManicurist, setRotationModalManicurist] = useState<any | null>(null);
+  const [rotType, setRotType] = useState<'WEEKLY_ROTATION' | 'FIXED'>('WEEKLY_ROTATION');
+  const [rotDefaultShiftId, setRotDefaultShiftId] = useState<string>('');
+  const [rotShift1Id, setRotShift1Id] = useState<string>('');
+  const [rotShift2Id, setRotShift2Id] = useState<string>('');
+
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -491,7 +498,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
       const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
-      if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); setShowSvcForm(false); loadData(); } else throw new Error();
+      if (res.ok) { setSuccessMsg(svcId ? 'Actualizado.' : 'Creado.'); resetSvc(); setShowSvcForm(false); fetchServicesModule(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -507,7 +514,7 @@ export const AdminDashboard: React.FC = () => {
           const r = await fetch(`${API}/api/admin/services/${id}`, { method: 'DELETE', headers: authHeaders() });
           if (r.ok) {
             setSuccessMsg('Servicio eliminado.');
-            loadData();
+            fetchServicesModule();
           } else {
             const e = await r.json().catch(() => ({}));
             if (r.status === 409 && s) {
@@ -530,7 +537,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const nextActive = s.isActive === false;
       const r = await fetch(`${API}/api/admin/services/${s.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ isActive: nextActive }) });
-      if (r.ok) { setSuccessMsg(nextActive ? 'Servicio reactivado.' : 'Servicio deshabilitado.'); loadData(); } else setErrorMsg('No se pudo modificar el servicio.');
+      if (r.ok) { setSuccessMsg(nextActive ? 'Servicio reactivado.' : 'Servicio deshabilitado.'); fetchServicesModule(); } else setErrorMsg('No se pudo modificar el servicio.');
     } catch { setErrorMsg('Error al conectar.'); }
   };
   const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -545,7 +552,7 @@ export const AdminDashboard: React.FC = () => {
     try {
       const url = offId ? `${API}/api/admin/offers/${offId}` : `${API}/api/admin/offers`;
       const res = await fetch(url, { method: offId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
-      if (res.ok) { setSuccessMsg(offId ? 'Actualizada.' : 'Creada.'); resetOff(); loadData(); } else throw new Error();
+      if (res.ok) { setSuccessMsg(offId ? 'Actualizada.' : 'Creada.'); resetOff(); fetchOffersModule(); } else throw new Error();
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
@@ -558,7 +565,7 @@ export const AdminDashboard: React.FC = () => {
       onConfirm: async () => {
         try {
           const r = await fetch(`${API}/api/admin/offers/${id}`, { method: 'DELETE', headers: authHeaders() });
-          if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo eliminar.');
+          if (r.ok) { setSuccessMsg('Eliminada.'); fetchOffersModule(); } else setErrorMsg('No se pudo eliminar.');
         } catch { setErrorMsg('Error al conectar.'); }
       }
     });
@@ -582,7 +589,7 @@ export const AdminDashboard: React.FC = () => {
       if (res.ok) {
         setSuccessMsg(editingCatId ? 'Categoria actualizada.' : 'Categoria creada.');
         setCatName(''); setEditingCatId(null);
-        loadData();
+        fetchServicesModule();
       } else {
         const err = await res.json().catch(() => null);
         setErrorMsg(err?.error || 'Error.');
@@ -599,7 +606,7 @@ export const AdminDashboard: React.FC = () => {
       onConfirm: async () => {
         try {
           const r = await fetch(`${API}/api/admin/categories/${id}`, { method: 'DELETE', headers: authHeaders() });
-          if (r.ok) { setSuccessMsg('Eliminada.'); loadData(); } else setErrorMsg('No se pudo eliminar.');
+          if (r.ok) { setSuccessMsg('Eliminada.'); fetchServicesModule(); } else setErrorMsg('No se pudo eliminar.');
         } catch { setErrorMsg('Error.'); }
       }
     });
@@ -664,9 +671,48 @@ export const AdminDashboard: React.FC = () => {
       const res = await fetch(`${API}/api/admin/manicurist-schedule?week=${scheduleWeek}&year=${scheduleYear}`, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
-        setWeekSchedule(data.map((s: any) => ({ manicuristId: s.manicuristId, shiftTemplateId: s.shiftTemplateId })));
+        setWeekSchedule(data || []);
       }
     } catch { /* */ }
+  };
+
+  const openRotationModal = (m: any) => {
+    setRotationModalManicurist(m);
+    const cfg = m.rotationConfig || {};
+    setRotType(cfg.rotationType || m.rotationType || 'WEEKLY_ROTATION');
+    setRotDefaultShiftId(cfg.defaultShift?.id || m.defaultShiftId || '');
+    setRotShift1Id(cfg.rotationShift1?.id || m.rotationShift1Id || '');
+    setRotShift2Id(cfg.rotationShift2?.id || m.rotationShift2Id || '');
+  };
+
+  const handleSaveRotationConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rotationModalManicurist) return;
+    setSubmitting(true);
+    try {
+      const mId = rotationModalManicurist.manicuristId || rotationModalManicurist.id;
+      const res = await fetch(`${API}/api/admin/manicurists/${mId}/rotation`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          rotationType: rotType,
+          defaultShiftId: rotType === 'FIXED' ? rotDefaultShiftId || null : null,
+          rotationShift1Id: rotType === 'WEEKLY_ROTATION' ? rotShift1Id || null : null,
+          rotationShift2Id: rotType === 'WEEKLY_ROTATION' ? rotShift2Id || null : null,
+        }),
+      });
+      if (res.ok) {
+        setSuccessMsg('Regla de rotación actualizada exitosamente.');
+        setRotationModalManicurist(null);
+        fetchWeekSchedule();
+      } else {
+        setErrorMsg('No se pudo guardar la rotación.');
+      }
+    } catch {
+      setErrorMsg('Error de conexión.');
+    } finally {
+      setSubmitting(false);
+    }
   };
   const handleSaveShiftTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -682,7 +728,7 @@ export const AdminDashboard: React.FC = () => {
       if (res.ok) {
         setSuccessMsg(editingShiftId ? 'Turno actualizado.' : 'Turno creado.');
         resetShiftForm();
-        loadData();
+        fetchShiftModule();
       } else {
         const err = await res.json().catch(() => null);
         setErrorMsg(err?.error || 'Error.');
@@ -699,7 +745,7 @@ export const AdminDashboard: React.FC = () => {
       onConfirm: async () => {
         try {
           const r = await fetch(`${API}/api/admin/shift-templates/${id}`, { method: 'DELETE', headers: authHeaders() });
-          if (r.ok) { setSuccessMsg('Eliminado.'); loadData(); } else {
+          if (r.ok) { setSuccessMsg('Eliminado.'); fetchShiftModule(); } else {
             const err = await r.json().catch(() => null);
             setErrorMsg(err?.error || 'No se pudo eliminar.');
           }
@@ -750,7 +796,7 @@ export const AdminDashboard: React.FC = () => {
           if (r.ok) {
             setSuccessMsg('Cliente eliminado.');
             setSelectedClient(null);
-            loadData();
+            fetchClientsModule();
           } else {
             const e = await r.json().catch(() => ({}));
             if (r.status === 409) {
@@ -1575,14 +1621,14 @@ export const AdminDashboard: React.FC = () => {
                             {m.schedules.map((sch, i) => <span key={i} className="px-2 py-0.5 rounded bg-[#F7F3EB] text-[#8D774C] text-[10px] font-semibold">{sch.shiftTemplate?.name} ({sch.shiftTemplate?.startTime}-{sch.shiftTemplate?.endTime})</span>)}
                           </div>
                         )}
-                        <div className="flex gap-2">
-                          <button onClick={() => { editMan(m); setShowManForm(true); }} className="flex-1 py-1.5 border border-[#EADEC9] rounded-lg text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5">Editar</button>
+                        <div className="flex items-center justify-between pt-1">
+                          <button onClick={() => { editMan(m); setShowManForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
                           <button
                             onClick={() => handleToggleManicuristActive(m)}
-                            className={`flex-1 py-1.5 border rounded-lg text-[10px] font-bold transition-colors ${
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
                               m.isActive === false
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-                                : 'border-[#EADEC9] text-amber-600 font-semibold hover:bg-amber-50'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                                : 'text-amber-600 hover:text-amber-700 font-semibold'
                             }`}
                           >
                             {m.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
@@ -1639,36 +1685,82 @@ export const AdminDashboard: React.FC = () => {
               {shiftTemplates.length === 0 && <p className="text-[10px] text-[#78716C]">Todavia no hay turnos creados.</p>}
             </div>
 
-            {/* Asignacion semanal */}
-            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-[#3B0019] uppercase">Asignar por semana</h3>
-                <div className="flex items-center gap-2 text-xs">
-                  <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63]">‹</button>
-                  <span className="text-center">
-                    <span className="block font-semibold text-[#3B0019]">{formatWeekRange(scheduleWeek, scheduleYear)}</span>
-                    <span className="block text-[9px] text-[#A68F63] uppercase tracking-wide">Semana {scheduleWeek}</span>
+            {/* Asignacion semanal y Rotacion */}
+            <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADEC9]/30 pb-3">
+                <div>
+                  <h3 className="text-xs font-bold text-[#3B0019] uppercase">Turnos por Semana y Rotación Automática</h3>
+                  <p className="text-[10px] text-[#78716C]">Los turnos rotan automáticamente. Podés cambiar una semana específica para crear una excepción.</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs self-start sm:self-auto">
+                  <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">‹</button>
+                  <span className="text-center px-2">
+                    <span className="block font-semibold text-[#3B0019] text-xs">{formatWeekRange(scheduleWeek, scheduleYear)}</span>
+                    <span className="block text-[9px] text-[#A68F63] uppercase tracking-wide font-bold">Semana {scheduleWeek}</span>
                   </span>
-                  <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63]">›</button>
+                  <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">›</button>
                 </div>
               </div>
+
               {shiftTemplates.length === 0 ? (
-                <p className="text-[10px] text-[#78716C]">Cre&aacute; al menos un turno arriba para poder asignarlo.</p>
+                <p className="text-[10px] text-[#78716C]">Creá al menos un turno arriba para poder asignarlo.</p>
               ) : (
-                <div className="space-y-2">
-                  {manicurists.map(m => {
-                    const assigned = weekSchedule.find(w => w.manicuristId === String(m.id));
+                <div className="space-y-3">
+                  {(weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }))).map((item: any) => {
+                    const mId = String(item.manicuristId || item.id);
+                    const name = item.manicuristName || item.name;
                     return (
-                      <div key={m.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-[#F7F3EB]/30">
-                        <span className="text-xs font-semibold text-[#44403C]">{m.name}</span>
-                        <select
-                          value={assigned?.shiftTemplateId || ''}
-                          onChange={e => handleAssignShift(String(m.id), e.target.value)}
-                          className="p-1.5 border rounded-lg text-xs bg-white"
-                        >
-                          <option value="">Sin turno</option>
-                          {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
-                        </select>
+                      <div key={mId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F7F3EB]/40 border border-[#EADEC9]/30">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <span className="text-xs font-bold text-[#3B0019] block">{name}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {item.isOverride ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                  ✏️ Excepción Manual
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  🔄 Rotación Automática
+                                </span>
+                              )}
+                              <span className="text-[10px] text-[#78716C]">
+                                Turno actual: <strong className="text-[#3B0019]">{item.shiftTemplate ? `${item.shiftTemplate.name} (${item.shiftTemplate.startTime}-${item.shiftTemplate.endTime})` : 'Sin Turno'}</strong>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <select
+                            value={item.isOverride ? (item.shiftTemplateId || '') : 'AUTO'}
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === 'AUTO') {
+                                handleAssignShift(mId, '');
+                              } else {
+                                handleAssignShift(mId, val);
+                              }
+                            }}
+                            className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
+                          >
+                            <option value="AUTO">🔄 Seguir Rotación Automática</option>
+                            <optgroup label="--- Crear Excepción Manual ---">
+                              <option value="">⛔ Sin Turno / Descanso</option>
+                              {shiftTemplates.map(s => (
+                                <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>
+                              ))}
+                            </optgroup>
+                          </select>
+
+                          <button
+                            onClick={() => openRotationModal(item)}
+                            title="Configurar regla de rotación habitual"
+                            className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-bold border border-[#5C0632]/10 transition-colors shrink-0"
+                          >
+                            ⚙️ Regla
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -2139,6 +2231,110 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'whatsapp_config' && <WhatsAppConfig />}
         </motion.div>
       </main>
+
+      {/* Rotation Config Modal */}
+      {rotationModalManicurist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setRotationModalManicurist(null)}>
+          <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 relative shadow-xl animate-fade-in" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setRotationModalManicurist(null)} className="absolute top-4 right-4 text-sm text-[#78716C]">✕</button>
+            <div className="border-b border-[#EADEC9]/40 pb-3">
+              <h3 className="serif-title text-xl text-[#3B0019]">Regla de Rotación de Turno</h3>
+              <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{rotationModalManicurist.manicuristName || rotationModalManicurist.name}</strong></p>
+            </div>
+
+            <form onSubmit={handleSaveRotationConfig} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Tipo de Horario</label>
+                <select
+                  value={rotType}
+                  onChange={e => setRotType(e.target.value as any)}
+                  className="w-full p-2.5 border rounded-xl text-xs bg-white font-semibold text-[#3B0019]"
+                >
+                  <option value="WEEKLY_ROTATION">🔄 Rotación Semanal (Semana A / Semana B)</option>
+                  <option value="FIXED">📌 Turno Fijo (Mismo horario todas las semanas)</option>
+                </select>
+              </div>
+
+              {rotType === 'WEEKLY_ROTATION' ? (
+                <div className="space-y-3 p-3.5 bg-[#F7F3EB]/60 border border-[#EADEC9]/50 rounded-xl">
+                  <div>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Semana A (Turno Inicio)</label>
+                    <select
+                      value={rotShift1Id}
+                      onChange={e => setRotShift1Id(e.target.value)}
+                      className="w-full p-2 border rounded-lg text-xs bg-white"
+                    >
+                      <option value="">-- Sin Turno / Descanso --</option>
+                      {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Semana B (Siguiente Semana)</label>
+                    <select
+                      value={rotShift2Id}
+                      onChange={e => setRotShift2Id(e.target.value)}
+                      className="w-full p-2 border rounded-lg text-xs bg-white"
+                    >
+                      <option value="">-- Sin Turno / Descanso --</option>
+                      {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-[#F7F3EB]/60 border border-[#EADEC9]/50 rounded-xl">
+                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Turno Fijo Habitual</label>
+                  <select
+                    value={rotDefaultShiftId}
+                    onChange={e => setRotDefaultShiftId(e.target.value)}
+                    className="w-full p-2 border rounded-lg text-xs bg-white"
+                  >
+                    <option value="">-- Sin Turno Fijo / Descanso --</option>
+                    {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Vista previa */}
+              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-1.5">
+                <span className="text-[10px] font-bold text-[#A68F63] uppercase block">Vista Previa del Patrón Automático</span>
+                {rotType === 'WEEKLY_ROTATION' ? (
+                  <>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-stone-500">Semana Par (A):</span>
+                      <span className="font-semibold text-[#8E1B54]">
+                        {shiftTemplates.find(s => s.id === rotShift1Id)?.name || 'Sin Turno'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-stone-500">Semana Impar (B):</span>
+                      <span className="font-semibold text-[#8E1B54]">
+                        {shiftTemplates.find(s => s.id === rotShift2Id)?.name || 'Sin Turno'}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-stone-500">Todas las semanas:</span>
+                    <span className="font-semibold text-[#8E1B54]">
+                      {shiftTemplates.find(s => s.id === rotDefaultShiftId)?.name || 'Sin Turno Fijo'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl hover:bg-[#3B0019] transition-colors">
+                  Guardar Regla
+                </button>
+                <button type="button" onClick={() => setRotationModalManicurist(null)} className="px-4 py-2.5 border rounded-xl text-xs">
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* POP-UP ELEGANTE DE CONFIRMACION Y AUDITORIA */}
       {confirmModal && (

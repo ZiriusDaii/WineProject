@@ -988,11 +988,88 @@ export async function getManicuristScheduleWeek(
       res.status(400).json({ error: "Los parametros 'week' y 'year' son requeridos" });
       return;
     }
-    const schedules = await prisma.manicuristSchedule.findMany({
-      where: { weekNumber: week, year },
-      include: { shiftTemplate: true, manicurist: { select: { id: true, name: true } } },
+
+    const manicurists = await prisma.user.findMany({
+      where: { role: "MANICURISTA", isActive: true },
+      select: {
+        id: true,
+        name: true,
+        rotationType: true,
+        defaultShiftId: true,
+        rotationShift1Id: true,
+        rotationShift2Id: true,
+        anchorWeek: true,
+        anchorYear: true,
+        defaultShift: true,
+        rotationShift1: true,
+        rotationShift2: true,
+      },
+      orderBy: { name: "asc" },
     });
-    res.json(schedules);
+
+    const overrides = await prisma.manicuristSchedule.findMany({
+      where: { weekNumber: week, year },
+      include: { shiftTemplate: true },
+    });
+    const overrideMap = new Map(overrides.map((o) => [o.manicuristId, o]));
+
+    const result = manicurists.map((m) => {
+      const override = overrideMap.get(m.id);
+      if (override) {
+        return {
+          id: override.id,
+          manicuristId: m.id,
+          manicuristName: m.name,
+          shiftTemplate: override.shiftTemplate,
+          shiftTemplateId: override.shiftTemplateId,
+          weekNumber: week,
+          year,
+          isOverride: true,
+          source: "MANUAL_OVERRIDE",
+          rotationConfig: {
+            rotationType: m.rotationType || "WEEKLY_ROTATION",
+            defaultShift: m.defaultShift,
+            rotationShift1: m.rotationShift1,
+            rotationShift2: m.rotationShift2,
+          },
+        };
+      }
+
+      let computedShift = null;
+      let source = "ROTATION";
+      const rotType = m.rotationType || "WEEKLY_ROTATION";
+
+      if (rotType === "FIXED") {
+        computedShift = m.defaultShift;
+        source = "FIXED";
+      } else {
+        const anchorW = m.anchorWeek ?? 1;
+        const anchorY = m.anchorYear ?? 2026;
+        const deltaWeeks = (year - anchorY) * 52 + (week - anchorW);
+        const cycleIndex = Math.abs(deltaWeeks) % 2;
+        computedShift = cycleIndex === 0 ? m.rotationShift1 : m.rotationShift2;
+      }
+
+      return {
+        id: `auto-${m.id}-${year}-${week}`,
+        manicuristId: m.id,
+        manicuristName: m.name,
+        shiftTemplate: computedShift,
+        shiftTemplateId: computedShift?.id || null,
+        weekNumber: week,
+        year,
+        isOverride: false,
+        source,
+        rotationConfig: {
+          rotationType: rotType,
+          defaultShift: m.defaultShift,
+          rotationShift1: m.rotationShift1,
+          rotationShift2: m.rotationShift2,
+        },
+      };
+    });
+
+    res.json(result);
   } catch (error) {
     console.error("Error obteniendo horario semanal:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -1018,7 +1095,7 @@ export async function assignManicuristSchedule(
       await prisma.manicuristSchedule.deleteMany({
         where: { manicuristId, weekNumber: week, year },
       });
-      res.json({ message: "Turno removido para esa semana" });
+      res.json({ message: "Excepcion removida, restablecido a rotacion automatica" });
       return;
     }
     const upserted = await prisma.manicuristSchedule.upsert({
@@ -1030,6 +1107,49 @@ export async function assignManicuristSchedule(
     res.json(upserted);
   } catch (error) {
     console.error("Error asignando turno:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function updateManicuristRotation(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { manicuristId } = req.params as { manicuristId?: string };
+    const { rotationType, defaultShiftId, rotationShift1Id, rotationShift2Id } = req.body as {
+      rotationType?: string;
+      defaultShiftId?: string | null;
+      rotationShift1Id?: string | null;
+      rotationShift2Id?: string | null;
+    };
+
+    if (!manicuristId) {
+      res.status(400).json({ error: "El identificador manicuristId es requerido" });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: manicuristId },
+      data: {
+        ...(rotationType !== undefined && { rotationType }),
+        ...(defaultShiftId !== undefined && { defaultShiftId: defaultShiftId || null }),
+        ...(rotationShift1Id !== undefined && { rotationShift1Id: rotationShift1Id || null }),
+        ...(rotationShift2Id !== undefined && { rotationShift2Id: rotationShift2Id || null }),
+      },
+      select: {
+        id: true,
+        name: true,
+        rotationType: true,
+        defaultShiftId: true,
+        rotationShift1Id: true,
+        rotationShift2Id: true,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error actualizando rotacion de manicurista:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

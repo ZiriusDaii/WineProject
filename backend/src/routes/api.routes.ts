@@ -44,6 +44,7 @@ import {
   deleteShiftTemplate,
   getManicuristScheduleWeek,
   assignManicuristSchedule,
+  updateManicuristRotation,
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
@@ -111,6 +112,7 @@ router.patch("/admin/shift-templates/:id", requireAdmin, updateShiftTemplate);
 router.delete("/admin/shift-templates/:id", requireAdmin, deleteShiftTemplate);
 router.get("/admin/manicurist-schedule", requireAdmin, getManicuristScheduleWeek);
 router.put("/admin/manicurist-schedule", requireAdmin, assignManicuristSchedule);
+router.put("/admin/manicurists/:manicuristId/rotation", requireAdmin, updateManicuristRotation);
 
 // WhatsApp Admin routes
 router.get("/admin/whatsapp/conversations", requireAdmin, listConversations);

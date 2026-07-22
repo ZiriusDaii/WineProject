@@ -51,6 +51,18 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Reglas de rotacion de turnos para MANICURISTA
+  rotationType     String?  @default("WEEKLY_ROTATION") @map("rotation_type") // "FIXED" | "WEEKLY_ROTATION"
+  defaultShiftId   String?  @map("default_shift_id")
+  rotationShift1Id String?  @map("rotation_shift_1_id")
+  rotationShift2Id String?  @map("rotation_shift_2_id")
+  anchorWeek       Int?     @default(1) @map("anchor_week")
+  anchorYear       Int?     @default(2026) @map("anchor_year")
+
+  defaultShift   ShiftTemplate? @relation("DefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
+  rotationShift1 ShiftTemplate? @relation("RotationShift1", fields: [rotationShift1Id], references: [id], onDelete: SetNull)
+  rotationShift2 ShiftTemplate? @relation("RotationShift2", fields: [rotationShift2Id], references: [id], onDelete: SetNull)
+
   schedules              ManicuristSchedule[]
   clientAppointments     Appointment[]        @relation("ClientAppointments")
   manicuristAppointments Appointment[]        @relation("ManicuristAppointments")
@@ -94,7 +106,10 @@ model ShiftTemplate {
   startTime String @map("start_time")
   endTime   String @map("end_time")
 
-  schedules ManicuristSchedule[]
+  schedules      ManicuristSchedule[]
+  defaultUsers   User[]               @relation("DefaultShift")
+  rotation1Users User[]               @relation("RotationShift1")
+  rotation2Users User[]               @relation("RotationShift2")
 
   @@map("shift_templates")
 }
