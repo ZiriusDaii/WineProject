@@ -57,7 +57,7 @@ if (!corsOrigins?.length && process.env.NODE_ENV === "production") {
 app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true }));
 app.use(
   express.json({
-    limit: "1mb",
+    limit: "10mb",
     // El webhook de Meta firma el body crudo (X-Hub-Signature-256); una vez
     // que express.json lo parsea no hay forma de recuperar los bytes
     // originales para verificar esa firma, hay que guardarlos aca.
@@ -68,8 +68,8 @@ app.use(
 );
 
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 200,
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Demasiadas solicitudes, intente de nuevo mas tarde" },
@@ -81,7 +81,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 const authLimiter = rateLimit({
-  windowMs: 60 * 1000,
+  windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
