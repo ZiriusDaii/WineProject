@@ -2,12 +2,15 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 
 export async function getLandingContent(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
   try {
+    const userRole = (req as any).user?.role;
+    const isStaffRequest = userRole === "ADMIN" || userRole === "OWNER" || userRole === "MANICURISTA";
+    const where = isStaffRequest ? {} : { isActive: true };
     const content = await prisma.landingContent.findMany({
-      where: { isActive: true },
+      where,
       orderBy: { order: "asc" },
     });
     res.json(content);

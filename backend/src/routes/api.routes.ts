@@ -66,7 +66,7 @@ const router = Router();
 router.get("/services", optionalAuth, getServices);
 router.get("/manicurists", getManicurists);
 router.get("/offers", getOffers);
-router.get("/landing/content", getLandingContent);
+router.get("/landing/content", optionalAuth, getLandingContent);
 router.post("/offers/validate", validateOfferCode);
 
 router.post("/clients/auth", authClient);

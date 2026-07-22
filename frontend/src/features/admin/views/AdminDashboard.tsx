@@ -699,7 +699,7 @@ export const AdminDashboard: React.FC = () => {
     setCmsLoading(true);
     setCmsError(false);
     try {
-      const res = await fetch(`${API}/api/landing/content`);
+      const res = await fetch(`${API}/api/landing/content`, { headers: authHeaders() });
       if (res.ok) { setCmsItems(await res.json()); } else { setCmsError(true); }
     } catch { setCmsError(true); }
     finally { setCmsLoading(false); }
@@ -718,23 +718,51 @@ export const AdminDashboard: React.FC = () => {
       }
     });
   };
-  const handleToggleCmsActive = async (item: any) => {
-    try {
-      const nextActive = item.isActive === false;
-      const payload = {
-        id: item.id,
-        type: item.type,
-        title: item.title,
-        description: item.description,
-        imageUrl: item.imageUrl,
-        isActive: nextActive
-      };
-      const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
-      if (r.ok) {
-        setSuccessMsg(nextActive ? 'Anuncio reactivado.' : 'Anuncio deshabilitado.');
-        fetchCMS();
-      } else setErrorMsg('No se pudo cambiar el estado del anuncio.');
-    } catch { setErrorMsg('Error al cambiar el estado del anuncio.'); }
+  const handleToggleCmsActive = (item: any) => {
+    const nextActive = item.isActive === false;
+    if (!nextActive) {
+      setConfirmModal({
+        title: 'Deshabilitar Anuncio',
+        message: `¿Deseas deshabilitar "${item.title || 'este anuncio'}"? Dejará de mostrarse en el carrusel público, pero podrás reactivarlo desde esta lista en cualquier momento.`,
+        confirmText: 'Deshabilitar',
+        isDanger: true,
+        onConfirm: async () => {
+          try {
+            const payload = {
+              id: item.id,
+              type: item.type,
+              title: item.title,
+              description: item.description,
+              imageUrl: item.imageUrl,
+              isActive: false
+            };
+            const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+            if (r.ok) {
+              setSuccessMsg('Anuncio deshabilitado.');
+              fetchCMS();
+            } else setErrorMsg('No se pudo deshabilitar el anuncio.');
+          } catch { setErrorMsg('Error al deshabilitar el anuncio.'); }
+        }
+      });
+      return;
+    }
+    (async () => {
+      try {
+        const payload = {
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          description: item.description,
+          imageUrl: item.imageUrl,
+          isActive: true
+        };
+        const r = await fetch(`${API}/api/admin/landing-cms`, { method: 'POST', headers: authHeaders(), body: JSON.stringify([payload]) });
+        if (r.ok) {
+          setSuccessMsg('Anuncio reactivado.');
+          fetchCMS();
+        } else setErrorMsg('No se pudo reactivar el anuncio.');
+      } catch { setErrorMsg('Error al reactivar el anuncio.'); }
+    })();
   };
   const editCms = (item: any) => {
     setEditingCmsId(item.id);
