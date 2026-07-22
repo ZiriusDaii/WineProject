@@ -964,7 +964,12 @@ export const AdminDashboard: React.FC = () => {
     const maxPage = Math.max(1, Math.ceil(total / itemsPerPage));
     if (currentPage > maxPage) setCurrentPage(maxPage);
   }, [activeTab, filteredApps, clients, offers, manicurists, servicesCatalog, searchQuery, currentPage]);
-  const priceFmt = (p: any) => typeof p === 'number' ? `$${p.toLocaleString('es-CO')}` : `$${p}`;
+  const priceFmt = (val: any) => {
+    if (val === undefined || val === null || val === '') return '$0';
+    const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
+    if (isNaN(num)) return `$${val}`;
+    return `$${Math.round(num).toLocaleString('es-CO').replace(/,/g, '.')}`;
+  };
 
   if (loading) return <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center"><span className="serif-title text-2xl text-[#3B0019] animate-pulse">Cargando...</span></div>;
   if (unauthorized) return (
@@ -1178,7 +1183,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Ingresos</span>
-                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">${stats.totalEarnings.toLocaleString('es-CO')}</h3>
+                      <h3 className="serif-title text-3xl text-[#3B0019] mt-1.5 font-bold">{priceFmt(stats.totalEarnings)}</h3>
                       <span className="text-[10px] text-emerald-600 font-semibold block mt-1">✓ Completado & En Progreso</span>
                     </div>
                     <div className="w-10 h-10 bg-[#8E1B54]/5 rounded-xl flex items-center justify-center text-[#8E1B54] group-hover:bg-[#8E1B54]/10 transition-colors">
@@ -1305,7 +1310,7 @@ export const AdminDashboard: React.FC = () => {
                               textAnchor="middle"
                               className="text-[10px] sm:text-[9px] font-extrabold fill-[#8E1B54]"
                             >
-                              {val > 0 ? (isEarnings ? `$${val.toLocaleString('es-CO')}` : val) : ''}
+                              {val > 0 ? (isEarnings ? priceFmt(val) : val) : ''}
                             </text>
                             <text
                               x={x + 12}
