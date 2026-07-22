@@ -21,4 +21,4 @@ ENV NODE_ENV=production
 # Aplica migraciones pendientes antes de arrancar -- evita el paso manual de
 # correr `prisma migrate deploy` aparte cada vez que se levanta un container
 # nuevo. Es idempotente (prisma la sabe correr de nuevo sin duplicar nada).
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx prisma/seed.ts && node dist/src/index.js"]
