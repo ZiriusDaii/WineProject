@@ -1611,7 +1611,7 @@ export const AdminDashboard: React.FC = () => {
                     <h4 className="font-semibold text-sm text-[#44403C]">{c.name}</h4>
                     <p className="text-xs font-mono text-[#8E1B54]">{c.phone}</p>
                     <div className="flex justify-between text-[10px] text-[#78716C] pt-2 border-t border-[#EADEC9]/20">
-                      <span>{c.age ? `${c.age} años` : '—'} · {c.gender || '—'}</span>
+                      <span>{c.age ? `${c.age} años` : '—'}</span>
                     </div>
                     <button onClick={() => viewClient(c)} className="w-full py-1.5 bg-[#5C0632]/5 text-[#5C0632] rounded-lg text-[10px] font-bold hover:bg-[#8E1B54] hover:text-white">Ver Perfil</button>
                   </div>
@@ -1625,7 +1625,7 @@ export const AdminDashboard: React.FC = () => {
                   <button onClick={() => setSelectedClient(null)} className="absolute top-3 right-3 text-sm text-[#78716C]">✕</button>
                   <h3 className="serif-title text-xl text-[#3B0019]">{selectedClient.name}</h3>
                   <p className="text-xs font-mono text-[#8E1B54]">{selectedClient.phone}</p>
-                  <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} años · {selectedClient.gender || '—'}</p>
+                  <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} años</p>
                   {clientAppts.length === 0 && (
                     <button onClick={() => handleDeleteClient(selectedClient)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar cliente</button>
                   )}
