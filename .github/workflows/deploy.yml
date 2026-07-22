@@ -1,0 +1,65 @@
+name: Deploy to Oracle VPS
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy WineSpa a Oracle Cloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: ${{ secrets.ORACLE_PORT || 22 }}
+          script: |
+            set -e
+
+            # --- Clonar o actualizar repo ---
+            REPO_DIR="/var/www/winespa"
+            REPO_URL="https://github.com/ZiriusDaii/WineProject.git"
+
+            if [ ! -d "$REPO_DIR/.git" ]; then
+              git clone "$REPO_URL" "$REPO_DIR"
+            fi
+
+            cd "$REPO_DIR"
+            git fetch origin main
+            git checkout main
+            git pull origin main
+
+            # --- Generar .env con los secretos de GitHub ---
+            cat > .env << 'ENVEOF'
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            WHATSAPP_TOKEN=${{ secrets.WHATSAPP_TOKEN }}
+            WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+            WHATSAPP_WABA_ID=${{ secrets.WHATSAPP_WABA_ID }}
+            WHATSAPP_VERIFY_TOKEN=${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+            WHATSAPP_TEST_NUMBER=${{ secrets.WHATSAPP_TEST_NUMBER }}
+            MOCK_WHATSAPP=false
+            CORS_ORIGIN=${{ secrets.FRONTEND_URL }}
+            PORT=3000
+            POSTGRES_USER=postgres
+            POSTGRES_DB=winespa
+            ENVEOF
+
+            # --- Construir y levantar contenedores ---
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # --- Limpiar imágenes viejas ---
+            docker image prune -f
+
+            echo "Deploy completado exitosamente."

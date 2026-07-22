@@ -1,0 +1,30 @@
+name: CD
+
+on:
+  push:
+    branches: [staging]
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+# ponytail: solo staging por ahora (certifica que frontend y backend empaquetan
+# bien). El deploy real a main/Oracle Cloud se agrega cuando ese entorno exista.
+jobs:
+  build:
+    name: Build frontend + imagen backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend (Vite)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Build imagen Docker del backend
+        run: docker build -t winespa-backend:${{ github.sha }} ./backend
