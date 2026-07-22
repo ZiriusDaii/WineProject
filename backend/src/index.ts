@@ -47,7 +47,17 @@ if (!corsOrigins?.length && process.env.NODE_ENV === "production") {
   );
 }
 app.use(cors({ origin: corsOrigins?.length ? corsOrigins : true }));
-app.use(express.json({ limit: "1mb" }));
+app.use(
+  express.json({
+    limit: "1mb",
+    // El webhook de Meta firma el body crudo (X-Hub-Signature-256); una vez
+    // que express.json lo parsea no hay forma de recuperar los bytes
+    // originales para verificar esa firma, hay que guardarlos aca.
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,

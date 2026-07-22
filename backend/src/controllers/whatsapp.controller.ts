@@ -1,6 +1,33 @@
+import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { sendButtonMessage, sendInteractiveMessage, sendMessage } from "../services/whatsapp.service.js";
+
+// Meta firma cada webhook con el App Secret via X-Hub-Signature-256. Sin esta
+// verificacion, cualquiera que conozca la URL del webhook puede falsificar un
+// "mensaje entrante" con un `from` arbitrario -- el bot le responde de verdad
+// a traves de la cuenta real de WhatsApp Business, es decir, se puede usar la
+// cuenta de WineSpa (y su cupo pago de mensajes) como relay de spam hacia
+// cualquier numero, con riesgo de que Meta la banee por abuso.
+function isValidSignature(req: Request): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+  const signatureHeader = req.headers["x-hub-signature-256"];
+
+  if (!appSecret) {
+    console.error("[WhatsApp Webhook] WHATSAPP_APP_SECRET no esta configurado, rechazando webhook");
+    return false;
+  }
+  if (typeof signatureHeader !== "string" || !rawBody) {
+    return false;
+  }
+
+  const expected = `sha256=${crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex")}`;
+  const expectedBuf = Buffer.from(expected);
+  const receivedBuf = Buffer.from(signatureHeader);
+
+  return expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf);
+}
 
 export async function verifyWebhook(req: Request, res: Response): Promise<void> {
   try {
@@ -34,6 +61,12 @@ export async function verifyWebhook(req: Request, res: Response): Promise<void> 
 
 export async function receiveMessage(req: Request, res: Response): Promise<void> {
   try {
+    if (!isValidSignature(req)) {
+      console.warn(`[WhatsApp Webhook] Firma invalida o ausente, evento rechazado. ip=${req.ip}`);
+      res.sendStatus(403);
+      return;
+    }
+
     const body = req.body;
 
     console.log("[WhatsApp Webhook] Evento entrante:", JSON.stringify(body, null, 2));
