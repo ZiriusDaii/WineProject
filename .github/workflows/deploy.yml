@@ -62,7 +62,7 @@ jobs:
             ENVEOF
 
             # --- Construir y levantar contenedores ---
-            sudo docker compose -f docker-compose.prod.yml up -d --build
+            sudo docker compose -f docker-compose.prod.yml up -d --build --force-recreate
 
             # --- Limpiar imágenes viejas ---
             sudo docker image prune -f
