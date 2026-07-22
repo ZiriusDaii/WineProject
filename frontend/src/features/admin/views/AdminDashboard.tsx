@@ -261,15 +261,154 @@ export const AdminDashboard: React.FC = () => {
   const [adminLoginUser, setAdminLoginUser] = useState('');
   const [adminLoginPass, setAdminLoginPass] = useState('');
 
+  const [loadedModules, setLoadedModules] = useState<Record<string, boolean>>({});
+  const [moduleLoading, setModuleLoading] = useState(false);
+
+  // 1. Carga inicial ultrarrapida (<100ms): solo citas, manicuristas y stats principales
+  const loadInitialData = async () => {
+    setLoading(true);
+    setLoadError(false);
+    const h = authHeaders();
+    try {
+      const [mRes, aRes] = await Promise.all([
+        fetch(`${API}/api/admin/manicurists`, { headers: h }).catch(() => null),
+        fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h }).catch(() => null),
+      ]);
+
+      if (mRes?.status === 401 || aRes?.status === 401) {
+        setUnauthorized(true);
+        setLoading(false);
+        return;
+      }
+
+      if (mRes?.ok) {
+        const mData = await mRes.json();
+        setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
+        setLoadedModules(prev => ({ ...prev, manicurists: true }));
+      }
+
+      if (aRes?.ok) {
+        const p = await aRes.json();
+        const appts = p?.data ?? (Array.isArray(p) ? p : []);
+        setAppointmentsTruncated(typeof p?.totalCount === 'number' && p.totalCount > appts.length);
+        setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
+      } else {
+        setLoadError(true);
+      }
+
+      await fetchStats();
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. Cargadores por modulo (Lazy Loading)
+  const fetchServicesModule = async () => {
+    const h = authHeaders();
+    try {
+      const [sRes, catRes] = await Promise.all([
+        fetch(`${API}/api/admin/services`, { headers: h }),
+        fetch(`${API}/api/admin/categories`, { headers: h }).catch(() => null),
+      ]);
+      if (sRes.ok) setServicesCatalog(await sRes.json());
+      if (catRes?.ok) setCategories(await catRes.json());
+      setLoadedModules(prev => ({ ...prev, services: true }));
+    } catch { /* */ }
+  };
+
+  const fetchClientsModule = async () => {
+    const h = authHeaders();
+    try {
+      const cRes = await fetch(`${API}/api/admin/clients`, { headers: h });
+      if (cRes.ok) {
+        const cPayload = await cRes.json();
+        setClients(cPayload?.data ?? (Array.isArray(cPayload) ? cPayload : []));
+        setLoadedModules(prev => ({ ...prev, clients: true }));
+      }
+    } catch { /* */ }
+  };
+
+  const fetchOffersModule = async () => {
+    const h = authHeaders();
+    try {
+      const oRes = await fetch(`${API}/api/admin/offers`, { headers: h });
+      if (oRes.ok) {
+        setOffers(await oRes.json());
+        setLoadedModules(prev => ({ ...prev, offers: true }));
+      }
+    } catch { /* */ }
+  };
+
+  const fetchShiftModule = async () => {
+    try {
+      const shiftRes = await fetch(`${API}/api/admin/shift-templates`, { headers: authHeaders() });
+      if (shiftRes.ok) setShiftTemplates(await shiftRes.json());
+      await fetchWeekSchedule();
+      setLoadedModules(prev => ({ ...prev, schedule: true }));
+    } catch { /* */ }
+  };
+
+  const loadModuleOnDemand = async (tab: Tab) => {
+    if (tab === 'metrics' || tab === 'appointments' || tab === 'calendar') return;
+    if (loadedModules[tab]) return; // Ya en memoria -> cambio instantaneo
+
+    setModuleLoading(true);
+    try {
+      if (tab === 'services') await fetchServicesModule();
+      else if (tab === 'clients') await fetchClientsModule();
+      else if (tab === 'offers') await fetchOffersModule();
+      else if (tab === 'news') await fetchCMS();
+      else if (tab === 'schedule') await fetchShiftModule();
+      else if (tab === 'manicurists') {
+        const h = authHeaders();
+        const mRes = await fetch(`${API}/api/admin/manicurists`, { headers: h });
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
+        }
+        setLoadedModules(prev => ({ ...prev, manicurists: true }));
+      }
+    } finally {
+      setModuleLoading(false);
+    }
+  };
+
+  const loadData = loadInitialData;
+
   useEffect(() => {
-    loadData();
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    loadModuleOnDemand(activeTab);
+  }, [activeTab]);
+
+  // Auto-refresco inteligente cada 60s: solo renueva el modulo activo y citas
+  useEffect(() => {
     const interval = setInterval(() => {
-      loadData();
+      fetchStats();
+      const h = authHeaders();
+      fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h })
+        .then(r => r.ok ? r.json() : null)
+        .then(p => {
+          if (p) {
+            const appts = p?.data ?? (Array.isArray(p) ? p : []);
+            setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
+          }
+        })
+        .catch(() => {});
+
+      if (activeTab === 'services') fetchServicesModule();
+      else if (activeTab === 'clients') fetchClientsModule();
+      else if (activeTab === 'offers') fetchOffersModule();
+      else if (activeTab === 'news') fetchCMS();
+      else if (activeTab === 'schedule') fetchShiftModule();
     }, 60000);
     return () => clearInterval(interval);
-  }, []);
-  useEffect(() => { if (activeTab === 'news') fetchCMS(); }, [activeTab]);
-  useEffect(() => { if (activeTab === 'schedule') fetchWeekSchedule(); }, [activeTab, scheduleWeek, scheduleYear]);
+  }, [activeTab]);
+
   useEffect(() => {
     if (activeTab === 'metrics') {
       setAnimateBars(false);
@@ -317,70 +456,7 @@ export const AdminDashboard: React.FC = () => {
     } catch { setLoadError(true); /* dejamos las stats actuales, ver comentario arriba */ }
   };
 
-  const loadData = async () => {
-    setLoading(true);
-    setLoadError(false);
-    const h = authHeaders();
-    try {
-      const [mRes, sRes, cRes, oRes] = await Promise.all([
-        fetch(`${API}/api/admin/manicurists`, { headers: h }),
-        fetch(`${API}/api/admin/services`, { headers: h }),
-        fetch(`${API}/api/admin/clients`, { headers: h }).catch(() => null),
-        fetch(`${API}/api/admin/offers`, { headers: h }).catch(() => null),
-      ]);
 
-      if (mRes.status === 401 || cRes?.status === 401 || oRes?.status === 401) {
-        setUnauthorized(true); setLoading(false); return;
-      }
-      if (!mRes.ok || !sRes.ok) setLoadError(true);
-      const mData = mRes.ok ? await mRes.json() : [];
-      const sData = sRes.ok ? await sRes.json() : [];
-      const cPayload = cRes?.ok ? await cRes.json() : null;
-      const oData = oRes?.ok ? await oRes.json() : [];
-
-      setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
-      setServicesCatalog(sData || []);
-      setClients(cPayload?.data ?? (Array.isArray(cPayload) ? cPayload : []));
-      setOffers(oData);
-
-      try {
-        const catRes = await fetch(`${API}/api/admin/categories`, { headers: h });
-        if (catRes.ok) setCategories(await catRes.json());
-      } catch { /* */ }
-
-      try {
-        const shiftRes = await fetch(`${API}/api/admin/shift-templates`, { headers: h });
-        if (shiftRes.ok) setShiftTemplates(await shiftRes.json());
-      } catch { /* */ }
-
-      let appts: Appointment[] = [];
-      try {
-        const aRes = await fetch(`${API}/api/admin/appointments?limit=1000`, { headers: h });
-        if (aRes.ok) {
-          const p = await aRes.json();
-          appts = p?.data ?? (Array.isArray(p) ? p : []);
-          // El fetch tiene un tope de 1000: si el total real lo supera, la
-          // Pizarra de Citas y el Panel de Metricas quedarian truncados en
-          // silencio. Mejor avisar que el dato esta incompleto que fingir
-          // que es todo lo que hay.
-          setAppointmentsTruncated(typeof p?.totalCount === 'number' && p.totalCount > appts.length);
-        } else {
-          // Antes esto dejaba `appts` en [] en silencio -- la Pizarra de
-          // Citas mostraba "Sin citas" (dato falso), indistinguible de que
-          // de verdad no hubiera ninguna.
-          setLoadError(true);
-        }
-      } catch { setLoadError(true); }
-      setAppointments(appts.map((a: any) => ({ ...a, status: a.status || 'PENDING' })));
-
-      await fetchStats();
-      if (activeTab === 'metrics') {
-        setAnimateBars(false);
-        setTimeout(() => setAnimateBars(true), 150);
-      }
-    } catch { setLoadError(true); }
-    finally { setLoading(false); }
-  };
 
   const handleUpdateStatus = async (id: string | number, status: string) => {
     try {
@@ -940,6 +1016,12 @@ export const AdminDashboard: React.FC = () => {
           <div className="mb-3 p-2.5 bg-amber-50 text-amber-700 text-xs rounded-xl border border-amber-200 flex items-center justify-between gap-3">
             <span>No se pudo cargar toda la informacion (puede faltar datos en este panel).</span>
             <button onClick={loadData} className="underline font-semibold shrink-0">Reintentar</button>
+          </div>
+        )}
+        {moduleLoading && (
+          <div className="mb-4 p-3 bg-[#F7F3EB]/60 border border-[#EADEC9] rounded-xl flex items-center justify-center gap-2 text-xs font-semibold text-[#8E1B54] animate-fade-in">
+            <div className="w-4 h-4 border-2 border-[#8E1B54] border-t-transparent rounded-full animate-spin" />
+            Cargando datos del módulo...
           </div>
         )}
 
