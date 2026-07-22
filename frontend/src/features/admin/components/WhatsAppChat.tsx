@@ -96,6 +96,7 @@ const ConversationListItem = React.memo<{
   conversation: Conversation;
   isActive: boolean;
   onSelect: (id: string) => void;
+  now: number;
 }>(({ conversation, isActive, onSelect, now }) => {
   const isRecent = conversation.lastMessageAt
     ? now - new Date(conversation.lastMessageAt).getTime() < 5 * 60 * 1000
