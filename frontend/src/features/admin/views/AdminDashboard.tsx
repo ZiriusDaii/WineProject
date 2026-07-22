@@ -1689,21 +1689,21 @@ export const AdminDashboard: React.FC = () => {
             <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EADEC9]/30 pb-3">
                 <div>
-                  <h3 className="text-xs font-bold text-[#3B0019] uppercase">Turnos por Semana y Rotación Automática</h3>
-                  <p className="text-[10px] text-[#78716C]">Los turnos rotan automáticamente. Podés cambiar una semana específica para crear una excepción.</p>
+                  <h3 className="serif-title text-lg text-[#3B0019]">Turnos por Semana y Rotación</h3>
+                  <p className="text-[11px] text-[#78716C]">Los turnos rotan automáticamente. Podés cambiar una semana específica para crear una excepción.</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs self-start sm:self-auto">
                   <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">‹</button>
                   <span className="text-center px-2">
                     <span className="block font-semibold text-[#3B0019] text-xs">{formatWeekRange(scheduleWeek, scheduleYear)}</span>
-                    <span className="block text-[9px] text-[#A68F63] uppercase tracking-wide font-bold">Semana {scheduleWeek}</span>
+                    <span className="block text-[9px] text-[#A68F63] uppercase tracking-wider font-bold">Semana {scheduleWeek}</span>
                   </span>
                   <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">›</button>
                 </div>
               </div>
 
               {shiftTemplates.length === 0 ? (
-                <p className="text-[10px] text-[#78716C]">Creá al menos un turno arriba para poder asignarlo.</p>
+                <p className="text-xs text-[#78716C]">Creá al menos un turno arriba para poder asignarlo.</p>
               ) : (
                 <div className="space-y-3">
                   {(weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }))).map((item: any) => {
@@ -1716,16 +1716,16 @@ export const AdminDashboard: React.FC = () => {
                             <span className="text-xs font-bold text-[#3B0019] block">{name}</span>
                             <div className="flex items-center gap-2 mt-0.5">
                               {item.isOverride ? (
-                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                  ✏️ Excepción Manual
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                                  Excepción Manual
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                  🔄 Rotación Automática
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                  Rotación Automática
                                 </span>
                               )}
                               <span className="text-[10px] text-[#78716C]">
-                                Turno actual: <strong className="text-[#3B0019]">{item.shiftTemplate ? `${item.shiftTemplate.name} (${item.shiftTemplate.startTime}-${item.shiftTemplate.endTime})` : 'Sin Turno'}</strong>
+                                Turno: <strong className="text-[#3B0019]">{item.shiftTemplate ? `${item.shiftTemplate.name} (${item.shiftTemplate.startTime}-${item.shiftTemplate.endTime})` : 'Sin Turno'}</strong>
                               </span>
                             </div>
                           </div>
@@ -1744,9 +1744,9 @@ export const AdminDashboard: React.FC = () => {
                             }}
                             className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
                           >
-                            <option value="AUTO">🔄 Seguir Rotación Automática</option>
+                            <option value="AUTO">Seguir Rotación Automática</option>
                             <optgroup label="--- Crear Excepción Manual ---">
-                              <option value="">⛔ Sin Turno / Descanso</option>
+                              <option value="">Sin Turno / Descanso</option>
                               {shiftTemplates.map(s => (
                                 <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>
                               ))}
@@ -1756,9 +1756,9 @@ export const AdminDashboard: React.FC = () => {
                           <button
                             onClick={() => openRotationModal(item)}
                             title="Configurar regla de rotación habitual"
-                            className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-bold border border-[#5C0632]/10 transition-colors shrink-0"
+                            className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-semibold border border-[#5C0632]/10 transition-colors shrink-0"
                           >
-                            ⚙️ Regla
+                            Configurar Regla
                           </button>
                         </div>
                       </div>
@@ -2235,61 +2235,61 @@ export const AdminDashboard: React.FC = () => {
       {/* Rotation Config Modal */}
       {rotationModalManicurist && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setRotationModalManicurist(null)}>
-          <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 relative shadow-xl animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 relative shadow-xl animate-fade-in text-left" onClick={e => e.stopPropagation()}>
             <button onClick={() => setRotationModalManicurist(null)} className="absolute top-4 right-4 text-sm text-[#78716C]">✕</button>
             <div className="border-b border-[#EADEC9]/40 pb-3">
               <h3 className="serif-title text-xl text-[#3B0019]">Regla de Rotación de Turno</h3>
-              <p className="text-xs text-[#78716C]">Manicurista: <strong className="text-[#3B0019]">{rotationModalManicurist.manicuristName || rotationModalManicurist.name}</strong></p>
+              <p className="text-xs text-[#78716C] mt-0.5">Manicurista: <strong className="text-[#3B0019]">{rotationModalManicurist.manicuristName || rotationModalManicurist.name}</strong></p>
             </div>
 
             <form onSubmit={handleSaveRotationConfig} className="space-y-4">
               <div>
-                <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Tipo de Horario</label>
+                <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1 tracking-wider">Tipo de Horario</label>
                 <select
                   value={rotType}
                   onChange={e => setRotType(e.target.value as any)}
-                  className="w-full p-2.5 border rounded-xl text-xs bg-white font-semibold text-[#3B0019]"
+                  className="w-full p-2.5 border border-[#EADEC9] rounded-xl text-xs bg-white font-semibold text-[#3B0019]"
                 >
-                  <option value="WEEKLY_ROTATION">🔄 Rotación Semanal (Semana A / Semana B)</option>
-                  <option value="FIXED">📌 Turno Fijo (Mismo horario todas las semanas)</option>
+                  <option value="WEEKLY_ROTATION">Rotación Semanal (Semana A / Semana B)</option>
+                  <option value="FIXED">Turno Fijo (Mismo horario todas las semanas)</option>
                 </select>
               </div>
 
               {rotType === 'WEEKLY_ROTATION' ? (
                 <div className="space-y-3 p-3.5 bg-[#F7F3EB]/60 border border-[#EADEC9]/50 rounded-xl">
                   <div>
-                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Semana A (Turno Inicio)</label>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1 tracking-wider">Semana A (Turno Inicio)</label>
                     <select
                       value={rotShift1Id}
                       onChange={e => setRotShift1Id(e.target.value)}
-                      className="w-full p-2 border rounded-lg text-xs bg-white"
+                      className="w-full p-2 border border-[#EADEC9] rounded-lg text-xs bg-white"
                     >
-                      <option value="">-- Sin Turno / Descanso --</option>
+                      <option value="">Sin Turno / Descanso</option>
                       {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Semana B (Siguiente Semana)</label>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1 tracking-wider">Semana B (Siguiente Semana)</label>
                     <select
                       value={rotShift2Id}
                       onChange={e => setRotShift2Id(e.target.value)}
-                      className="w-full p-2 border rounded-lg text-xs bg-white"
+                      className="w-full p-2 border border-[#EADEC9] rounded-lg text-xs bg-white"
                     >
-                      <option value="">-- Sin Turno / Descanso --</option>
+                      <option value="">Sin Turno / Descanso</option>
                       {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
                     </select>
                   </div>
                 </div>
               ) : (
                 <div className="p-3.5 bg-[#F7F3EB]/60 border border-[#EADEC9]/50 rounded-xl">
-                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1">Turno Fijo Habitual</label>
+                  <label className="text-[10px] uppercase text-[#A68F63] font-bold block mb-1 tracking-wider">Turno Fijo Habitual</label>
                   <select
                     value={rotDefaultShiftId}
                     onChange={e => setRotDefaultShiftId(e.target.value)}
-                    className="w-full p-2 border rounded-lg text-xs bg-white"
+                    className="w-full p-2 border border-[#EADEC9] rounded-lg text-xs bg-white"
                   >
-                    <option value="">-- Sin Turno Fijo / Descanso --</option>
+                    <option value="">Sin Turno Fijo / Descanso</option>
                     {shiftTemplates.map(s => <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>)}
                   </select>
                 </div>
@@ -2297,7 +2297,7 @@ export const AdminDashboard: React.FC = () => {
 
               {/* Vista previa */}
               <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-1.5">
-                <span className="text-[10px] font-bold text-[#A68F63] uppercase block">Vista Previa del Patrón Automático</span>
+                <span className="text-[10px] font-bold text-[#A68F63] uppercase block tracking-wider">Vista Previa del Patrón Automático</span>
                 {rotType === 'WEEKLY_ROTATION' ? (
                   <>
                     <div className="flex justify-between text-[11px]">
@@ -2324,10 +2324,10 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl hover:bg-[#3B0019] transition-colors">
+                <button type="submit" disabled={submitting} className="flex-1 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl hover:bg-[#5C0632] transition-colors">
                   Guardar Regla
                 </button>
-                <button type="button" onClick={() => setRotationModalManicurist(null)} className="px-4 py-2.5 border rounded-xl text-xs">
+                <button type="button" onClick={() => setRotationModalManicurist(null)} className="px-4 py-2.5 border rounded-xl text-xs text-[#78716C] font-semibold hover:bg-stone-50">
                   Cancelar
                 </button>
               </div>
