@@ -33,6 +33,7 @@ export type WhatsAppMessageMinAggregateOutputType = {
   direction: $Enums.WhatsAppDirection | null
   status: $Enums.WhatsAppMessageStatus | null
   conversationId: string | null
+  flagged: boolean | null
   createdAt: Date | null
 }
 
@@ -45,6 +46,7 @@ export type WhatsAppMessageMaxAggregateOutputType = {
   direction: $Enums.WhatsAppDirection | null
   status: $Enums.WhatsAppMessageStatus | null
   conversationId: string | null
+  flagged: boolean | null
   createdAt: Date | null
 }
 
@@ -57,6 +59,7 @@ export type WhatsAppMessageCountAggregateOutputType = {
   direction: number
   status: number
   conversationId: number
+  flagged: number
   createdAt: number
   _all: number
 }
@@ -71,6 +74,7 @@ export type WhatsAppMessageMinAggregateInputType = {
   direction?: true
   status?: true
   conversationId?: true
+  flagged?: true
   createdAt?: true
 }
 
@@ -83,6 +87,7 @@ export type WhatsAppMessageMaxAggregateInputType = {
   direction?: true
   status?: true
   conversationId?: true
+  flagged?: true
   createdAt?: true
 }
 
@@ -95,6 +100,7 @@ export type WhatsAppMessageCountAggregateInputType = {
   direction?: true
   status?: true
   conversationId?: true
+  flagged?: true
   createdAt?: true
   _all?: true
 }
@@ -180,6 +186,7 @@ export type WhatsAppMessageGroupByOutputType = {
   direction: $Enums.WhatsAppDirection
   status: $Enums.WhatsAppMessageStatus
   conversationId: string
+  flagged: boolean
   createdAt: Date
   _count: WhatsAppMessageCountAggregateOutputType | null
   _min: WhatsAppMessageMinAggregateOutputType | null
@@ -213,6 +220,7 @@ export type WhatsAppMessageWhereInput = {
   direction?: Prisma.EnumWhatsAppDirectionFilter<"WhatsAppMessage"> | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFilter<"WhatsAppMessage"> | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFilter<"WhatsAppMessage"> | string
+  flagged?: Prisma.BoolFilter<"WhatsAppMessage"> | boolean
   createdAt?: Prisma.DateTimeFilter<"WhatsAppMessage"> | Date | string
 }
 
@@ -225,6 +233,7 @@ export type WhatsAppMessageOrderByWithRelationInput = {
   direction?: Prisma.SortOrder
   status?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
+  flagged?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -240,6 +249,7 @@ export type WhatsAppMessageWhereUniqueInput = Prisma.AtLeast<{
   direction?: Prisma.EnumWhatsAppDirectionFilter<"WhatsAppMessage"> | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFilter<"WhatsAppMessage"> | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFilter<"WhatsAppMessage"> | string
+  flagged?: Prisma.BoolFilter<"WhatsAppMessage"> | boolean
   createdAt?: Prisma.DateTimeFilter<"WhatsAppMessage"> | Date | string
 }, "id" | "waMessageId">
 
@@ -252,6 +262,7 @@ export type WhatsAppMessageOrderByWithAggregationInput = {
   direction?: Prisma.SortOrder
   status?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
+  flagged?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.WhatsAppMessageCountOrderByAggregateInput
   _max?: Prisma.WhatsAppMessageMaxOrderByAggregateInput
@@ -270,6 +281,7 @@ export type WhatsAppMessageScalarWhereWithAggregatesInput = {
   direction?: Prisma.EnumWhatsAppDirectionWithAggregatesFilter<"WhatsAppMessage"> | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusWithAggregatesFilter<"WhatsAppMessage"> | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringWithAggregatesFilter<"WhatsAppMessage"> | string
+  flagged?: Prisma.BoolWithAggregatesFilter<"WhatsAppMessage"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"WhatsAppMessage"> | Date | string
 }
 
@@ -282,6 +294,7 @@ export type WhatsAppMessageCreateInput = {
   direction: $Enums.WhatsAppDirection
   status?: $Enums.WhatsAppMessageStatus
   conversationId: string
+  flagged?: boolean
   createdAt?: Date | string
 }
 
@@ -294,6 +307,7 @@ export type WhatsAppMessageUncheckedCreateInput = {
   direction: $Enums.WhatsAppDirection
   status?: $Enums.WhatsAppMessageStatus
   conversationId: string
+  flagged?: boolean
   createdAt?: Date | string
 }
 
@@ -306,6 +320,7 @@ export type WhatsAppMessageUpdateInput = {
   direction?: Prisma.EnumWhatsAppDirectionFieldUpdateOperationsInput | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  flagged?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -318,6 +333,7 @@ export type WhatsAppMessageUncheckedUpdateInput = {
   direction?: Prisma.EnumWhatsAppDirectionFieldUpdateOperationsInput | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  flagged?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -330,6 +346,7 @@ export type WhatsAppMessageCreateManyInput = {
   direction: $Enums.WhatsAppDirection
   status?: $Enums.WhatsAppMessageStatus
   conversationId: string
+  flagged?: boolean
   createdAt?: Date | string
 }
 
@@ -342,6 +359,7 @@ export type WhatsAppMessageUpdateManyMutationInput = {
   direction?: Prisma.EnumWhatsAppDirectionFieldUpdateOperationsInput | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  flagged?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -354,6 +372,7 @@ export type WhatsAppMessageUncheckedUpdateManyInput = {
   direction?: Prisma.EnumWhatsAppDirectionFieldUpdateOperationsInput | $Enums.WhatsAppDirection
   status?: Prisma.EnumWhatsAppMessageStatusFieldUpdateOperationsInput | $Enums.WhatsAppMessageStatus
   conversationId?: Prisma.StringFieldUpdateOperationsInput | string
+  flagged?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -366,6 +385,7 @@ export type WhatsAppMessageCountOrderByAggregateInput = {
   direction?: Prisma.SortOrder
   status?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
+  flagged?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -378,6 +398,7 @@ export type WhatsAppMessageMaxOrderByAggregateInput = {
   direction?: Prisma.SortOrder
   status?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
+  flagged?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -390,6 +411,7 @@ export type WhatsAppMessageMinOrderByAggregateInput = {
   direction?: Prisma.SortOrder
   status?: Prisma.SortOrder
   conversationId?: Prisma.SortOrder
+  flagged?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -412,6 +434,7 @@ export type WhatsAppMessageSelect<ExtArgs extends runtime.Types.Extensions.Inter
   direction?: boolean
   status?: boolean
   conversationId?: boolean
+  flagged?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["whatsAppMessage"]>
 
@@ -424,6 +447,7 @@ export type WhatsAppMessageSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   direction?: boolean
   status?: boolean
   conversationId?: boolean
+  flagged?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["whatsAppMessage"]>
 
@@ -436,6 +460,7 @@ export type WhatsAppMessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   direction?: boolean
   status?: boolean
   conversationId?: boolean
+  flagged?: boolean
   createdAt?: boolean
 }, ExtArgs["result"]["whatsAppMessage"]>
 
@@ -448,10 +473,11 @@ export type WhatsAppMessageSelectScalar = {
   direction?: boolean
   status?: boolean
   conversationId?: boolean
+  flagged?: boolean
   createdAt?: boolean
 }
 
-export type WhatsAppMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "waMessageId" | "from" | "to" | "body" | "direction" | "status" | "conversationId" | "createdAt", ExtArgs["result"]["whatsAppMessage"]>
+export type WhatsAppMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "waMessageId" | "from" | "to" | "body" | "direction" | "status" | "conversationId" | "flagged" | "createdAt", ExtArgs["result"]["whatsAppMessage"]>
 
 export type $WhatsAppMessagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "WhatsAppMessage"
@@ -465,6 +491,7 @@ export type $WhatsAppMessagePayload<ExtArgs extends runtime.Types.Extensions.Int
     direction: $Enums.WhatsAppDirection
     status: $Enums.WhatsAppMessageStatus
     conversationId: string
+    flagged: boolean
     createdAt: Date
   }, ExtArgs["result"]["whatsAppMessage"]>
   composites: {}
@@ -897,6 +924,7 @@ export interface WhatsAppMessageFieldRefs {
   readonly direction: Prisma.FieldRef<"WhatsAppMessage", 'WhatsAppDirection'>
   readonly status: Prisma.FieldRef<"WhatsAppMessage", 'WhatsAppMessageStatus'>
   readonly conversationId: Prisma.FieldRef<"WhatsAppMessage", 'String'>
+  readonly flagged: Prisma.FieldRef<"WhatsAppMessage", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"WhatsAppMessage", 'DateTime'>
 }
     

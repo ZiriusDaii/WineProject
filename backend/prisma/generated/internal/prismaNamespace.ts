@@ -392,7 +392,8 @@ export const ModelName = {
   Appointment: 'Appointment',
   SpecialOffer: 'SpecialOffer',
   LandingContent: 'LandingContent',
-  WhatsAppMessage: 'WhatsAppMessage'
+  WhatsAppMessage: 'WhatsAppMessage',
+  WhatsAppTemplate: 'WhatsAppTemplate'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -408,7 +409,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "service" | "serviceCategory" | "shiftTemplate" | "manicuristSchedule" | "appointment" | "specialOffer" | "landingContent" | "whatsAppMessage"
+    modelProps: "user" | "service" | "serviceCategory" | "shiftTemplate" | "manicuristSchedule" | "appointment" | "specialOffer" | "landingContent" | "whatsAppMessage" | "whatsAppTemplate"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1078,6 +1079,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    WhatsAppTemplate: {
+      payload: Prisma.$WhatsAppTemplatePayload<ExtArgs>
+      fields: Prisma.WhatsAppTemplateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WhatsAppTemplateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WhatsAppTemplateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        findFirst: {
+          args: Prisma.WhatsAppTemplateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WhatsAppTemplateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        findMany: {
+          args: Prisma.WhatsAppTemplateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>[]
+        }
+        create: {
+          args: Prisma.WhatsAppTemplateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        createMany: {
+          args: Prisma.WhatsAppTemplateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WhatsAppTemplateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>[]
+        }
+        delete: {
+          args: Prisma.WhatsAppTemplateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        update: {
+          args: Prisma.WhatsAppTemplateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        deleteMany: {
+          args: Prisma.WhatsAppTemplateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WhatsAppTemplateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WhatsAppTemplateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>[]
+        }
+        upsert: {
+          args: Prisma.WhatsAppTemplateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WhatsAppTemplatePayload>
+        }
+        aggregate: {
+          args: Prisma.WhatsAppTemplateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWhatsAppTemplate>
+        }
+        groupBy: {
+          args: Prisma.WhatsAppTemplateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppTemplateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WhatsAppTemplateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WhatsAppTemplateCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1239,10 +1314,29 @@ export const WhatsAppMessageScalarFieldEnum = {
   direction: 'direction',
   status: 'status',
   conversationId: 'conversationId',
+  flagged: 'flagged',
   createdAt: 'createdAt'
 } as const
 
 export type WhatsAppMessageScalarFieldEnum = (typeof WhatsAppMessageScalarFieldEnum)[keyof typeof WhatsAppMessageScalarFieldEnum]
+
+
+export const WhatsAppTemplateScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  headerText: 'headerText',
+  bodyText: 'bodyText',
+  button1Id: 'button1Id',
+  button1Title: 'button1Title',
+  button2Id: 'button2Id',
+  button2Title: 'button2Title',
+  button3Id: 'button3Id',
+  button3Title: 'button3Title',
+  isActive: 'isActive',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WhatsAppTemplateScalarFieldEnum = (typeof WhatsAppTemplateScalarFieldEnum)[keyof typeof WhatsAppTemplateScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1526,6 +1620,7 @@ export type GlobalOmitConfig = {
   specialOffer?: Prisma.SpecialOfferOmit
   landingContent?: Prisma.LandingContentOmit
   whatsAppMessage?: Prisma.WhatsAppMessageOmit
+  whatsAppTemplate?: Prisma.WhatsAppTemplateOmit
 }
 
 /* Types for Logging */

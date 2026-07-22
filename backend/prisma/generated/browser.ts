@@ -62,3 +62,8 @@ export type LandingContent = Prisma.LandingContentModel
  * 
  */
 export type WhatsAppMessage = Prisma.WhatsAppMessageModel
+/**
+ * Model WhatsAppTemplate
+ * 
+ */
+export type WhatsAppTemplate = Prisma.WhatsAppTemplateModel
