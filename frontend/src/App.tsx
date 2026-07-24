@@ -95,6 +95,8 @@ class StaffPanelErrorBoundary extends React.Component<
   }
 }
 
+type ServiceGender = 'MUJER' | 'HOMBRE' | 'NINOS' | 'UNISEX';
+
 interface Service {
   id: string | number;
   name: string;
@@ -104,6 +106,7 @@ interface Service {
   shortDescription?: string;
   imageUrl?: string;
   category?: string;
+  gender?: ServiceGender;
 }
 
 interface Manicurist {
@@ -248,7 +251,18 @@ interface UserSession {
   role: 'admin' | 'manicurista' | 'cliente';
   phone?: string;
   avatarUrl?: string;
+  gender?: string;
 }
+
+// El genero de cuenta se guarda en español ('Femenino'/'Masculino', ver los
+// <select> de registro) pero el de Service usa el enum del catalogo real
+// ('MUJER'/'HOMBRE'/'UNISEX') -- este mapeo es el unico lugar que conoce esa
+// correspondencia, para prellenar el filtro de reserva sin acoplar los dos.
+const sessionGenderToServiceGender = (gender?: string): 'MUJER' | 'HOMBRE' | 'TODOS' => {
+  if (gender === 'Femenino') return 'MUJER';
+  if (gender === 'Masculino') return 'HOMBRE';
+  return 'TODOS';
+};
 
 export const FallbackAvatar: React.FC<{ className?: string }> = ({ className = "w-10 h-10" }) => (
   <svg className={`${className} text-[#A68F63] bg-[#EADEC9]/35 rounded-full p-1.5 shrink-0 border border-[#EADEC9]/50`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -402,17 +416,39 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
 // filtrar/ordenar/paginar y re-renderizar estas grillas enteras. Medido con
 // el profiler: hasta 900ms por tecla. Con memo, solo se re-renderizan cuando
 // sus propios props cambian.
+type ServiceGenderFilter = 'TODOS' | ServiceGender;
+
+const GENDER_FILTERS: { value: ServiceGenderFilter; label: string }[] = [
+  { value: 'TODOS', label: 'Todos' },
+  { value: 'MUJER', label: 'Mujeres' },
+  { value: 'HOMBRE', label: 'Hombres' },
+  { value: 'NINOS', label: 'Niños' },
+];
+
 const ServiceSelectionGrid: React.FC<{
   services: Service[];
   svcSearch: string;
   setSvcSearch: (v: string) => void;
   svcPage: number;
   setSvcPage: React.Dispatch<React.SetStateAction<number>>;
+  genderFilter: ServiceGenderFilter;
+  setGenderFilter: (v: ServiceGenderFilter) => void;
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
   selectedServiceIds: string[];
   onToggleService: (id: string) => void;
-}> = React.memo(({ services, svcSearch, setSvcSearch, svcPage, setSvcPage, selectedServiceIds, onToggleService }) => {
+}> = React.memo(({ services, svcSearch, setSvcSearch, svcPage, setSvcPage, genderFilter, setGenderFilter, categoryFilter, setCategoryFilter, selectedServiceIds, onToggleService }) => {
+  const matchesGender = (s: Service) => genderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === genderFilter;
+
+  // Solo categorias con al menos un servicio para el genero elegido -- sin
+  // esto, el select podia ofrecer p.ej. "Extensiones" estando en "Hombres"
+  // y mostrar una lista vacia, porque ese cruce no existe en la carta real.
+  const availableCategories = [...new Set(services.filter(matchesGender).map(s => s.category).filter(Boolean))].sort() as string[];
+
   const filtered = services
     .filter(s => (s.name || '').toLowerCase().includes(svcSearch.toLowerCase()))
+    .filter(matchesGender)
+    .filter(s => !categoryFilter || s.category === categoryFilter)
     .sort((a, b) => {
       if ((a as any).trending && !(b as any).trending) return -1;
       if (!(a as any).trending && (b as any).trending) return 1;
@@ -424,6 +460,28 @@ const ServiceSelectionGrid: React.FC<{
 
   return (
     <>
+      <div className="flex flex-wrap gap-2">
+        {GENDER_FILTERS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => { setGenderFilter(value); setCategoryFilter(''); setSvcPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs border ${genderFilter === value ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60 hover:border-[#8E1B54]'}`}
+          >
+            {label}
+          </button>
+        ))}
+        {availableCategories.length > 1 && (
+          <select
+            value={categoryFilter}
+            onChange={e => { setCategoryFilter(e.target.value); setSvcPage(1); }}
+            className="px-3 py-1.5 rounded-lg text-xs border border-[#EADEC9]/60 bg-white text-[#3B0019]"
+          >
+            <option value="">Todas las categorías</option>
+            {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+      </div>
       <input type="text" placeholder="Buscar servicio..." value={svcSearch} onChange={e => { setSvcSearch(e.target.value); setSvcPage(1); }} className="p-2 border rounded-lg text-xs w-full max-w-xs bg-white" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {page.map(s => {
@@ -625,6 +683,8 @@ export default function App() {
   const [manSearch, setManSearch] = useState('');
   const [svcPage, setSvcPage] = useState(1);
   const [manPage, setManPage] = useState(1);
+  const [bookingGenderFilter, setBookingGenderFilter] = useState<ServiceGenderFilter>('TODOS');
+  const [bookingCategoryFilter, setBookingCategoryFilter] = useState('');
   const [showDiscount, setShowDiscount] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(true);
 
@@ -642,6 +702,8 @@ export default function App() {
   const handleGoToBooking = useCallback(() => {
     setBookingStep('selection');
     setBookingPrivacyConsent(false);
+    setBookingGenderFilter(sessionGenderToServiceGender(session?.gender));
+    setBookingCategoryFilter('');
     if (session && session.role === 'cliente') {
       setBookingPhone(session.phone || '');
       setBookingName(session.name || '');
@@ -1096,7 +1158,7 @@ export default function App() {
   // Trae los datos reales de una cuenta existente por telefono. Se usa al
   // recuperarnos de un 409 en el registro, para no quedarnos con el nombre
   // que se acaba de escribir (que puede no ser el dueño real del numero).
-  const fetchClientByPhone = async (phone: string): Promise<{ id: string; name: string } | null> => {
+  const fetchClientByPhone = async (phone: string): Promise<{ id: string; name: string; gender?: string } | null> => {
     try {
       const res = await fetch(`${API_URL}/api/clients/auth`, {
         method: 'POST',
@@ -1107,7 +1169,7 @@ export default function App() {
       const client = data.client || data;
       if (res.ok && (data.exists || data.client) && (client.id || client._id)) {
         if (data.token) localStorage.setItem('winespa_token', data.token);
-        return { id: String(client.id || client._id), name: client.name || 'Cliente' };
+        return { id: String(client.id || client._id), name: client.name || 'Cliente', gender: client.gender || undefined };
       }
       return null;
     } catch {
@@ -1146,7 +1208,8 @@ export default function App() {
             id: String(client.id || client._id),
             name: client.name || 'Cliente',
             role: 'cliente',
-            phone: phoneInput
+            phone: phoneInput,
+            gender: client.gender || undefined
           };
           if (data.token) localStorage.setItem('winespa_token', data.token);
           setSession(user);
@@ -1184,7 +1247,8 @@ export default function App() {
               id: existingClient.id,
               name: existingClient.name,
               role: 'cliente',
-              phone: phoneInput
+              phone: phoneInput,
+              gender: existingClient.gender
             };
             setSession(user);
             localStorage.setItem('winespa_session', JSON.stringify(user));
@@ -1205,7 +1269,8 @@ export default function App() {
           id: String(clientData.id || clientData._id),
           name: clientNameInput,
           role: 'cliente',
-          phone: phoneInput
+          phone: phoneInput,
+          gender: clientGenderInput
         };
         if (clientData.token) localStorage.setItem('winespa_token', clientData.token);
         setSession(user);
@@ -1331,6 +1396,8 @@ export default function App() {
     setManSearch('');
     setSvcPage(1);
     setManPage(1);
+    setBookingGenderFilter(sessionGenderToServiceGender(session?.gender));
+    setBookingCategoryFilter('');
   };
 
   const handleConfirmLoggedInBooking = async () => {
@@ -2025,7 +2092,7 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
                         <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
-                        <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                        <button onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
                   </motion.div>
@@ -2105,7 +2172,7 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
                       <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
-                      <button onClick={() => { resetBooking(); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                      <button onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
                 </motion.div>
@@ -2354,6 +2421,10 @@ export default function App() {
                 setSvcSearch={setSvcSearch}
                 svcPage={svcPage}
                 setSvcPage={setSvcPage}
+                genderFilter={bookingGenderFilter}
+                setGenderFilter={setBookingGenderFilter}
+                categoryFilter={bookingCategoryFilter}
+                setCategoryFilter={setBookingCategoryFilter}
                 selectedServiceIds={selectedServiceIds}
                 onToggleService={handleServiceToggle}
               />

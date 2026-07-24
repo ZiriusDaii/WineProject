@@ -53,6 +53,7 @@ interface ServiceCatalogItem {
   shortDescription?: string;
   includesDescription?: string;
   category?: string;
+  gender?: 'MUJER' | 'HOMBRE' | 'NINOS' | 'UNISEX';
   imageUrl?: string;
   trending?: boolean;
   isActive?: boolean;
@@ -174,6 +175,8 @@ export const AdminDashboard: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [svcGenderFilter, setSvcGenderFilter] = useState<'TODOS' | 'MUJER' | 'HOMBRE' | 'NINOS'>('TODOS');
+  const [svcCategoryFilter, setSvcCategoryFilter] = useState('');
   const [calendarDate, setCalendarDate] = useState(toLocalDateKey(new Date()));
   const itemsPerPage = 5;
 
@@ -207,6 +210,7 @@ export const AdminDashboard: React.FC = () => {
   const [svcShort, setSvcShort] = useState('');
   const [svcIncludes, setSvcIncludes] = useState('');
   const [svcCat, setSvcCat] = useState('');
+  const [svcGender, setSvcGender] = useState<'MUJER' | 'HOMBRE' | 'NINOS' | 'UNISEX'>('UNISEX');
   const [svcImageUrl, setSvcImageUrl] = useState('');
   const [svcImageFile, setSvcImageFile] = useState<File | null>(null);
   const [svcTrending, setSvcTrending] = useState(false);
@@ -494,7 +498,10 @@ export const AdminDashboard: React.FC = () => {
       } catch { /* */ }
     }
 
-    const body: any = { name: svcName, price: parseFloat(svcPrice), durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, trending: svcTrending, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
+    // svcPrice es lo que el admin tipea "en miles" (ej. 35 -> $35.000, ver
+    // el input de precio del form) -- se multiplica por 1000 recien aca, la
+    // API y la base siguen guardando el precio completo como siempre.
+    const body: any = { name: svcName, price: parseFloat(svcPrice) * 1000, durationInMinutes: parseInt(svcDuration), shortDescription: svcShort || undefined, includesDescription: svcIncludes || undefined, category: svcCat || undefined, gender: svcGender, trending: svcTrending, ...(finalImageUrl && { imageUrl: finalImageUrl }) };
     try {
       const url = svcId ? `${API}/api/admin/services/${svcId}` : `${API}/api/admin/services`;
       const res = await fetch(url, { method: svcId ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
@@ -540,8 +547,8 @@ export const AdminDashboard: React.FC = () => {
       if (r.ok) { setSuccessMsg(nextActive ? 'Servicio reactivado.' : 'Servicio deshabilitado.'); fetchServicesModule(); } else setErrorMsg('No se pudo modificar el servicio.');
     } catch { setErrorMsg('Error al conectar.'); }
   };
-  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(s.price)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
+  const editSvc = (s: ServiceCatalogItem) => { setSvcId(String(s.id)); setSvcName(s.name); setSvcPrice(String(Number(s.price) / 1000)); setSvcDuration(String(s.durationInMinutes || 60)); setSvcShort(s.shortDescription || ''); setSvcIncludes(s.includesDescription || ''); setSvcCat(s.category || ''); setSvcGender(s.gender || 'UNISEX'); setSvcImageUrl(s.imageUrl || ''); setSvcImageFile(null); setSvcTrending(s.trending || false); setShowSvcForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetSvc = () => { setSvcId(null); setSvcName(''); setSvcPrice(''); setSvcDuration(''); setSvcShort(''); setSvcIncludes(''); setSvcCat(''); setSvcGender('UNISEX'); setSvcImageUrl(''); setSvcImageFile(null); setSvcTrending(false); };
 
   // --- Offers ---
   const handleSaveOffer = async (e: React.FormEvent) => {
@@ -1884,7 +1891,7 @@ export const AdminDashboard: React.FC = () => {
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Nombre</label><input type="text" required value={svcName} onChange={e => setSvcName(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Descripcion Corta</label><input type="text" value={svcShort} onChange={e => setSvcShort(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Incluye</label><textarea value={svcIncludes} onChange={e => setSvcIncludes(e.target.value)} className="w-full p-2 border rounded-lg text-xs h-16" /></div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label>
                       <select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
@@ -1892,9 +1899,27 @@ export const AdminDashboard: React.FC = () => {
                         {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Genero</label>
+                      <select value={svcGender} onChange={e => setSvcGender(e.target.value as 'MUJER' | 'HOMBRE' | 'NINOS' | 'UNISEX')} className="w-full p-2 border rounded-lg text-xs bg-white">
+                        <option value="UNISEX">Unisex</option>
+                        <option value="MUJER">Mujeres</option>
+                        <option value="HOMBRE">Hombres</option>
+                        <option value="NINOS">Niños</option>
+                      </select>
+                    </div>
                     <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Duracion (min)</label><input type="number" required min={1} value={svcDuration} onChange={e => setSvcDuration(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   </div>
-                  <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio ($)</label><input type="number" required min={0} value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" /></div>
+                  <div>
+                    <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Precio (en miles)</label>
+                    <input type="number" required min={0} step="0.5" placeholder="Ej: 35" value={svcPrice} onChange={e => setSvcPrice(e.target.value)} className="w-full p-2 border rounded-lg text-xs" />
+                    {svcPrice !== '' && !isNaN(Number(svcPrice)) && (
+                      <p className={`text-[10px] mt-1 ${Number(svcPrice) * 1000 > 500000 ? 'text-amber-600 font-semibold' : 'text-[#78716C]'}`}>
+                        {priceFmt(Number(svcPrice) * 1000)} COP
+                        {Number(svcPrice) * 1000 > 500000 && ' -- ¿seguro? es un precio inusualmente alto'}
+                      </p>
+                    )}
+                  </div>
                   <div><label className="text-[10px] uppercase text-[#A68F63] font-bold block">Imagen {svcId && '(opcional)'}</label><input type="file" accept="image/*" onChange={e => setSvcImageFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded-lg text-xs" /></div>
                   <label className="flex items-center gap-2 text-[11px] text-[#44403C] cursor-pointer">
                     <input type="checkbox" checked={svcTrending} onChange={e => setSvcTrending(e.target.checked)} className="rounded" />
@@ -1910,6 +1935,33 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Service List */}
             <div className="space-y-3">
+              <div className="flex flex-wrap gap-2 bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
+                {([['TODOS', 'Todos'], ['MUJER', 'Mujeres'], ['HOMBRE', 'Hombres'], ['NINOS', 'Niños']] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => { setSvcGenderFilter(value); setSvcCategoryFilter(''); setCurrentPage(1); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs border ${svcGenderFilter === value ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#3B0019] border-[#EADEC9]/60 hover:border-[#8E1B54]'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {(() => {
+                  const genderMatches = (s: ServiceCatalogItem) => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter;
+                  const availableCats = [...new Set(servicesCatalog.filter(genderMatches).map(s => s.category).filter(Boolean))].sort() as string[];
+                  if (availableCats.length === 0) return null;
+                  return (
+                    <select
+                      value={svcCategoryFilter}
+                      onChange={e => { setSvcCategoryFilter(e.target.value); setCurrentPage(1); }}
+                      className="px-3 py-1.5 rounded-lg text-xs border border-[#EADEC9]/60 bg-white text-[#3B0019]"
+                    >
+                      <option value="">Todas las categorías</option>
+                      {availableCats.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  );
+                })()}
+              </div>
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
                 <input type="text" placeholder="Buscar servicio..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="p-2 border rounded-lg text-xs w-full sm:w-64" />
                 {(() => {
@@ -1919,7 +1971,9 @@ export const AdminDashboard: React.FC = () => {
                       if (!a.trending && b.trending) return 1;
                       return (a.name || '').localeCompare(b.name || '');
                     })
-                    .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()));
+                    .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(s => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter)
+                    .filter(s => !svcCategoryFilter || s.category === svcCategoryFilter);
                   return pagination(sorted.length);
                 })()}
               </div>
@@ -1930,7 +1984,9 @@ export const AdminDashboard: React.FC = () => {
                     if (!a.trending && b.trending) return 1;
                     return (a.name || '').localeCompare(b.name || '');
                   })
-                  .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()));
+                  .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(s => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter)
+                  .filter(s => !svcCategoryFilter || s.category === svcCategoryFilter);
                 if (sorted.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin servicios.</p>;
                 const start = (currentPage - 1) * perPage;
                 const page = sorted.slice(start, start + perPage);
@@ -1938,19 +1994,20 @@ export const AdminDashboard: React.FC = () => {
                   <>
                     <div className="space-y-2">
                       {page.map(s => (
-                        <div key={s.id} className={`p-3 rounded-xl border flex justify-between items-center text-xs transition-all ${s.isActive === false ? 'bg-stone-50/70 border-stone-200 opacity-75' : 'bg-white border-[#EADEC9]/30'}`}>
+                        <div key={s.id} className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between text-xs transition-all ${s.isActive === false ? 'bg-stone-50/70 border-stone-200 opacity-75' : 'bg-white border-[#EADEC9]/30'}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               {s.trending && <span className="text-[9px] px-1.5 py-0.5 bg-[#8E1B54] text-white rounded-full font-bold">TOP</span>}
                               {s.isActive === false && <span className="text-[9px] px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded-full font-bold">DESHABILITADO</span>}
                               <span className="font-semibold text-sm text-[#3B0019] truncate">{s.name}</span>
                             </div>
-                            <div className="flex gap-2 mt-0.5">
+                            <div className="flex gap-2 flex-wrap mt-0.5">
                               {s.category && <span className="text-[10px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.category}</span>}
+                              {s.gender && s.gender !== 'UNISEX' && <span className="text-[10px] bg-[#F7F3EB] px-1.5 py-0.5 rounded text-[#A68F63]">{s.gender === 'MUJER' ? 'Mujeres' : s.gender === 'HOMBRE' ? 'Hombres' : 'Niños'}</span>}
                               <span className="text-[10px] text-[#78716C]">{s.durationInMinutes || '?'} min</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                             <span className="font-bold text-sm text-[#8E1B54]">{priceFmt(s.price)}</span>
                             <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] font-semibold">Editar</button>
                             <button
