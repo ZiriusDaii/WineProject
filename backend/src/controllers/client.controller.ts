@@ -14,8 +14,12 @@ export const isValidPhone = (phone: string) => /^\d{7,10}$/.test(phone);
 // primero por el chequeo de telefono.
 const signClientToken = (userId: string) => signToken({ userId, role: "CLIENTE" });
 
+// MANICURISTA queda afuera a proposito: antes cualquier manicurista podia
+// leer/crear/cancelar citas de CUALQUIER cliente via estos endpoints. Su
+// acceso a citas de clientes debe pasar por /manicurist/appointments
+// (getManicuristDashboard), que ya filtra por su propio manicuristId.
 const isOwner = (req: AuthRequest, ownerId: string) =>
-  !!req.user && (req.user.role === "ADMIN" || req.user.role === "OWNER" || req.user.role === "MANICURISTA" || req.user.userId === ownerId);
+  !!req.user && (req.user.role === "ADMIN" || req.user.role === "OWNER" || req.user.userId === ownerId);
 
 // Cuentas viejas pueden tener el numero guardado con prefijo de pais (57),
 // un cero inicial u otros caracteres si se registraron antes de que el

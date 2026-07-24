@@ -20,6 +20,46 @@ const PanelLoadingFallback: React.FC = () => (
   </div>
 );
 
+// Checkbox de consentimiento, requerido antes de mandar datos personales al
+// registrar una cuenta (Ley 1581 de 2012: autorizacion previa, expresa e
+// informada). `required` bloquea el submit nativo del form; el caller igual
+// revalida el estado antes de llamar a la API por si el form se dispara
+// programaticamente.
+//
+// El boton "Politica de Privacidad" es hermano del <label>, no esta anidado
+// adentro: un <button> dentro de un <label> es contenido interactivo anidado
+// (invalido, y el reenvio de click al checkbox varia entre navegadores/lectores
+// de pantalla) -- con esta estructura, abrir la politica nunca marca ni
+// desmarca el checkbox por accidente.
+const ConsentCheckbox: React.FC<{
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  onOpenPolicy: () => void;
+}> = ({ id, checked, onChange, onOpenPolicy }) => (
+  <div className="flex items-start gap-2 text-[10px] text-[#78716C] leading-relaxed">
+    <input
+      id={id}
+      type="checkbox"
+      required
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[#8E1B54]"
+    />
+    <span className="cursor-pointer select-none">
+      <label htmlFor={id} className="cursor-pointer">He leído y acepto la </label>
+      <button
+        type="button"
+        onClick={onOpenPolicy}
+        className="text-[#8E1B54] font-semibold hover:underline"
+      >
+        Política de Privacidad
+      </button>
+      <label htmlFor={id} className="cursor-pointer"> para el tratamiento de mis datos personales.</label>
+    </span>
+  </div>
+);
+
 // Suspense solo cubre la espera de carga -- si el chunk lazy falla al
 // bajarse (red, o un deploy nuevo que invalido el hash del chunk viejo que
 // el HTML todavia referencia), eso es un error de render normal, y sin un
@@ -514,6 +554,8 @@ export default function App() {
   const [clientAgeInput, setClientAgeInput] = useState('');
   const [clientGenderInput, setClientGenderInput] = useState('Femenino');
   const [showClientRegister, setShowClientRegister] = useState(false);
+  const [clientPrivacyConsent, setClientPrivacyConsent] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   // Staff Credentials
   const [staffUser, setStaffUser] = useState('');
@@ -592,12 +634,14 @@ export default function App() {
   const [bookingName, setBookingName] = useState('');
   const [bookingAge, setBookingAge] = useState('');
   const [bookingGender, setBookingGender] = useState('Femenino');
+  const [bookingPrivacyConsent, setBookingPrivacyConsent] = useState(false);
 
   // useCallback: se pasa como prop `onBook` a HeroScrollSection/WineSpaExperienceSection,
   // que estan memoizados -- sin esto, una funcion nueva en cada render de App
   // (ej. cada tecla en el input de telefono) invalidaria el memo igual.
   const handleGoToBooking = useCallback(() => {
     setBookingStep('selection');
+    setBookingPrivacyConsent(false);
     if (session && session.role === 'cliente') {
       setBookingPhone(session.phone || '');
       setBookingName(session.name || '');
@@ -686,6 +730,13 @@ export default function App() {
   }, [portalToast]);
 
   useEffect(() => { setPortalToast(null); }, [view]);
+
+  useEffect(() => {
+    if (!privacyModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setPrivacyModalOpen(false); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [privacyModalOpen]);
 
   // Trae el turno asignado (si existe) a cada manicurista para la fecha elegida,
   // para mostrarlo como dato al elegir manicurista y para restringir los horarios
@@ -1071,6 +1122,11 @@ export default function App() {
       return;
     }
 
+    if (showClientRegister && !clientPrivacyConsent) {
+      setAuthError('Debes aceptar la Política de Privacidad para crear tu cuenta.');
+      return;
+    }
+
     setAuthSubmitting(true);
     setAuthError(null);
 
@@ -1137,6 +1193,7 @@ export default function App() {
             setClientNameInput('');
             setClientAgeInput('');
             setShowClientRegister(false);
+            setClientPrivacyConsent(false);
             setView('clientPortal');
             return;
           }
@@ -1158,6 +1215,7 @@ export default function App() {
         setClientNameInput('');
         setClientAgeInput('');
         setShowClientRegister(false);
+        setClientPrivacyConsent(false);
         setView('clientPortal');
       }
     } catch (err: any) {
@@ -1266,6 +1324,7 @@ export default function App() {
     setBookingName('');
     setBookingAge('');
     setBookingGender('Femenino');
+    setBookingPrivacyConsent(false);
     setSubmitError(null);
     setIsBookingOpen(false);
     setSvcSearch('');
@@ -1341,6 +1400,11 @@ export default function App() {
     e.preventDefault();
     if (!bookingName || !bookingAge) {
       setSubmitError('Completa todos los campos.');
+      return;
+    }
+
+    if (!bookingPrivacyConsent) {
+      setSubmitError('Debes aceptar la Política de Privacidad para continuar.');
       return;
     }
 
@@ -1424,6 +1488,11 @@ export default function App() {
         setManSearch('');
         setSvcPage(1);
         setManPage(1);
+        // Sin esto, si un segundo invitado reserva desde el mismo dispositivo
+        // (tablet de recepcion) antes de que el primero use "Ver mi cita",
+        // el checkbox de consentimiento seguiria marcado de la reserva
+        // anterior -- este consentimiento es por persona, no por sesion de tab.
+        setBookingPrivacyConsent(false);
 
         if (session && session.role === 'cliente') {
           // Ya estaba logueado: lo llevamos directo a ver la cita en su perfil.
@@ -1641,7 +1710,7 @@ export default function App() {
             </div>
           ) : (
             <button
-              onClick={() => { setAuthError(null); setShowClientRegister(false); setLoginMode('client'); setIsLoginOpen(true); }}
+              onClick={() => { setAuthError(null); setShowClientRegister(false); setClientPrivacyConsent(false); setLoginMode('client'); setIsLoginOpen(true); }}
               className="px-4 py-2 rounded-full border border-[#C3AD86] hover:bg-[#EADEC9]/20 text-[#5C0632] text-xs font-semibold transition-all"
             >
               Iniciar Sesión
@@ -2209,8 +2278,14 @@ export default function App() {
                               <option value="Masculino">Masculino</option>
                             </select>
                           </div>
+                          <ConsentCheckbox
+                            id="consent-booking-desktop"
+                            checked={bookingPrivacyConsent}
+                            onChange={setBookingPrivacyConsent}
+                            onOpenPolicy={() => setPrivacyModalOpen(true)}
+                          />
                           {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">
+                          <button type="submit" disabled={isSubmitting || !bookingPrivacyConsent} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-50">
                             {isSubmitting ? 'Procesando...' : 'Registrarse & Confirmar'}
                           </button>
                         </form>
@@ -2505,8 +2580,14 @@ export default function App() {
                         <form onSubmit={handleRegisterAndBookBooking} className="space-y-3">
                           <input type="text" required maxLength={60} placeholder="Nombre Completo" value={bookingName} onChange={handleNameInputChange(setBookingName)} className="w-full p-2.5 border rounded-xl text-xs" />
                           <input type="number" required min={0} max={100} placeholder="Edad" value={bookingAge} onChange={handleAgeInputChange(setBookingAge)} className="w-full p-2.5 border rounded-xl text-xs" />
+                          <ConsentCheckbox
+                            id="consent-booking-mobile"
+                            checked={bookingPrivacyConsent}
+                            onChange={setBookingPrivacyConsent}
+                            onOpenPolicy={() => setPrivacyModalOpen(true)}
+                          />
                           {submitError && <p className="text-[10px] text-red-600">{submitError}</p>}
-                          <button type="submit" disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Registrarse & Confirmar</button>
+                          <button type="submit" disabled={isSubmitting || !bookingPrivacyConsent} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-50">Registrarse & Confirmar</button>
                         </form>
                       )}
                     </>
@@ -2586,10 +2667,16 @@ export default function App() {
                         </select>
                       </div>
                     </div>
+                    <ConsentCheckbox
+                      id="consent-client-modal"
+                      checked={clientPrivacyConsent}
+                      onChange={setClientPrivacyConsent}
+                      onOpenPolicy={() => setPrivacyModalOpen(true)}
+                    />
                   </div>
                 )}
 
-                <button type="submit" disabled={authSubmitting} className="w-full py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+                <button type="submit" disabled={authSubmitting || (showClientRegister && !clientPrivacyConsent)} className="w-full py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl disabled:opacity-50">
                   {authSubmitting ? 'Procesando...' : showClientRegister ? 'Registrarse & Acceder' : 'Continuar'}
                 </button>
               </form>
@@ -2628,6 +2715,23 @@ export default function App() {
       {view === 'privacy' && <PoliticaPrivacidad onBack={() => setView('landing')} />}
       {view === 'cancellation' && <PoliticaCancelacion onBack={() => setView('landing')} />}
 
+      {/* Modal de Politica de Privacidad -- se abre desde los checkboxes de
+          consentimiento sin navegar (cambiar `view` perderia el formulario
+          de registro/booking a medio llenar detras). */}
+      {privacyModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="absolute inset-0" onClick={() => setPrivacyModalOpen(false)}></div>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Política de Privacidad"
+            className="bg-[#FDFBF7] w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl relative z-10 border border-[#EADEC9]/60 shadow-2xl animate-scale-in"
+          >
+            <PoliticaPrivacidad onBack={() => setPrivacyModalOpen(false)} />
+          </div>
+        </div>
+      )}
+
       {/* FOOTER */}
       <footer className="py-8 px-6 bg-[#F7F3EB]/70 border-t border-[#EADEC9]/30 text-center space-y-3 mt-auto">
         <span className="serif-title text-base text-[#3B0019] block">WineSpa</span>
@@ -2641,6 +2745,10 @@ export default function App() {
           <button onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
           <button onClick={() => setView('cancellation')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Cancelación</button>
         </div>
+        <p className="text-[10px] text-[#78716C]/80 max-w-md mx-auto pt-1">
+          Tus datos personales son tratados por WineSpa SAS conforme a la Ley 1581 de 2012, únicamente para gestionar tu cuenta y tus citas.
+        </p>
+        <p className="text-[9px] text-[#A68F63]">© {new Date().getFullYear()} WineSpa SAS. Todos los derechos reservados.</p>
       </footer>
     </div>
   );

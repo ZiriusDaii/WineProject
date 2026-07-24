@@ -139,10 +139,8 @@ Para ejercer cualquiera de estos derechos, el Cliente puede comunicarse al corre
         heading: '5. Medidas de Seguridad',
         body: `WineSpa adopta medidas tecnicas, administrativas y organizativas razonables para proteger los datos personales contra acceso no autorizado, perdida, alteracion, divulgacion o destruccion. Entre estas medidas se incluyen:
 
-- Almacenamiento de datos en servidores con cifrado en reposo y en transito.
 - Acceso restringido a los datos unicamente por personal autorizado con obligaciones de confidencialidad.
 - Autenticacion mediante numero de telefono sin almacenamiento de contraseñas en texto plano.
-- Auditorias periodicas de seguridad y monitoreo de accesos.
 
 En caso de presentarse un incidente de seguridad que afecte los datos personales de los Clientes, WineSpa notificara a la autoridad competente y a los titulares afectados en los terminos establecidos por la ley.`
       },
