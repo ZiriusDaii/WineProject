@@ -124,6 +124,7 @@ async function main() {
   // propio genero (NINOS) para que el admin lo organice aparte, tambien sin
   // category redundante.
   await seedService("Manos o Pies Tradicionales (niños hasta 9 años)", 23000, 30, "Cada uno (manos o pies por separado).", "Manicure o pedicure tradicional para niños hasta 9 años.", null, "NINOS");
+  await seedService("Manos o Pies Semipermanentes (niños hasta 9 años)", 33000, 45, "Cada uno (manos o pies por separado).", "Manicure o pedicure semipermanente para niños hasta 9 años.", null, "NINOS");
 
   await seedService("Dipping/Dippower 1 Capa", 70000, 60, "", "Aplicación de dipping/dippower, una capa.", "Extensiones", "MUJER");
   await seedService("Dipping/Dippower 2 Capas", 80000, 75, "", "Aplicación de dipping/dippower, dos capas.", "Extensiones", "MUJER");

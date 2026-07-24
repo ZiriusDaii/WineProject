@@ -438,7 +438,13 @@ const ServiceSelectionGrid: React.FC<{
   selectedServiceIds: string[];
   onToggleService: (id: string) => void;
 }> = React.memo(({ services, svcSearch, setSvcSearch, svcPage, setSvcPage, genderFilter, setGenderFilter, categoryFilter, setCategoryFilter, selectedServiceIds, onToggleService }) => {
-  const matchesGender = (s: Service) => genderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === genderFilter;
+  const matchesGender = (s: Service) => {
+    if (genderFilter === 'TODOS') return true;
+    if (genderFilter === 'NINOS') return s.gender === 'NINOS';
+    if (genderFilter === 'HOMBRE') return s.gender === 'HOMBRE';
+    if (genderFilter === 'MUJER') return s.gender === 'MUJER' || s.gender === 'UNISEX' || !s.gender;
+    return s.gender === genderFilter;
+  };
 
   // Solo categorias con al menos un servicio para el genero elegido -- sin
   // esto, el select podia ofrecer p.ej. "Extensiones" estando en "Hombres"

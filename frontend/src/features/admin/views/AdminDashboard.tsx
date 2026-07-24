@@ -1947,7 +1947,13 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 ))}
                 {(() => {
-                  const genderMatches = (s: ServiceCatalogItem) => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter;
+                  const genderMatches = (s: ServiceCatalogItem) => {
+                    if (svcGenderFilter === 'TODOS') return true;
+                    if (svcGenderFilter === 'NINOS') return s.gender === 'NINOS';
+                    if (svcGenderFilter === 'HOMBRE') return s.gender === 'HOMBRE';
+                    if (svcGenderFilter === 'MUJER') return s.gender === 'MUJER' || s.gender === 'UNISEX' || !s.gender;
+                    return s.gender === svcGenderFilter;
+                  };
                   const availableCats = [...new Set(servicesCatalog.filter(genderMatches).map(s => s.category).filter(Boolean))].sort() as string[];
                   if (availableCats.length === 0) return null;
                   return (
@@ -1972,7 +1978,13 @@ export const AdminDashboard: React.FC = () => {
                       return (a.name || '').localeCompare(b.name || '');
                     })
                     .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
-                    .filter(s => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter)
+                    .filter(s => {
+                      if (svcGenderFilter === 'TODOS') return true;
+                      if (svcGenderFilter === 'NINOS') return s.gender === 'NINOS';
+                      if (svcGenderFilter === 'HOMBRE') return s.gender === 'HOMBRE';
+                      if (svcGenderFilter === 'MUJER') return s.gender === 'MUJER' || s.gender === 'UNISEX' || !s.gender;
+                      return s.gender === svcGenderFilter;
+                    })
                     .filter(s => !svcCategoryFilter || s.category === svcCategoryFilter);
                   return pagination(sorted.length);
                 })()}
@@ -1985,7 +1997,13 @@ export const AdminDashboard: React.FC = () => {
                     return (a.name || '').localeCompare(b.name || '');
                   })
                   .filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
-                  .filter(s => svcGenderFilter === 'TODOS' || !s.gender || s.gender === 'UNISEX' || s.gender === svcGenderFilter)
+                  .filter(s => {
+                    if (svcGenderFilter === 'TODOS') return true;
+                    if (svcGenderFilter === 'NINOS') return s.gender === 'NINOS';
+                    if (svcGenderFilter === 'HOMBRE') return s.gender === 'HOMBRE';
+                    if (svcGenderFilter === 'MUJER') return s.gender === 'MUJER' || s.gender === 'UNISEX' || !s.gender;
+                    return s.gender === svcGenderFilter;
+                  })
                   .filter(s => !svcCategoryFilter || s.category === svcCategoryFilter);
                 if (sorted.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin servicios.</p>;
                 const start = (currentPage - 1) * perPage;
