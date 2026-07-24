@@ -1003,6 +1003,13 @@ export const AdminDashboard: React.FC = () => {
       total = manicurists.filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (m.username || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
     } else if (activeTab === 'services') {
       total = servicesCatalog.filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
+    } else if (activeTab === 'schedule') {
+      const items = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+      total = items.filter((item: any) => {
+        const name = item.manicuristName || item.name || '';
+        const shift = item.shiftTemplate?.name || '';
+        return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
+      }).length;
     } else {
       return;
     }
@@ -1759,65 +1766,103 @@ export const AdminDashboard: React.FC = () => {
               {shiftTemplates.length === 0 ? (
                 <p className="text-xs text-[#78716C]">Creá al menos un turno arriba para poder asignarlo.</p>
               ) : (
-                <div className="space-y-3">
-                  {(weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }))).map((item: any) => {
-                    const mId = String(item.manicuristId || item.id);
-                    const name = item.manicuristName || item.name;
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
+                    <input
+                      type="text"
+                      placeholder="Buscar especialista o turno..."
+                      value={searchQuery}
+                      onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                      className="p-2 border rounded-lg text-xs w-full sm:w-64"
+                    />
+                    {(() => {
+                      const list = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+                      const filtered = list.filter((item: any) => {
+                        const name = item.manicuristName || item.name || '';
+                        const shift = item.shiftTemplate?.name || '';
+                        return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
+                      });
+                      return pagination(filtered.length);
+                    })()}
+                  </div>
+
+                  {(() => {
+                    const list = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+                    const filtered = list
+                      .filter((item: any) => {
+                        const name = item.manicuristName || item.name || '';
+                        const shift = item.shiftTemplate?.name || '';
+                        return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
+                      })
+                      .sort((a: any, b: any) => (a.manicuristName || a.name || '').localeCompare(b.manicuristName || b.name || ''));
+
+                    if (filtered.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin coincidencias.</p>;
+                    const start = (currentPage - 1) * perPage;
+                    const page = filtered.slice(start, start + perPage);
+
                     return (
-                      <div key={mId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F7F3EB]/40 border border-[#EADEC9]/30">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <span className="text-xs font-bold text-[#3B0019] block">{name}</span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {item.isOverride ? (
-                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
-                                  Excepción Manual
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                                  Rotación Automática
-                                </span>
-                              )}
-                              <span className="text-[10px] text-[#78716C]">
-                                Turno: <strong className="text-[#3B0019]">{item.shiftTemplate ? `${item.shiftTemplate.name} (${item.shiftTemplate.startTime}-${item.shiftTemplate.endTime})` : 'Sin Turno'}</strong>
-                              </span>
+                      <div className="space-y-3">
+                        {page.map((item: any) => {
+                          const mId = String(item.manicuristId || item.id);
+                          const name = item.manicuristName || item.name;
+                          return (
+                            <div key={mId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F7F3EB]/40 border border-[#EADEC9]/30">
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <span className="text-xs font-bold text-[#3B0019] block">{name}</span>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    {item.isOverride ? (
+                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                                        Excepción Manual
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                        Rotación Automática
+                                      </span>
+                                    )}
+                                    <span className="text-[10px] text-[#78716C]">
+                                      Turno: <strong className="text-[#3B0019]">{item.shiftTemplate ? `${item.shiftTemplate.name} (${item.shiftTemplate.startTime}-${item.shiftTemplate.endTime})` : 'Sin Turno'}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                                <select
+                                  value={item.isOverride ? (item.shiftTemplateId || '') : 'AUTO'}
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === 'AUTO') {
+                                      handleAssignShift(mId, '');
+                                    } else {
+                                      handleAssignShift(mId, val);
+                                    }
+                                  }}
+                                  className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
+                                >
+                                  <option value="AUTO">Seguir Rotación Automática</option>
+                                  <optgroup label="--- Crear Excepción Manual ---">
+                                    <option value="">Sin Turno / Descanso</option>
+                                    {shiftTemplates.map(s => (
+                                      <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>
+                                    ))}
+                                  </optgroup>
+                                </select>
+
+                                <button
+                                  onClick={() => openRotationModal(item)}
+                                  title="Configurar regla de rotación habitual"
+                                  className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-semibold border border-[#5C0632]/10 transition-colors shrink-0"
+                                >
+                                  Configurar Regla
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
-                          <select
-                            value={item.isOverride ? (item.shiftTemplateId || '') : 'AUTO'}
-                            onChange={e => {
-                              const val = e.target.value;
-                              if (val === 'AUTO') {
-                                handleAssignShift(mId, '');
-                              } else {
-                                handleAssignShift(mId, val);
-                              }
-                            }}
-                            className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
-                          >
-                            <option value="AUTO">Seguir Rotación Automática</option>
-                            <optgroup label="--- Crear Excepción Manual ---">
-                              <option value="">Sin Turno / Descanso</option>
-                              {shiftTemplates.map(s => (
-                                <option key={s.id} value={s.id}>{s.name} ({s.startTime}-{s.endTime})</option>
-                              ))}
-                            </optgroup>
-                          </select>
-
-                          <button
-                            onClick={() => openRotationModal(item)}
-                            title="Configurar regla de rotación habitual"
-                            className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-semibold border border-[#5C0632]/10 transition-colors shrink-0"
-                          >
-                            Configurar Regla
-                          </button>
-                        </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               )}
             </div>
