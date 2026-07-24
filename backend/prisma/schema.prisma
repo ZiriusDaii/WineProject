@@ -21,6 +21,17 @@ enum AppointmentStatus {
   CANCELLED
 }
 
+enum ServiceGender {
+  MUJER
+  HOMBRE
+  // El identificador Prisma tiene que ser ASCII (no puede llamarse "Ñiños"),
+  // pero @map hace que en Postgres el enum se guarde como "Niños" de verdad.
+  // El codigo (backend/frontend) sigue usando "NINOS" como string, Prisma
+  // Client traduce solo. No requiere tocar nada mas.
+  NINOS @map("Niños")
+  UNISEX
+}
+
 enum WhatsAppDirection {
   INBOUND
   OUTBOUND
@@ -76,6 +87,10 @@ model Service {
   shortDescription    String?  @map("short_description")
   includesDescription String?  @map("includes_description")
   category            String?
+  // Default UNISEX: los servicios existentes antes de este campo no tenian
+  // genero asignado, y UNISEX es el unico valor que no los esconde detras
+  // del filtro de genero del booking (ver getServices/filtro de pills).
+  gender              ServiceGender @default(UNISEX)
   imageUrl            String?  @map("image_url")
   price               Decimal  @db.Decimal(10, 2)
   durationInMinutes   Int      @map("duration_in_minutes")

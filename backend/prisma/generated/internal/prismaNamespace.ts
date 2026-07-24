@@ -1222,6 +1222,7 @@ export const ServiceScalarFieldEnum = {
   shortDescription: 'shortDescription',
   includesDescription: 'includesDescription',
   category: 'category',
+  gender: 'gender',
   imageUrl: 'imageUrl',
   price: 'price',
   durationInMinutes: 'durationInMinutes',
@@ -1437,6 +1438,20 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ServiceGender'
+ */
+export type EnumServiceGenderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ServiceGender'>
+    
+
+
+/**
+ * Reference to a field of type 'ServiceGender[]'
+ */
+export type ListEnumServiceGenderFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ServiceGender[]'>
     
 
 

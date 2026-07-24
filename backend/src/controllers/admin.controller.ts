@@ -4,6 +4,8 @@ import { prisma } from "../lib/prisma.js";
 import { getISOWeek } from "../lib/week.js";
 import { normalizePhone, isValidPhone, phoneIsTaken } from "./client.controller.js";
 
+const ALLOWED_SERVICE_GENDERS = ["MUJER", "HOMBRE", "NINOS", "UNISEX"];
+
 export async function getDashboardStats(
   _req: Request,
   res: Response,
@@ -106,11 +108,12 @@ export async function createService(
   res: Response,
 ): Promise<void> {
   try {
-    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending } = req.body as {
+    const { name, shortDescription, includesDescription, category, gender, imageUrl, price, durationInMinutes, trending } = req.body as {
       name?: string;
       shortDescription?: string;
       includesDescription?: string | null;
       category?: string | null;
+      gender?: string;
       imageUrl?: string | null;
       price?: number;
       durationInMinutes?: number;
@@ -132,6 +135,10 @@ export async function createService(
       res.status(400).json({ error: "La duracion debe ser un numero positivo de minutos" });
       return;
     }
+    if (gender !== undefined && !ALLOWED_SERVICE_GENDERS.includes(gender)) {
+      res.status(400).json({ error: `El campo 'gender' debe ser uno de: ${ALLOWED_SERVICE_GENDERS.join(", ")}` });
+      return;
+    }
 
     const dup = await prisma.service.findFirst({
       where: { name, category: category || null },
@@ -147,6 +154,7 @@ export async function createService(
         shortDescription: shortDescription ?? null,
         includesDescription: includesDescription ?? null,
         category: category ?? null,
+        gender: (gender as "MUJER" | "HOMBRE" | "NINOS" | "UNISEX") ?? "UNISEX",
         imageUrl: imageUrl ?? null,
         price,
         durationInMinutes,
@@ -597,18 +605,24 @@ export async function updateService(
 ): Promise<void> {
   try {
     const { id } = req.params as { id?: string };
-    const { name, shortDescription, includesDescription, category, imageUrl, price, durationInMinutes, trending, isActive } =
+    const { name, shortDescription, includesDescription, category, gender, imageUrl, price, durationInMinutes, trending, isActive } =
       req.body as {
         name?: string;
         shortDescription?: string | null;
         includesDescription?: string | null;
         category?: string | null;
+        gender?: string;
         imageUrl?: string | null;
         price?: number;
         durationInMinutes?: number;
         trending?: boolean;
         isActive?: boolean;
       };
+
+    if (gender !== undefined && !ALLOWED_SERVICE_GENDERS.includes(gender)) {
+      res.status(400).json({ error: `El campo 'gender' debe ser uno de: ${ALLOWED_SERVICE_GENDERS.join(", ")}` });
+      return;
+    }
 
     const existing = await prisma.service.findUnique({ where: { id: id! } });
     if (!existing) {
@@ -635,6 +649,7 @@ export async function updateService(
         ...(shortDescription !== undefined && { shortDescription }),
         ...(includesDescription !== undefined && { includesDescription }),
         ...(category !== undefined && { category }),
+        ...(gender !== undefined && { gender: gender as "MUJER" | "HOMBRE" | "NINOS" | "UNISEX" }),
         ...(imageUrl !== undefined && { imageUrl }),
         ...(price !== undefined && { price }),
         ...(durationInMinutes !== undefined && { durationInMinutes }),

@@ -29,6 +29,16 @@ export const AppointmentStatus = {
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus]
 
 
+export const ServiceGender = {
+  MUJER: 'MUJER',
+  HOMBRE: 'HOMBRE',
+  NINOS: 'NINOS',
+  UNISEX: 'UNISEX'
+} as const
+
+export type ServiceGender = (typeof ServiceGender)[keyof typeof ServiceGender]
+
+
 export const WhatsAppDirection = {
   INBOUND: 'INBOUND',
   OUTBOUND: 'OUTBOUND'

@@ -109,6 +109,7 @@ export const ServiceScalarFieldEnum = {
   shortDescription: 'shortDescription',
   includesDescription: 'includesDescription',
   category: 'category',
+  gender: 'gender',
   imageUrl: 'imageUrl',
   price: 'price',
   durationInMinutes: 'durationInMinutes',

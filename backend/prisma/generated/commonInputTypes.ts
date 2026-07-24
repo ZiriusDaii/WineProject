@@ -167,6 +167,13 @@ export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
+export type EnumServiceGenderFilter<$PrismaModel = never> = {
+  equals?: $Enums.ServiceGender | Prisma.EnumServiceGenderFieldRefInput<$PrismaModel>
+  in?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel> | $Enums.ServiceGender
+}
+
 export type DecimalFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
@@ -187,6 +194,16 @@ export type IntFilter<$PrismaModel = never> = {
   gt?: number | Prisma.IntFieldRefInput<$PrismaModel>
   gte?: number | Prisma.IntFieldRefInput<$PrismaModel>
   not?: Prisma.NestedIntFilter<$PrismaModel> | number
+}
+
+export type EnumServiceGenderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ServiceGender | Prisma.EnumServiceGenderFieldRefInput<$PrismaModel>
+  in?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumServiceGenderWithAggregatesFilter<$PrismaModel> | $Enums.ServiceGender
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel>
 }
 
 export type DecimalWithAggregatesFilter<$PrismaModel = never> = {
@@ -463,6 +480,13 @@ export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedDateTimeFilter<$PrismaModel>
 }
 
+export type NestedEnumServiceGenderFilter<$PrismaModel = never> = {
+  equals?: $Enums.ServiceGender | Prisma.EnumServiceGenderFieldRefInput<$PrismaModel>
+  in?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel> | $Enums.ServiceGender
+}
+
 export type NestedDecimalFilter<$PrismaModel = never> = {
   equals?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   in?: runtime.Decimal[] | runtime.DecimalJsLike[] | number[] | string[] | Prisma.ListDecimalFieldRefInput<$PrismaModel>
@@ -472,6 +496,16 @@ export type NestedDecimalFilter<$PrismaModel = never> = {
   gt?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   gte?: runtime.Decimal | runtime.DecimalJsLike | number | string | Prisma.DecimalFieldRefInput<$PrismaModel>
   not?: Prisma.NestedDecimalFilter<$PrismaModel> | runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type NestedEnumServiceGenderWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ServiceGender | Prisma.EnumServiceGenderFieldRefInput<$PrismaModel>
+  in?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ServiceGender[] | Prisma.ListEnumServiceGenderFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumServiceGenderWithAggregatesFilter<$PrismaModel> | $Enums.ServiceGender
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumServiceGenderFilter<$PrismaModel>
 }
 
 export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
