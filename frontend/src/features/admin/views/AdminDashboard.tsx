@@ -361,10 +361,20 @@ export const AdminDashboard: React.FC = () => {
     } catch { /* */ }
   };
 
+  const fetchManicuristsModule = async () => {
+    try {
+      const h = authHeaders();
+      const mRes = await fetch(`${API}/api/admin/manicurists`, { headers: h });
+      if (mRes.ok) {
+        const mData = await mRes.json();
+        setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
+      }
+    } catch { /* */ }
+  };
+
   const loadModuleOnDemand = async (tab: Tab) => {
     if (tab === 'metrics' || tab === 'appointments' || tab === 'calendar') return;
-    if (loadedModules[tab]) return; // Ya en memoria -> cambio instantaneo
-
+    if (loadedModules[tab]) return;
     setModuleLoading(true);
     try {
       if (tab === 'services') await fetchServicesModule();
@@ -373,12 +383,7 @@ export const AdminDashboard: React.FC = () => {
       else if (tab === 'news') await fetchCMS();
       else if (tab === 'schedule') await fetchShiftModule();
       else if (tab === 'manicurists') {
-        const h = authHeaders();
-        const mRes = await fetch(`${API}/api/admin/manicurists`, { headers: h });
-        if (mRes.ok) {
-          const mData = await mRes.json();
-          setManicurists((mData || []).map((m: any) => ({ ...m, avatarUrl: m.avatarPath ? `${API}${m.avatarPath}` : (m.avatarUrl || '') })));
-        }
+        await fetchManicuristsModule();
         setLoadedModules(prev => ({ ...prev, manicurists: true }));
       }
     } finally {
@@ -640,13 +645,15 @@ export const AdminDashboard: React.FC = () => {
         await fetch(`${API}/api/admin/manicurists/upload-avatar`, { method: 'POST', headers: authHeadersNoJson(), body: fd });
       }
       setSuccessMsg(manId ? 'Actualizada.' : 'Creada.');
+      fetchManicuristsModule();
+      resetMan();
+      setShowManForm(false);
     } catch { setErrorMsg('Error.'); }
     finally { setSubmitting(false); }
   };
   const editMan = (m: Manicurist) => { setManId(String(m.id)); setManPhone(m.phone); setManUser(m.username); setManName(m.name); setManPass(''); setManAge(m.age ? String(m.age) : ''); setManGender(m.gender || 'Femenino'); setManAvatarFile(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const resetMan = () => { setManId(null); setManPhone(''); setManUser(''); setManName(''); setManPass(''); setManAge(''); setManGender('Femenino'); setManAvatarFile(null); };
-  // Deshabilitar bloquea su login y la oculta del selector de especialista
-  // en el booking, sin borrar su historial de citas.
+
   const handleToggleManicuristActive = (m: Manicurist) => {
     const nextActive = m.isActive === false;
     if (!nextActive) {
@@ -658,7 +665,11 @@ export const AdminDashboard: React.FC = () => {
         onConfirm: async () => {
           try {
             const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: false }) });
-            if (r.ok) { setSuccessMsg('Manicurista deshabilitada.'); loadData(); } else setErrorMsg('No se pudo deshabilitar.');
+            if (r.ok) {
+              setSuccessMsg('Manicurista deshabilitada.');
+              setManicurists(prev => prev.map(x => x.id === m.id ? { ...x, isActive: false } : x));
+              fetchManicuristsModule();
+            } else { setErrorMsg('No se pudo deshabilitar.'); }
           } catch { setErrorMsg('Error al conectar.'); }
         }
       });
@@ -667,9 +678,36 @@ export const AdminDashboard: React.FC = () => {
     (async () => {
       try {
         const r = await fetch(`${API}/api/admin/manicurists/${m.id}/status`, { method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ isActive: true }) });
-        if (r.ok) { setSuccessMsg('Manicurista reactivada.'); loadData(); } else setErrorMsg('No se pudo reactivar.');
+        if (r.ok) {
+          setSuccessMsg('Manicurista reactivada.');
+          setManicurists(prev => prev.map(x => x.id === m.id ? { ...x, isActive: true } : x));
+          fetchManicuristsModule();
+        } else { setErrorMsg('No se pudo reactivar.'); }
       } catch { setErrorMsg('Error.'); }
     })();
+  };
+
+  const handleDeleteManicurist = (m: Manicurist) => {
+    setConfirmModal({
+      title: 'Eliminar Manicurista',
+      message: `¿Seguro que deseas eliminar a "${m.name}"? Si ya tiene citas registradas en el sistema, será deshabilitada para conservar el historial intacto.`,
+      confirmText: 'Eliminar Manicurista',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const r = await fetch(`${API}/api/admin/manicurists/${m.id}`, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) {
+            setSuccessMsg('Manicurista procesada correctamente.');
+            setManicurists(prev => prev.filter(x => String(x.id) !== String(m.id)));
+            fetchManicuristsModule();
+          } else {
+            setErrorMsg('No se pudo eliminar la manicurista.');
+          }
+        } catch {
+          setErrorMsg('Error de conexión.');
+        }
+      },
+    });
   };
 
   // --- Turnos ---
@@ -1636,16 +1674,19 @@ export const AdminDashboard: React.FC = () => {
                         )}
                         <div className="flex items-center justify-between pt-1">
                           <button onClick={() => { editMan(m); setShowManForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
-                          <button
-                            onClick={() => handleToggleManicuristActive(m)}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
-                              m.isActive === false
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
-                                : 'text-amber-600 hover:text-amber-700 font-semibold'
-                            }`}
-                          >
-                            {m.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleManicuristActive(m)}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
+                                m.isActive === false
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100'
+                                  : 'text-amber-600 hover:text-amber-700 font-semibold'
+                              }`}
+                            >
+                              {m.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
+                            </button>
+                            <button onClick={() => handleDeleteManicurist(m)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
+                          </div>
                         </div>
                       </div>
                     ))}

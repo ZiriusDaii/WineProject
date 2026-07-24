@@ -24,6 +24,7 @@ import {
   getAdminManicurists,
   updateManicuristStatus,
   toggleManicuristStatus,
+  deleteManicurist,
   manageLandingContent,
   deleteLandingContent,
   getAdminLandingContent,
@@ -102,6 +103,7 @@ router.get("/admin/manicurists", requireAdmin, getAdminManicurists);
 router.post("/admin/manicurists", requireAdmin, updateManicuristStatus);
 router.put("/admin/manicurists/:id", requireAdmin, updateManicuristStatus);
 router.patch("/admin/manicurists/:id/status", requireAdmin, toggleManicuristStatus);
+router.delete("/admin/manicurists/:id", requireAdmin, deleteManicurist);
 router.get("/admin/landing-cms", requireAdmin, getAdminLandingContent);
 router.post("/admin/landing-cms", requireAdmin, manageLandingContent);
 router.delete("/admin/landing-cms/:id", requireAdmin, deleteLandingContent);

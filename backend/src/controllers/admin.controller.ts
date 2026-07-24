@@ -495,6 +495,39 @@ export async function toggleManicuristStatus(
   }
 }
 
+export async function deleteManicurist(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+    const existing = await prisma.user.findUnique({
+      where: { id: id! },
+      include: { _count: { select: { manicuristAppointments: true } } },
+    });
+
+    if (!existing || existing.role === "CLIENTE") {
+      res.status(404).json({ error: "Manicurista no encontrada" });
+      return;
+    }
+
+    if (existing._count.manicuristAppointments > 0) {
+      await prisma.user.update({
+        where: { id: id! },
+        data: { isActive: false },
+      });
+      res.json({ message: "Manicurista deshabilitada para conservar historial de citas" });
+      return;
+    }
+
+    await prisma.user.delete({ where: { id: id! } });
+    res.json({ message: "Manicurista eliminada exitosamente" });
+  } catch (error) {
+    console.error("Error eliminando manicurista:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
 export async function manageLandingContent(
   req: Request,
   res: Response,
