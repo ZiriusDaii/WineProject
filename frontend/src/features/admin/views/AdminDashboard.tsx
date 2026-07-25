@@ -1851,17 +1851,17 @@ export const AdminDashboard: React.FC = () => {
                           const mId = String(item.manicuristId || item.id);
                           const name = item.manicuristName || item.name;
                           return (
-                            <div key={mId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F7F3EB]/40 border border-[#EADEC9]/30">
-                              <div className="flex items-center gap-3">
+                            <div key={mId} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F7F3EB]/40 border border-[#EADEC9]/30 min-w-0 overflow-hidden">
+                              <div className="flex items-center gap-3 min-w-0">
                                 <div>
                                   <span className="text-xs font-bold text-[#3B0019] block">{name}</span>
-                                  <div className="flex items-center gap-2 mt-0.5">
+                                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                     {item.isOverride ? (
-                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 shrink-0">
                                         Excepción Manual
                                       </span>
                                     ) : (
-                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                      <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shrink-0">
                                         Rotación Automática
                                       </span>
                                     )}
@@ -1872,7 +1872,7 @@ export const AdminDashboard: React.FC = () => {
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end shrink-0">
                                 <select
                                   value={item.isOverride ? (item.shiftTemplateId || '') : 'AUTO'}
                                   onChange={e => {
@@ -1883,7 +1883,7 @@ export const AdminDashboard: React.FC = () => {
                                       handleAssignShift(mId, val);
                                     }
                                   }}
-                                  className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
+                                  className={`p-2 border rounded-xl text-xs font-medium bg-white cursor-pointer max-w-full sm:max-w-xs truncate ${item.isOverride ? 'border-amber-400 bg-amber-50/50' : 'border-[#EADEC9]'}`}
                                 >
                                   <option value="AUTO">Seguir Rotación Automática</option>
                                   <optgroup label="--- Crear Excepción Manual ---">
