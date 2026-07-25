@@ -115,6 +115,8 @@ export async function getManicuristDashboard(
       const fallbackShift = await prisma.shiftTemplate.findFirst({ orderBy: { startTime: "asc" } });
       if (fallbackShift) {
         currentShift = fallbackShift;
+      } else {
+        currentShift = { id: "default", name: "Jornada General", startTime: "08:00", endTime: "16:00" };
       }
     }
 

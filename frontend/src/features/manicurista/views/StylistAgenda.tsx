@@ -87,19 +87,23 @@ export const StylistAgenda: React.FC = () => {
   const agendaRequestRef = useRef(0);
   const cacheRef = useRef<Record<string, { appointments: Appointment[]; shift: ShiftInfo | null; summary: OperationalSummary | null }>>({});
 
-  const fetchAgendaData = async () => {
+  const fetchAgendaData = async (forceRefresh = false) => {
     const requestId = ++agendaRequestRef.current;
     const cacheKey = `${stylistId}-${selectedYear}-${selectedMonth}`;
 
+    if (forceRefresh) {
+      delete cacheRef.current[cacheKey];
+    }
+
     // Híbrido: Si tenemos datos cacheados para este mes, renderizamos inmediatamente
-    if (cacheRef.current[cacheKey]) {
+    if (!forceRefresh && cacheRef.current[cacheKey]) {
       const cached = cacheRef.current[cacheKey];
       setAppointments(cached.appointments);
       setAssignedShift(cached.shift);
       setSummaryMetrics(cached.summary);
       setLoading(false);
       setHasLoadedOnce(true);
-    } else {
+    } else if (!hasLoadedOnce) {
       setLoading(true);
     }
 
@@ -140,7 +144,7 @@ export const StylistAgenda: React.FC = () => {
             apptsData = resData;
           } else {
             apptsData = resData.appointments || [];
-            shiftData = resData.shift || null;
+            shiftData = resData.shift || { id: 'default', name: 'Jornada General', startTime: '08:00', endTime: '16:00' };
             summaryData = resData.summary || null;
           }
         }
@@ -150,6 +154,12 @@ export const StylistAgenda: React.FC = () => {
           { id: '1', appointmentId: 'WS-101', client: { name: 'Martha Cecilia Gómez' }, manicuristId: stylistId, services: [{ id: '1', name: 'Manicure Tradicional', price: 15, durationInMinutes: 45 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T09:00:00.000Z`, total: 35000, status: 'CONFIRMED' },
           { id: '2', appointmentId: 'WS-102', client: { name: 'Diana Uribe' }, manicuristId: stylistId, services: [{ id: '2', name: 'Manicure Semipermanente', price: 25, durationInMinutes: 60 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T11:00:00.000Z`, total: 45000, status: 'IN_PROGRESS' },
         ];
+        shiftData = { id: '1', name: 'Turno Mañana', startTime: '08:00', endTime: '16:00' };
+        summaryData = { todayTotal: 2, todayCompleted: 1, todayHours: 1, monthTotal: 12, monthCompleted: 8, monthHours: 10 };
+      }
+
+      if (!shiftData) {
+        shiftData = { id: 'default', name: 'Jornada General', startTime: '08:00', endTime: '16:00' };
       }
 
       if (requestId !== agendaRequestRef.current) return;
@@ -183,6 +193,7 @@ export const StylistAgenda: React.FC = () => {
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'IN_PROGRESS' } : a));
+        await fetchAgendaData(true);
       }
     } catch {
       /* */
@@ -201,6 +212,7 @@ export const StylistAgenda: React.FC = () => {
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
+        await fetchAgendaData(true);
       }
     } catch {
       /* */
@@ -332,17 +344,13 @@ export const StylistAgenda: React.FC = () => {
 
         {/* BANDEROLA DE TURNO ASIGNADO DEL DÍA/SEMANA */}
         <div className="flex flex-wrap items-center gap-2">
-          {assignedShift ? (
-            <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
-              <span className="text-[10px] uppercase font-bold text-[#A68F63]">Turno de hoy:</span>
-              <strong className="text-[#3B0019] font-semibold">{assignedShift.name} ({assignedShift.startTime} - {assignedShift.endTime})</strong>
-              {assignedShift.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
-            </div>
-          ) : (
-            <div className="px-3.5 py-2 bg-[#F7F3EB]/60 border border-[#EADEC9]/40 rounded-2xl text-xs text-[#78716C]">
-              <span>Turno: Sin asignación rotativa activa</span>
-            </div>
-          )}
+          <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
+            <span className="text-[10px] uppercase font-bold text-[#A68F63]">Turno de hoy:</span>
+            <strong className="text-[#3B0019] font-semibold">
+              {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Jornada General (08:00 - 16:00)'}
+            </strong>
+            {assignedShift?.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
+          </div>
         </div>
       </header>
 
