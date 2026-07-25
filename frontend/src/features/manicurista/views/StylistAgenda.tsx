@@ -345,9 +345,9 @@ export const StylistAgenda: React.FC = () => {
         {/* BANDEROLA DE TURNO ASIGNADO DEL DÍA/SEMANA */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
-            <span className="text-[10px] uppercase font-bold text-[#A68F63]">Jornada de esta semana:</span>
+            <span className="text-[10px] uppercase font-bold text-[#A68F63]">Horario esta semana:</span>
             <strong className="text-[#3B0019] font-semibold">
-              {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Jornada General (08:00 - 16:00)'}
+              {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Turno General (08:00 - 16:00)'}
             </strong>
             {assignedShift?.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
           </div>
@@ -379,8 +379,8 @@ export const StylistAgenda: React.FC = () => {
       {/* TABS DE NAVEGACIÓN MÓVIL */}
       <div className="md:hidden flex gap-2 pt-4">
         {[
-          { id: 'calendar', label: '🗓️ Mi Calendario' },
-          { id: 'profile', label: '👤 Mi Perfil' }
+          { id: 'calendar', label: 'Mi Calendario' },
+          { id: 'profile', label: 'Mi Perfil' }
         ].map((t) => {
           const isActive = activeMobileTab === t.id;
           return (

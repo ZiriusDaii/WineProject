@@ -14,7 +14,13 @@ export async function getManicuristDashboard(
       date?: string;
     };
     
-    let effectiveManicuristId = (req.query.manicuristId as string) || (req.user?.userId as string);
+    let effectiveManicuristId: string | undefined = undefined;
+
+    if (req.user?.role === "MANICURISTA") {
+      effectiveManicuristId = req.user.userId;
+    } else {
+      effectiveManicuristId = (req.query.manicuristId as string);
+    }
 
     if (!effectiveManicuristId || effectiveManicuristId === "1" || effectiveManicuristId === "undefined") {
       const firstManicurist = await prisma.user.findFirst({ where: { role: "MANICURISTA" } });
@@ -25,11 +31,6 @@ export async function getManicuristDashboard(
 
     if (!effectiveManicuristId) {
       res.status(400).json({ error: "El parametro 'manicuristId' es requerido" });
-      return;
-    }
-
-    if (req.user?.role === "MANICURISTA" && effectiveManicuristId !== req.user.userId) {
-      res.status(403).json({ error: "No autorizado para ver la agenda de otra manicurista" });
       return;
     }
 
@@ -124,7 +125,7 @@ export async function getManicuristDashboard(
       if (fallbackShift) {
         currentShift = fallbackShift;
       } else {
-        currentShift = { id: "default", name: "Jornada General", startTime: "08:00", endTime: "16:00" };
+        currentShift = { id: "default", name: "Turno General", startTime: "08:00", endTime: "16:00" };
       }
     }
 
