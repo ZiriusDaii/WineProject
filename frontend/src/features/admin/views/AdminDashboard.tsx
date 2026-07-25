@@ -193,7 +193,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Turnos
   const [shiftTemplates, setShiftTemplates] = useState<{ id: string; name: string; startTime: string; endTime: string }[]>([]);
-  const [weekSchedule, setWeekSchedule] = useState<{ manicuristId: string; shiftTemplateId: string }[]>([]);
+  const [weekSchedule, setWeekSchedule] = useState<any[]>([]);
   const initialWeek = getISOWeek(new Date());
   const [scheduleWeek, setScheduleWeek] = useState(initialWeek.week);
   const [scheduleYear, setScheduleYear] = useState(initialWeek.year);
@@ -1004,9 +1004,16 @@ export const AdminDashboard: React.FC = () => {
     } else if (activeTab === 'services') {
       total = servicesCatalog.filter(s => (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.category || '').toLowerCase().includes(searchQuery.toLowerCase())).length;
     } else if (activeTab === 'schedule') {
-      const items = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+      const items = manicurists.map((m: any) => {
+        const sched = weekSchedule.find((s: any) => String(s.manicuristId || s.id) === String(m.id));
+        return {
+          manicuristId: m.id,
+          manicuristName: m.name,
+          shiftTemplate: sched ? sched.shiftTemplate : null,
+        };
+      });
       total = items.filter((item: any) => {
-        const name = item.manicuristName || item.name || '';
+        const name = item.manicuristName || '';
         const shift = item.shiftTemplate?.name || '';
         return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
       }).length;
@@ -1784,9 +1791,24 @@ export const AdminDashboard: React.FC = () => {
                       className="p-2 border rounded-lg text-xs w-full sm:w-64"
                     />
                     {(() => {
-                      const list = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+                      const list = manicurists.map((m: any) => {
+                        const sched = weekSchedule.find((s: any) => String(s.manicuristId || s.id) === String(m.id));
+                        return {
+                          id: m.id,
+                          manicuristId: m.id,
+                          manicuristName: m.name,
+                          shiftTemplate: sched ? sched.shiftTemplate : null,
+                          shiftTemplateId: sched ? sched.shiftTemplateId : null,
+                          isOverride: sched ? sched.isOverride : false,
+                          rotationConfig: m.rotationConfig || {},
+                          rotationType: m.rotationType,
+                          defaultShift: m.defaultShift,
+                          rotationShift1: m.rotationShift1,
+                          rotationShift2: m.rotationShift2,
+                        };
+                      });
                       const filtered = list.filter((item: any) => {
-                        const name = item.manicuristName || item.name || '';
+                        const name = item.manicuristName || '';
                         const shift = item.shiftTemplate?.name || '';
                         return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
                       });
@@ -1795,14 +1817,29 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   {(() => {
-                    const list = weekSchedule.length > 0 ? weekSchedule : manicurists.map(m => ({ manicuristId: m.id, manicuristName: m.name, shiftTemplate: null, isOverride: false }));
+                    const list = manicurists.map((m: any) => {
+                      const sched = weekSchedule.find((s: any) => String(s.manicuristId || s.id) === String(m.id));
+                      return {
+                        id: m.id,
+                        manicuristId: m.id,
+                        manicuristName: m.name,
+                        shiftTemplate: sched ? sched.shiftTemplate : null,
+                        shiftTemplateId: sched ? sched.shiftTemplateId : null,
+                        isOverride: sched ? sched.isOverride : false,
+                        rotationConfig: m.rotationConfig || {},
+                        rotationType: m.rotationType,
+                        defaultShift: m.defaultShift,
+                        rotationShift1: m.rotationShift1,
+                        rotationShift2: m.rotationShift2,
+                      };
+                    });
                     const filtered = list
                       .filter((item: any) => {
-                        const name = item.manicuristName || item.name || '';
+                        const name = item.manicuristName || '';
                         const shift = item.shiftTemplate?.name || '';
                         return `${name} ${shift}`.toLowerCase().includes(searchQuery.toLowerCase());
                       })
-                      .sort((a: any, b: any) => (a.manicuristName || a.name || '').localeCompare(b.manicuristName || b.name || ''));
+                      .sort((a: any, b: any) => (a.manicuristName || '').localeCompare(b.manicuristName || ''));
 
                     if (filtered.length === 0) return <p className="text-xs text-center py-8 text-[#78716C]">Sin coincidencias.</p>;
                     const start = (currentPage - 1) * perPage;
