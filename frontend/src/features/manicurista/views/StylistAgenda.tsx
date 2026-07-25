@@ -430,8 +430,8 @@ export const StylistAgenda: React.FC = () => {
 
             {/* Grid Calendario Mensual */}
             <div className="grid grid-cols-7 gap-2 text-center text-xs">
-              {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => (
-                <span key={d} className="font-bold text-[#A8A29E] py-1">{d}</span>
+              {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, index) => (
+                <span key={`${d}-${index}`} className="font-bold text-[#A8A29E] py-1">{d}</span>
               ))}
 
               {Array.from({ length: new Date(selectedYear, selectedMonth - 1, 1).getDay() }).map((_, i) => (
