@@ -111,6 +111,13 @@ export async function getManicuristDashboard(
       }
     }
 
+    if (!currentShift) {
+      const fallbackShift = await prisma.shiftTemplate.findFirst({ orderBy: { startTime: "asc" } });
+      if (fallbackShift) {
+        currentShift = fallbackShift;
+      }
+    }
+
     // Calcular resumen diario y mensual de citas / horas
     const todayISO = now.toISOString().slice(0, 10);
     const getISODateStr = (d: any) => typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10);
