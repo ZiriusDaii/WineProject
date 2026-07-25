@@ -254,6 +254,7 @@ const MessageBubble = React.memo<{
               <Spinner className="w-2.5 h-2.5" />
             ) : message.status === 'FAILED' ? (
               <button
+                type="button"
                 onClick={() => onRetry?.(message)}
                 className="text-red-500 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
               >
@@ -285,6 +286,8 @@ export const WhatsAppChat: React.FC = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [deletingConversation, setDeletingConversation] = useState(false);
+  const [resolvingRequest, setResolvingRequest] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -552,6 +555,7 @@ export const WhatsAppChat: React.FC = () => {
               <span>Chats WhatsApp</span>
             </h2>
             <button
+              type="button"
               onClick={() => setSoundEnabled((prev) => !prev)}
               title={soundEnabled ? 'Sonido activado' : 'Sonido silenciado'}
               className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer transition-colors"
@@ -572,6 +576,7 @@ export const WhatsAppChat: React.FC = () => {
             <SearchIcon className="absolute left-3 top-2.5 w-3.5 h-3.5 text-stone-400" />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
                 className="absolute right-3 top-2.5 text-xs text-stone-400 hover:text-stone-600"
               >
@@ -633,6 +638,7 @@ export const WhatsAppChat: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button
+                    type="button"
                     onClick={() => setMobileView('list')}
                     className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 text-xs font-semibold"
                   >
@@ -668,8 +674,12 @@ export const WhatsAppChat: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  type="button"
+                  disabled={deletingConversation}
                   onClick={async () => {
+                    if (deletingConversation) return;
                     if (!window.confirm('¿Eliminar toda la conversacion? Esta accion no se puede deshacer.')) return;
+                    setDeletingConversation(true);
                     try {
                       await fetch(
                         `${API}/api/admin/whatsapp/conversations/${selectedConversationId}`,
@@ -679,9 +689,11 @@ export const WhatsAppChat: React.FC = () => {
                       setSelectedConversationId(null);
                       setMessages([]);
                       setMobileView('list');
-                    } catch { /* ignore */ }
+                    } catch { /* ignore */ } finally {
+                      setDeletingConversation(false);
+                    }
                   }}
-                  className="px-2 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  className="px-2 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Eliminar conversacion"
                 >
                   <TrashIcon className="w-3 h-3" /> Eliminar
@@ -697,7 +709,11 @@ export const WhatsAppChat: React.FC = () => {
                     </div>
                   </div>
                   <button
+                    type="button"
+                    disabled={resolvingRequest}
                     onClick={async () => {
+                      if (resolvingRequest) return;
+                      setResolvingRequest(true);
                       try {
                         await fetch(
                           `${API}/api/admin/whatsapp/conversations/${selectedConversationId}/resolve`,
@@ -710,9 +726,11 @@ export const WhatsAppChat: React.FC = () => {
                               : c
                           )
                         );
-                      } catch { /* ignore */ }
+                      } catch { /* ignore */ } finally {
+                        setResolvingRequest(false);
+                      }
                     }}
-                    className="shrink-0 px-2 py-1 text-[10px] font-bold bg-amber-200 hover:bg-amber-300 text-amber-800 rounded-lg transition-colors cursor-pointer"
+                    className="shrink-0 px-2 py-1 text-[10px] font-bold bg-amber-200 hover:bg-amber-300 text-amber-800 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Atendido
                   </button>

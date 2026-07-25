@@ -1060,9 +1060,9 @@ export const AdminDashboard: React.FC = () => {
 
   const pagination = (total: number) => (
     <div className="flex gap-2 text-xs">
-      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Anterior</button>
+      <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Anterior</button>
       <span className="px-3 py-1 font-semibold">{currentPage}</span>
-      <button disabled={currentPage * itemsPerPage >= total} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Siguiente</button>
+      <button type="button" disabled={currentPage * itemsPerPage >= total} onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 border rounded-lg disabled:opacity-50">Siguiente</button>
     </div>
   );
 
@@ -1073,7 +1073,7 @@ export const AdminDashboard: React.FC = () => {
           <img src="/logo.png" alt="WineSpa Logo" className="w-6 h-6 object-contain" />
           <span className="serif-title text-xl text-[#3B0019] leading-none">WineSpa Admin</span>
         </div>
-        <button onClick={() => { const next = !isMobileMenuOpen; setIsMobileMenuOpen(next); if (next) window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
+        <button type="button" onClick={() => { const next = !isMobileMenuOpen; setIsMobileMenuOpen(next); if (next) window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-xs font-semibold text-[#8E1B54]">{isMobileMenuOpen ? 'Cerrar' : 'Menu'}</button>
       </header>
 
       <aside className={`w-full md:w-56 bg-[#5C0632]/5 border-r border-[#EADEC9]/35 p-5 md:sticky md:top-0 md:h-screen shrink-0 ${isMobileMenuOpen ? 'block' : 'hidden md:block'}`}>
@@ -1119,7 +1119,7 @@ export const AdminDashboard: React.FC = () => {
         {loadError && (
           <div className="mb-3 p-2.5 bg-amber-50 text-amber-700 text-xs rounded-xl border border-amber-200 flex items-center justify-between gap-3">
             <span>No se pudo cargar toda la informacion (puede faltar datos en este panel).</span>
-            <button onClick={loadData} className="underline font-semibold shrink-0">Reintentar</button>
+            <button type="button" onClick={loadData} className="underline font-semibold shrink-0">Reintentar</button>
           </div>
         )}
         {moduleLoading && (
@@ -1292,12 +1292,14 @@ export const AdminDashboard: React.FC = () => {
                       {/* Toggle Metricas */}
                       <div className="flex bg-[#F7F3EB] rounded-lg p-0.5 text-[11px] font-bold border border-[#EADEC9]/40">
                         <button
+                          type="button"
                           onClick={() => { setMetricsType('earnings'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                           className={`px-3 py-1 rounded-md transition-colors ${isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
                         >
                           Ingresos ($)
                         </button>
                         <button
+                          type="button"
                           onClick={() => { setMetricsType('appointments'); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                           className={`px-3 py-1 rounded-md transition-colors ${!isEarnings ? 'bg-white text-[#8E1B54] shadow-xs' : 'text-[#78716C] hover:text-[#3B0019]'}`}
                         >
@@ -1308,6 +1310,7 @@ export const AdminDashboard: React.FC = () => {
                       {/* Date Navigation */}
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => { setMetricsOffsetDays(0); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                           className="px-3.5 py-2 border border-[#EADEC9]/60 rounded-xl text-xs font-semibold text-[#8E1B54] bg-[#F7F3EB] hover:bg-[#8E1B54]/5 active:scale-95 transition-all animate-fade-in"
                         >
@@ -1315,6 +1318,7 @@ export const AdminDashboard: React.FC = () => {
                         </button>
                         <div className="flex items-center bg-white border border-[#EADEC9]/60 rounded-xl overflow-hidden shadow-xs">
                           <button
+                            type="button"
                             onClick={() => { setMetricsOffsetDays(prev => prev - 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                             className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold border-r border-[#EADEC9]/30"
                             title="Anterior"
@@ -1322,6 +1326,7 @@ export const AdminDashboard: React.FC = () => {
                             ‹
                           </button>
                           <button
+                            type="button"
                             onClick={() => { setMetricsOffsetDays(prev => prev + 7); setAnimateBars(false); setTimeout(() => setAnimateBars(true), 150); }}
                             className="w-8 h-8 flex items-center justify-center text-[#A68F63] hover:bg-[#5C0632]/5 active:scale-95 transition-all text-base font-bold"
                             title="Siguiente"
@@ -1467,6 +1472,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               {([['all', 'Todas'], ['today', 'Hoy'], ['tomorrow', 'Mañana']] as const).map(([value, label]) => (
                 <button
+                  type="button"
                   key={value}
                   onClick={() => { setApptDateFilter(value); setCurrentPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${apptDateFilter === value ? 'bg-[#5C0632] text-white border-[#5C0632]' : 'bg-white text-[#78716C] border-[#EADEC9]/60 hover:border-[#8E1B54]/40'}`}
@@ -1512,9 +1518,9 @@ export const AdminDashboard: React.FC = () => {
                         <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${a.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : a.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' : a.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}`}>{STATUS_LABELS[a.status || 'PENDING']}</span></td>
                         <td className="p-3">
                           <div className="flex gap-1">
-                            {a.status === 'PENDING' && <button onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="px-2 py-1 text-[9px] bg-amber-100 text-amber-800 rounded font-bold">Iniciar</button>}
-                            {a.status === 'IN_PROGRESS' && <button onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="px-2 py-1 text-[9px] bg-[#8E1B54] text-white rounded font-bold">Completar</button>}
-                            {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="px-2 py-1 text-[9px] border border-red-200 text-red-700 rounded">Cancelar</button>}
+                            {a.status === 'PENDING' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="px-2 py-1 text-[9px] bg-amber-100 text-amber-800 rounded font-bold">Iniciar</button>}
+                            {a.status === 'IN_PROGRESS' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="px-2 py-1 text-[9px] bg-[#8E1B54] text-white rounded font-bold">Completar</button>}
+                            {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="px-2 py-1 text-[9px] border border-red-200 text-red-700 rounded">Cancelar</button>}
                           </div>
                         </td>
                       </tr>
@@ -1545,9 +1551,9 @@ export const AdminDashboard: React.FC = () => {
                       <p className="font-semibold text-[#8E1B54]">Total: {priceFmt(a.totalPrice)}</p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      {a.status === 'PENDING' && <button onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="flex-1 py-2.5 text-[11px] bg-amber-100 text-amber-800 rounded-xl font-bold">Iniciar</button>}
-                      {a.status === 'IN_PROGRESS' && <button onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="flex-1 py-2.5 text-[11px] bg-[#8E1B54] text-white rounded-xl font-bold">Completar</button>}
-                      {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="flex-1 py-2.5 text-[11px] border border-red-200 text-red-700 rounded-xl">Cancelar</button>}
+                      {a.status === 'PENDING' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'IN_PROGRESS')} className="flex-1 py-2.5 text-[11px] bg-amber-100 text-amber-800 rounded-xl font-bold">Iniciar</button>}
+                      {a.status === 'IN_PROGRESS' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'COMPLETED')} className="flex-1 py-2.5 text-[11px] bg-[#8E1B54] text-white rounded-xl font-bold">Completar</button>}
+                      {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && <button type="button" onClick={() => handleUpdateStatus(a.id, 'CANCELLED')} className="flex-1 py-2.5 text-[11px] border border-red-200 text-red-700 rounded-xl">Cancelar</button>}
                     </div>
                   </div>
                 ))
@@ -1614,6 +1620,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="serif-title text-3xl text-[#3B0019]">Manicuristas</h2>
               <button
+                type="button"
                 onClick={() => { setShowManForm(!showManForm); if (!showManForm) resetMan(); }}
                 className="px-4 py-2.5 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl"
               >
@@ -1680,9 +1687,10 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                         )}
                         <div className="flex items-center justify-between pt-1">
-                          <button onClick={() => { editMan(m); setShowManForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
+                          <button type="button" onClick={() => { editMan(m); setShowManForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
                           <div className="flex items-center gap-2">
                             <button
+                              type="button"
                               onClick={() => handleToggleManicuristActive(m)}
                               className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
                                 m.isActive === false
@@ -1692,7 +1700,7 @@ export const AdminDashboard: React.FC = () => {
                             >
                               {m.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
                             </button>
-                            <button onClick={() => handleDeleteManicurist(m)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
+                            <button type="button" onClick={() => handleDeleteManicurist(m)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
                           </div>
                         </div>
                       </div>
@@ -1736,8 +1744,8 @@ export const AdminDashboard: React.FC = () => {
                     <div key={s.id} className="flex justify-between items-center text-xs py-1.5 px-2 rounded-lg bg-[#F7F3EB]/50">
                       <span className="font-medium text-[#44403C]">{s.name} <span className="text-[#A68F63]">({s.startTime}-{s.endTime})</span></span>
                       <div className="flex gap-2">
-                        <button onClick={() => editShiftTemplate(s)} className="text-[#A68F63] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteShiftTemplate(s.id)} className="text-red-400 font-semibold">Eliminar</button>
+                        <button type="button" onClick={() => editShiftTemplate(s)} className="text-[#A68F63] font-semibold">Editar</button>
+                        <button type="button" onClick={() => handleDeleteShiftTemplate(s.id)} className="text-red-400 font-semibold">Eliminar</button>
                       </div>
                     </div>
                   ))}
@@ -1754,12 +1762,12 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-[11px] text-[#78716C]">Los turnos rotan automáticamente. Podés cambiar una semana específica para crear una excepción.</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs self-start sm:self-auto">
-                  <button onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">‹</button>
+                  <button type="button" onClick={() => changeScheduleWeek(-1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">‹</button>
                   <span className="text-center px-2">
                     <span className="block font-semibold text-[#3B0019] text-xs">{formatWeekRange(scheduleWeek, scheduleYear)}</span>
                     <span className="block text-[9px] text-[#A68F63] uppercase tracking-wider font-bold">Semana {scheduleWeek}</span>
                   </span>
-                  <button onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">›</button>
+                  <button type="button" onClick={() => changeScheduleWeek(1)} className="w-7 h-7 border rounded-full text-[#A68F63] hover:bg-[#5C0632]/5">›</button>
                 </div>
               </div>
 
@@ -1850,6 +1858,7 @@ export const AdminDashboard: React.FC = () => {
                                 </select>
 
                                 <button
+                                  type="button"
                                   onClick={() => openRotationModal(item)}
                                   title="Configurar regla de rotación habitual"
                                   className="px-3 py-2 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-xl text-xs font-semibold border border-[#5C0632]/10 transition-colors shrink-0"
@@ -1886,7 +1895,7 @@ export const AdminDashboard: React.FC = () => {
                     <div className="flex justify-between text-[10px] text-[#78716C] pt-2 border-t border-[#EADEC9]/20">
                       <span>{c.age ? `${c.age} años` : '—'}</span>
                     </div>
-                    <button onClick={() => viewClient(c)} className="w-full py-1.5 bg-[#5C0632]/5 text-[#5C0632] rounded-lg text-[10px] font-bold hover:bg-[#8E1B54] hover:text-white">Ver Perfil</button>
+                    <button type="button" onClick={() => viewClient(c)} className="w-full py-1.5 bg-[#5C0632]/5 text-[#5C0632] rounded-lg text-[10px] font-bold hover:bg-[#8E1B54] hover:text-white">Ver Perfil</button>
                   </div>
                 ))
               }
@@ -1895,12 +1904,12 @@ export const AdminDashboard: React.FC = () => {
             {selectedClient && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelectedClient(null)}>
                 <div className="bg-white w-full max-w-lg rounded-2xl p-6 space-y-4 max-h-[80vh] overflow-y-auto relative" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => setSelectedClient(null)} className="absolute top-3 right-3 text-sm text-[#78716C]">✕</button>
+                  <button type="button" onClick={() => setSelectedClient(null)} className="absolute top-3 right-3 text-sm text-[#78716C]">✕</button>
                   <h3 className="serif-title text-xl text-[#3B0019]">{selectedClient.name}</h3>
                   <p className="text-xs font-mono text-[#8E1B54]">{selectedClient.phone}</p>
                   <p className="text-xs text-[#78716C]">{selectedClient.age || '—'} años</p>
                   {clientAppts.length === 0 && (
-                    <button onClick={() => handleDeleteClient(selectedClient)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar cliente</button>
+                    <button type="button" onClick={() => handleDeleteClient(selectedClient)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar cliente</button>
                   )}
                   <div className="border-t pt-3 space-y-2">
                     <h4 className="text-xs font-bold text-[#3B0019] uppercase">Historial de Citas ({clientAppts.length})</h4>
@@ -1932,12 +1941,13 @@ export const AdminDashboard: React.FC = () => {
               <h2 className="serif-title text-3xl text-[#3B0019]">Servicios</h2>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => { setShowSvcForm(!showSvcForm); if (!showSvcForm) resetSvc(); }}
                   className="px-3 py-2 bg-[#8E1B54] text-white rounded-xl text-[10px] font-semibold hover:bg-[#3B0019] transition-colors"
                 >
                   {showSvcForm ? 'Cancelar' : '+ Nuevo Servicio'}
                 </button>
-                <button onClick={() => setShowCategoriesPanel(!showCategoriesPanel)} className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5 bg-white">
+                <button type="button" onClick={() => setShowCategoriesPanel(!showCategoriesPanel)} className="px-3 py-2 border border-[#EADEC9] rounded-xl text-[10px] text-[#A68F63] font-semibold hover:bg-[#5C0632]/5 bg-white">
                   {showCategoriesPanel ? 'Ocultar Categorias' : 'Categorias'}
                 </button>
               </div>
@@ -1959,8 +1969,8 @@ export const AdminDashboard: React.FC = () => {
                     <div key={c.id} className="flex justify-between items-center text-xs py-1.5 px-2 rounded-lg bg-[#F7F3EB]/50">
                       <span className="font-medium text-[#44403C]">{c.name}</span>
                       <div className="flex gap-2">
-                        <button onClick={() => editCat(c)} className="text-[#A68F63] font-semibold">Renombrar</button>
-                        <button onClick={() => handleDeleteCategory(c.id)} className="text-red-400 font-semibold">Eliminar</button>
+                        <button type="button" onClick={() => editCat(c)} className="text-[#A68F63] font-semibold">Renombrar</button>
+                        <button type="button" onClick={() => handleDeleteCategory(c.id)} className="text-red-400 font-semibold">Eliminar</button>
                       </div>
                     </div>
                   ))}
@@ -2113,8 +2123,9 @@ export const AdminDashboard: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2 flex-wrap sm:shrink-0">
                             <span className="font-bold text-sm text-[#8E1B54]">{priceFmt(s.price)}</span>
-                            <button onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] font-semibold">Editar</button>
+                            <button type="button" onClick={() => { editSvc(s); setShowSvcForm(true); }} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] font-semibold">Editar</button>
                             <button
+                              type="button"
                               onClick={() => handleToggleServiceActive(s)}
                               className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
                                 s.isActive === false
@@ -2124,7 +2135,7 @@ export const AdminDashboard: React.FC = () => {
                             >
                               {s.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
                             </button>
-                            <button onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
+                            <button type="button" onClick={() => handleDeleteService(s.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Eliminar</button>
                           </div>
                         </div>
                       ))}
@@ -2193,6 +2204,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <div className="flex gap-1">
                         <button
+                          type="button"
                           onClick={() => handleToggleOffer(o)}
                           className={`px-2.5 py-1 text-[9px] rounded-lg font-bold transition-colors ${
                             o.isActive
@@ -2202,8 +2214,8 @@ export const AdminDashboard: React.FC = () => {
                         >
                           {o.isActive ? 'Desactivar' : '✓ Reactivar'}
                         </button>
-                        <button onClick={() => editOff(o)} className="px-2 py-1 text-[9px] text-[#A68F63] font-semibold">Editar</button>
-                        <button onClick={() => handleDeleteOffer(o.id)} className="px-2 py-1 text-[9px] text-red-400 font-semibold">Eliminar</button>
+                        <button type="button" onClick={() => editOff(o)} className="px-2 py-1 text-[9px] text-[#A68F63] font-semibold">Editar</button>
+                        <button type="button" onClick={() => handleDeleteOffer(o.id)} className="px-2 py-1 text-[9px] text-red-400 font-semibold">Eliminar</button>
                       </div>
                     </div>
                   ))
@@ -2224,7 +2236,7 @@ export const AdminDashboard: React.FC = () => {
               {cmsError && (
                 <div className="p-2.5 bg-amber-50 text-amber-700 text-[11px] rounded-xl border border-amber-200 flex items-center justify-between gap-3">
                   <span>No se pudo cargar el contenido actual -- subir una imagen ahora podria crear un registro duplicado en vez de actualizar el existente.</span>
-                  <button onClick={fetchCMS} className="underline font-semibold shrink-0">Reintentar</button>
+                  <button type="button" onClick={fetchCMS} className="underline font-semibold shrink-0">Reintentar</button>
                 </div>
               )}
 
@@ -2361,8 +2373,9 @@ export const AdminDashboard: React.FC = () => {
                         <span className="text-[8px] text-[#A68F63] uppercase">{item.type} {item.isActive !== false ? '· Activo' : '· Inactivo'}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => editCms(item)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
+                        <button type="button" onClick={() => editCms(item)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold">Editar</button>
                         <button
+                          type="button"
                           onClick={() => handleToggleCmsActive(item)}
                           className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors ${
                             item.isActive === false
@@ -2372,7 +2385,7 @@ export const AdminDashboard: React.FC = () => {
                         >
                           {item.isActive === false ? '✓ Reactivar' : 'Deshabilitar'}
                         </button>
-                        <button onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Quitar</button>
+                        <button type="button" onClick={() => handleDeleteCMS(item.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">Quitar</button>
                       </div>
                     </div>
                   ))}
@@ -2403,7 +2416,7 @@ export const AdminDashboard: React.FC = () => {
       {rotationModalManicurist && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setRotationModalManicurist(null)}>
           <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 relative shadow-xl animate-fade-in text-left" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setRotationModalManicurist(null)} className="absolute top-4 right-4 text-sm text-[#78716C]">✕</button>
+            <button type="button" onClick={() => setRotationModalManicurist(null)} className="absolute top-4 right-4 text-sm text-[#78716C]">✕</button>
             <div className="border-b border-[#EADEC9]/40 pb-3">
               <h3 className="serif-title text-xl text-[#3B0019]">Regla de Rotación de Turno</h3>
               <p className="text-xs text-[#78716C] mt-0.5">Manicurista: <strong className="text-[#3B0019]">{rotationModalManicurist.manicuristName || rotationModalManicurist.name}</strong></p>

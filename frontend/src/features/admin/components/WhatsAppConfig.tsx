@@ -173,6 +173,7 @@ export const WhatsAppConfig: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => isEditing ? cancelEditing(template.id) : startEditing(template)}
                     className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer ${
                       isEditing
@@ -184,6 +185,7 @@ export const WhatsAppConfig: React.FC = () => {
                   </button>
                   {isEditing && (
                     <button
+                      type="button"
                       onClick={() => handleSave(template.id)}
                       disabled={saving[template.id]}
                       className="px-4 py-1.5 text-[11px] font-bold bg-[#5C0632] text-white rounded-lg hover:bg-[#8E1B54] disabled:opacity-50 transition-colors cursor-pointer"

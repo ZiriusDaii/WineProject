@@ -7,7 +7,7 @@ interface LegalSection {
 
 const LegalPageLayout: React.FC<{ title: string; updated: string; sections: LegalSection[]; onBack: () => void }> = ({ title, updated, sections, onBack }) => (
   <div className="max-w-3xl mx-auto px-6 py-12 flex-1 w-full animate-fade-in text-left">
-    <button onClick={onBack} className="mb-8 text-xs font-semibold text-[#8E1B54] hover:underline">‹ Volver</button>
+    <button type="button" onClick={onBack} className="mb-8 text-xs font-semibold text-[#8E1B54] hover:underline">‹ Volver</button>
     <h1 className="serif-title text-3xl text-[#3B0019] mb-1">{title}</h1>
     <p className="text-[10px] text-[#A68F63] uppercase tracking-wider font-semibold mb-8">Ultima actualizacion: {updated}</p>
     <div className="space-y-8">
