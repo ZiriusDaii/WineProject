@@ -116,13 +116,13 @@ export const StylistAgenda: React.FC = () => {
         setProfileAge(String(activeManicurist.age || 26));
         setProfileGender(activeManicurist.gender || 'Femenino');
         setProfileAvatar(activeManicurist.avatarPath ? `${API_URL}${activeManicurist.avatarPath}` : '');
-        setProfileRole(activeManicurist.role || 'Especialista');
+        setProfileRole(activeManicurist.role || 'Manicurista');
       } else {
         setProfileName('Sofía Valenzuela');
         setProfileAge('26');
         setProfileGender('Femenino');
         setProfileAvatar('https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=100');
-        setProfileRole('Especialista en Nail Art');
+        setProfileRole('Manicurista Nail Art');
       }
 
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada

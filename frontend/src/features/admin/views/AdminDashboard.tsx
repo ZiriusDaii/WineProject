@@ -1267,7 +1267,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Top Especialista</span>
+                      <span className="text-[10px] uppercase text-[#A68F63] font-extrabold tracking-wider block">Top Manicurista</span>
                       <h3 className="serif-title text-xl text-[#8E1B54] mt-2 font-bold truncate max-w-[160px]">{stats.topManicurist}</h3>
                       <span className="text-[10px] text-amber-600 font-semibold block mt-1">★ Mayor número de completadas</span>
                     </div>
@@ -1435,7 +1435,7 @@ export const AdminDashboard: React.FC = () => {
               {/* Row 3: Specialist Performance */}
               <div className="bg-white border border-[#EADEC9]/40 p-6 rounded-2xl shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2">
-                  <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Especialista</h3>
+                  <h3 className="serif-title text-base font-bold text-[#3B0019]">Rendimiento por Manicurista</h3>
                   <span className="text-[10px] text-[#A68F63] font-bold">Citas Completadas</span>
                 </div>
                 {stats.manicuristPerformance.length === 0 ? (
@@ -1504,7 +1504,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Desktop: tabla normal */}
             <div className="hidden md:block bg-white border border-[#EADEC9]/40 rounded-2xl overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Especialista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
+                <thead><tr className="bg-[#5C0632]/5 text-[10px] uppercase text-[#8D774C] font-semibold"><th className="p-3">#</th><th className="p-3">Cliente</th><th className="p-3">Manicurista</th><th className="p-3">Servicios</th><th className="p-3">Fecha</th><th className="p-3">Total</th><th className="p-3">Estado</th><th className="p-3">Accion</th></tr></thead>
                 <tbody className="divide-y divide-[#EADEC9]/20">
                   {filteredApps.length === 0 ? <tr><td colSpan={8} className="p-8 text-center text-[#78716C]">Sin citas.</td></tr> :
                     paginate(filteredApps).map(a => (
@@ -1778,7 +1778,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white border border-[#EADEC9]/30 p-4 rounded-xl">
                     <input
                       type="text"
-                      placeholder="Buscar especialista o turno..."
+                      placeholder="Buscar manicurista o turno..."
                       value={searchQuery}
                       onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                       className="p-2 border rounded-lg text-xs w-full sm:w-64"

@@ -954,7 +954,7 @@ export default function App() {
 
     const fallbackManicurists: Manicurist[] = [
       { id: '1', name: 'Sofía Valenzuela', role: 'Master Nail Artist', age: 26 },
-      { id: '2', name: 'Camila Ortega', role: 'Especialista en Pedicura', age: 29 }
+      { id: '2', name: 'Camila Ortega', role: 'Manicurista de Pedicura', age: 29 }
     ];
 
     try {
@@ -1599,7 +1599,7 @@ export default function App() {
         const message = `¡Hola WineSpa! Reserva confirmada #${appointmentId}
 • Nombre: ${name}
 • Servicios: ${serviceNames}
-• Especialista: ${specialistName}
+• Manicurista: ${specialistName}
 • Fecha: ${bookingDate} a las ${bookingTime}
 • Total: ${typeof total === 'number' ? `$${total.toLocaleString()}` : total}`;
 
@@ -1665,7 +1665,7 @@ export default function App() {
   };
 
   const getManicuristName = (id: string | number) => {
-    return manicurists.find(m => String(m.id) === String(id))?.name || 'Especialista';
+    return manicurists.find(m => String(m.id) === String(id))?.name || 'Manicurista';
   };
 
   const getServiceNames = (apptServices: Service[]) => {
@@ -1846,7 +1846,7 @@ export default function App() {
                           ) : (
                             <FallbackAvatar className="w-5 h-5" />
                           )}
-                          <p className="text-xs text-[#78716C] font-light">Especialista: {appt.manicurist?.name || getManicuristName(appt.manicuristId)}</p>
+                          <p className="text-xs text-[#78716C] font-light">Manicurista: {appt.manicurist?.name || getManicuristName(appt.manicuristId)}</p>
                         </div>
                         {renderServiceDetailWithPrices(appt.services)}
                         {appt.total && (
@@ -2231,8 +2231,8 @@ export default function App() {
                   )}
                   <div>
                     <h4 className="text-xs font-bold text-[#3B0019]">{activeSpecialistDetails.name}</h4>
-                    <p className="text-[10px] text-[#78716C]">{activeSpecialistDetails.age ? `${activeSpecialistDetails.age} años` : 'Especialista'}</p>
-                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Especialista'}</p>
+                    <p className="text-[10px] text-[#78716C]">{activeSpecialistDetails.age ? `${activeSpecialistDetails.age} años` : 'Manicurista'}</p>
+                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Manicurista'}</p>
                   </div>
                 </div>
               </div>
@@ -2322,7 +2322,7 @@ export default function App() {
                 </div>
               ) : selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                 <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
-                  Completa servicios, especialista y fecha para continuar.
+                  Completa servicios, manicurista y fecha para continuar.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -2537,7 +2537,7 @@ export default function App() {
           {/* Zoom avatar modal */}
           {zoomedAvatar && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setZoomedAvatar(null)}>
-              <img src={zoomedAvatar} alt="Especialista" className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
+              <img src={zoomedAvatar} alt="Manicurista" className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
               <button type="button" onClick={() => setZoomedAvatar(null)} className="absolute top-4 right-4 text-white text-2xl font-bold">✕</button>
             </div>
           )}
