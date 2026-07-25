@@ -40,22 +40,33 @@ interface OperationalSummary {
   monthHours: number;
 }
 
+interface ManicuristProfile {
+  id: string;
+  name: string;
+  age?: number;
+  gender?: string;
+  avatarPath?: string;
+  role?: string;
+}
+
 export const StylistAgenda: React.FC = () => {
   // Estado Móvil: 'calendar' | 'profile'
   const [activeMobileTab, setActiveMobileTab] = useState<'calendar' | 'profile'>('calendar');
 
-  const [stylistId] = useState<string>(() => {
+  const [manicuristList, setManicuristList] = useState<ManicuristProfile[]>([]);
+  const [stylistId, setStylistId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('winespa_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.role === 'manicurista') return String(parsed.id);
+        if (parsed.role === 'manicurista' && parsed.id) return String(parsed.id);
       }
     } catch {
       // Fallback
     }
-    return '1';
+    return '';
   });
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [assignedShift, setAssignedShift] = useState<ShiftInfo | null>(null);
   const [summaryMetrics, setSummaryMetrics] = useState<OperationalSummary | null>(null);
@@ -65,7 +76,7 @@ export const StylistAgenda: React.FC = () => {
   const [profileAge, setProfileAge] = useState('');
   const [profileGender, setProfileGender] = useState('Femenino');
   const [profileAvatar, setProfileAvatar] = useState('');
-  const [profileRole, setProfileRole] = useState('Nail Artist');
+  const [profileRole, setProfileRole] = useState('Manicurista');
 
   // Archivo de avatar seleccionado
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
@@ -87,7 +98,35 @@ export const StylistAgenda: React.FC = () => {
   const agendaRequestRef = useRef(0);
   const cacheRef = useRef<Record<string, { appointments: Appointment[]; shift: ShiftInfo | null; summary: OperationalSummary | null }>>({});
 
+  // Cargar lista de manicuristas disponibles en la BD
+  useEffect(() => {
+    const loadManicurists = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/manicurists`);
+        if (res.ok) {
+          const list: ManicuristProfile[] = await res.json();
+          setManicuristList(list);
+
+          // Si stylistId no está definido o no coincide con ninguna manicurista, auto-seleccionar
+          if (list.length > 0) {
+            setStylistId(prev => {
+              if (prev && list.some(m => String(m.id) === String(prev))) return prev;
+              // Intentar buscar 'Ana García' o tomar la primera manicurista de la BD
+              const ana = list.find(m => m.name.toLowerCase().includes('ana'));
+              return ana ? String(ana.id) : String(list[0].id);
+            });
+          }
+        }
+      } catch {
+        /* */
+      }
+    };
+    loadManicurists();
+  }, []);
+
   const fetchAgendaData = async (forceRefresh = false) => {
+    if (!stylistId) return;
+
     const requestId = ++agendaRequestRef.current;
     const cacheKey = `${stylistId}-${selectedYear}-${selectedMonth}`;
 
@@ -108,11 +147,7 @@ export const StylistAgenda: React.FC = () => {
     }
 
     try {
-      // Cargar información de la manicurista específica
-      const stylistRes = await fetch(`${API_URL}/api/manicurists`);
-      const activeManicurist = stylistRes.ok
-        ? (await stylistRes.json()).find((m: { id: string | number }) => String(m.id) === stylistId)
-        : null;
+      const activeManicurist = manicuristList.find(m => String(m.id) === String(stylistId));
 
       if (requestId !== agendaRequestRef.current) return;
       if (activeManicurist) {
@@ -121,12 +156,6 @@ export const StylistAgenda: React.FC = () => {
         setProfileGender(activeManicurist.gender || 'Femenino');
         setProfileAvatar(activeManicurist.avatarPath ? `${API_URL}${activeManicurist.avatarPath}` : '');
         setProfileRole(activeManicurist.role || 'Manicurista');
-      } else {
-        setProfileName('Sofía Valenzuela');
-        setProfileAge('26');
-        setProfileGender('Femenino');
-        setProfileAvatar('https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=100');
-        setProfileRole('Manicurista Nail Art');
       }
 
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
@@ -144,7 +173,7 @@ export const StylistAgenda: React.FC = () => {
             apptsData = resData;
           } else {
             apptsData = resData.appointments || [];
-            shiftData = resData.shift || { id: 'default', name: 'Jornada General', startTime: '08:00', endTime: '16:00' };
+            shiftData = resData.shift || { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
             summaryData = resData.summary || null;
           }
         }
@@ -155,19 +184,51 @@ export const StylistAgenda: React.FC = () => {
           { id: '2', appointmentId: 'WS-102', client: { name: 'Diana Uribe' }, manicuristId: stylistId, services: [{ id: '2', name: 'Manicure Semipermanente', price: 25, durationInMinutes: 60 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T11:00:00.000Z`, total: 45000, status: 'IN_PROGRESS' },
         ];
         shiftData = { id: '1', name: 'Turno Mañana', startTime: '08:00', endTime: '16:00' };
-        summaryData = { todayTotal: 2, todayCompleted: 1, todayHours: 1, monthTotal: 12, monthCompleted: 8, monthHours: 10 };
       }
 
       if (!shiftData) {
-        shiftData = { id: 'default', name: 'Jornada General', startTime: '08:00', endTime: '16:00' };
+        shiftData = { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
       }
+
+      // CÓMPUTO DINÁMICO GARANTIZADO DE MÉTRICAS OPERATIVAS
+      const todayISO = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+      const activeAppts = apptsData.filter(a => a.status !== 'CANCELLED');
+      const todayAppts = activeAppts.filter(a => a.date.slice(0, 10) === todayISO);
+      
+      const isFulfilled = (a: Appointment) => a.status === 'COMPLETED' || a.status === 'IN_PROGRESS' || new Date(a.date) <= new Date();
+
+      const todayCompletedAppts = todayAppts.filter(isFulfilled);
+      const todayMinutes = todayCompletedAppts.reduce((sum, a) => {
+        const dur = a.services?.reduce((s, serv) => s + (Number(serv.durationInMinutes) || 60), 0) || 60;
+        return sum + dur;
+      }, 0);
+
+      const monthCompletedAppts = activeAppts.filter(isFulfilled);
+      const monthMinutes = monthCompletedAppts.reduce((sum, a) => {
+        const dur = a.services?.reduce((s, serv) => s + (Number(serv.durationInMinutes) || 60), 0) || 60;
+        return sum + dur;
+      }, 0);
+
+      const calculatedSummary: OperationalSummary = {
+        todayTotal: todayAppts.length,
+        todayCompleted: todayCompletedAppts.length,
+        todayHours: Math.round((todayMinutes / 60) * 10) / 10,
+        monthTotal: activeAppts.length,
+        monthCompleted: monthCompletedAppts.length,
+        monthHours: Math.round((monthMinutes / 60) * 10) / 10,
+      };
+
+      // Preferir métricas del backend si vienen con totales reales, sino usar cálculo dinámico garantizado
+      const finalSummary = summaryData && (summaryData.monthTotal > 0 || summaryData.todayTotal > 0)
+        ? summaryData
+        : calculatedSummary;
 
       if (requestId !== agendaRequestRef.current) return;
 
-      cacheRef.current[cacheKey] = { appointments: apptsData, shift: shiftData, summary: summaryData };
+      cacheRef.current[cacheKey] = { appointments: apptsData, shift: shiftData, summary: finalSummary };
       setAppointments(apptsData);
       setAssignedShift(shiftData);
-      setSummaryMetrics(summaryData);
+      setSummaryMetrics(finalSummary);
 
     } catch {
       // Ignorar fallos de conexión
@@ -332,7 +393,7 @@ export const StylistAgenda: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FDFBF7] p-6 max-w-7xl mx-auto flex flex-col font-sans">
       
-      {/* HEADER CON TURNO ASIGNADO */}
+      {/* HEADER CON SELECCIÓN DE MANICURISTA Y HORARIO */}
       <header className="flex flex-col md:flex-row md:justify-between md:items-center pb-6 border-b border-[#EADEC9]/30 gap-4 text-left">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
@@ -342,14 +403,29 @@ export const StylistAgenda: React.FC = () => {
           </div>
         </div>
 
-        {/* BANDEROLA DE TURNO ASIGNADO DEL DÍA/SEMANA */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* SELECTOR DE MANICURISTA */}
+          {manicuristList.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-[#A68F63]">Manicurista:</span>
+              <select
+                value={stylistId}
+                onChange={(e) => setStylistId(e.target.value)}
+                className="bg-white border border-[#EADEC9] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#3B0019] focus:outline-hidden"
+              >
+                {manicuristList.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* BANDEROLA DE HORARIO ASIGNADO DE LA SEMANA */}
           <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
             <span className="text-[10px] uppercase font-bold text-[#A68F63]">Horario esta semana:</span>
             <strong className="text-[#3B0019] font-semibold">
               {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Turno General (08:00 - 16:00)'}
             </strong>
-            {assignedShift?.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
           </div>
         </div>
       </header>
@@ -376,7 +452,7 @@ export const StylistAgenda: React.FC = () => {
         </div>
       </div>
 
-      {/* TABS DE NAVEGACIÓN MÓVIL */}
+      {/* TABS DE NAVEGACIÓN MÓVIL SIN EMOJIS */}
       <div className="md:hidden flex gap-2 pt-4">
         {[
           { id: 'calendar', label: 'Mi Calendario' },
@@ -551,7 +627,7 @@ export const StylistAgenda: React.FC = () => {
 
                       {appt.status === 'COMPLETED' && (
                         <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1">
-                          ✓ Completada
+                          Completada
                         </span>
                       )}
                     </div>
@@ -641,4 +717,3 @@ export const StylistAgenda: React.FC = () => {
     </div>
   );
 };
-
