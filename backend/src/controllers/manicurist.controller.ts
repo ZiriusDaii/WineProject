@@ -8,19 +8,27 @@ export async function getManicuristDashboard(
   res: Response,
 ): Promise<void> {
   try {
-    const { month, year, date, manicuristId } = req.query as {
+    const { month, year, date } = req.query as {
       month?: string;
       year?: string;
       date?: string;
-      manicuristId?: string;
     };
+    
+    let effectiveManicuristId = (req.query.manicuristId as string) || (req.user?.userId as string);
 
-    if (!manicuristId) {
-      res.status(400).json({ error: "El query param 'manicuristId' es requerido" });
+    if (!effectiveManicuristId || effectiveManicuristId === "1" || effectiveManicuristId === "undefined") {
+      const firstManicurist = await prisma.user.findFirst({ where: { role: "MANICURISTA" } });
+      if (firstManicurist) {
+        effectiveManicuristId = firstManicurist.id;
+      }
+    }
+
+    if (!effectiveManicuristId) {
+      res.status(400).json({ error: "El parametro 'manicuristId' es requerido" });
       return;
     }
 
-    if (req.user?.role === "MANICURISTA" && manicuristId !== req.user.userId) {
+    if (req.user?.role === "MANICURISTA" && effectiveManicuristId !== req.user.userId) {
       res.status(403).json({ error: "No autorizado para ver la agenda de otra manicurista" });
       return;
     }
@@ -46,7 +54,7 @@ export async function getManicuristDashboard(
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        manicuristId,
+        manicuristId: effectiveManicuristId,
         date: dateFilter,
       },
       include: {
@@ -78,7 +86,7 @@ export async function getManicuristDashboard(
     const { week: weekNum, year: yearNum } = getISOWeek(refDate);
 
     const manicuristUser = await prisma.user.findUnique({
-      where: { id: manicuristId },
+      where: { id: effectiveManicuristId },
       include: {
         defaultShift: true,
         rotationShift1: true,
@@ -123,12 +131,20 @@ export async function getManicuristDashboard(
     // Calcular resumen diario y mensual de citas / horas
     const todayISO = now.toISOString().slice(0, 10);
     const getISODateStr = (d: any) => typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10);
+
+    const isCompletedOrPast = (a: any) => {
+      if (a.status === "CANCELLED") return false;
+      if (a.status === "COMPLETED") return true;
+      const apptDate = new Date(a.date);
+      return apptDate < now;
+    };
+
     const todayAppts = mapped.filter((a) => getISODateStr(a.date) === todayISO && a.status !== "CANCELLED");
-    const todayCompleted = todayAppts.filter((a) => a.status === "COMPLETED");
+    const todayCompleted = todayAppts.filter(isCompletedOrPast);
     const todayMinutes = todayCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
 
     const monthAppts = mapped.filter((a) => a.status !== "CANCELLED");
-    const monthCompleted = monthAppts.filter((a) => a.status === "COMPLETED");
+    const monthCompleted = monthAppts.filter(isCompletedOrPast);
     const monthMinutes = monthCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
 
     res.json({

@@ -345,7 +345,7 @@ export const StylistAgenda: React.FC = () => {
         {/* BANDEROLA DE TURNO ASIGNADO DEL DÍA/SEMANA */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
-            <span className="text-[10px] uppercase font-bold text-[#A68F63]">Turno de hoy:</span>
+            <span className="text-[10px] uppercase font-bold text-[#A68F63]">Jornada de esta semana:</span>
             <strong className="text-[#3B0019] font-semibold">
               {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Jornada General (08:00 - 16:00)'}
             </strong>
