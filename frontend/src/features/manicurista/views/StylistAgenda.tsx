@@ -40,21 +40,11 @@ interface OperationalSummary {
   monthHours: number;
 }
 
-interface ManicuristProfile {
-  id: string;
-  name: string;
-  age?: number;
-  gender?: string;
-  avatarPath?: string;
-  role?: string;
-}
-
 export const StylistAgenda: React.FC = () => {
   // Estado Móvil: 'calendar' | 'profile'
   const [activeMobileTab, setActiveMobileTab] = useState<'calendar' | 'profile'>('calendar');
 
-  const [manicuristList, setManicuristList] = useState<ManicuristProfile[]>([]);
-  const [stylistId, setStylistId] = useState<string>(() => {
+  const [stylistId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('winespa_session');
       if (saved) {
@@ -64,7 +54,7 @@ export const StylistAgenda: React.FC = () => {
     } catch {
       // Fallback
     }
-    return '';
+    return '1';
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -98,35 +88,7 @@ export const StylistAgenda: React.FC = () => {
   const agendaRequestRef = useRef(0);
   const cacheRef = useRef<Record<string, { appointments: Appointment[]; shift: ShiftInfo | null; summary: OperationalSummary | null }>>({});
 
-  // Cargar lista de manicuristas disponibles en la BD
-  useEffect(() => {
-    const loadManicurists = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/manicurists`);
-        if (res.ok) {
-          const list: ManicuristProfile[] = await res.json();
-          setManicuristList(list);
-
-          // Si stylistId no está definido o no coincide con ninguna manicurista, auto-seleccionar
-          if (list.length > 0) {
-            setStylistId(prev => {
-              if (prev && list.some(m => String(m.id) === String(prev))) return prev;
-              // Intentar buscar 'Ana García' o tomar la primera manicurista de la BD
-              const ana = list.find(m => m.name.toLowerCase().includes('ana'));
-              return ana ? String(ana.id) : String(list[0].id);
-            });
-          }
-        }
-      } catch {
-        /* */
-      }
-    };
-    loadManicurists();
-  }, []);
-
   const fetchAgendaData = async (forceRefresh = false) => {
-    if (!stylistId) return;
-
     const requestId = ++agendaRequestRef.current;
     const cacheKey = `${stylistId}-${selectedYear}-${selectedMonth}`;
 
@@ -134,7 +96,6 @@ export const StylistAgenda: React.FC = () => {
       delete cacheRef.current[cacheKey];
     }
 
-    // Híbrido: Si tenemos datos cacheados para este mes, renderizamos inmediatamente
     if (!forceRefresh && cacheRef.current[cacheKey]) {
       const cached = cacheRef.current[cacheKey];
       setAppointments(cached.appointments);
@@ -147,7 +108,10 @@ export const StylistAgenda: React.FC = () => {
     }
 
     try {
-      const activeManicurist = manicuristList.find(m => String(m.id) === String(stylistId));
+      const stylistRes = await fetch(`${API_URL}/api/manicurists`);
+      const activeManicurist = stylistRes.ok
+        ? (await stylistRes.json()).find((m: { id: string | number }) => String(m.id) === stylistId)
+        : null;
 
       if (requestId !== agendaRequestRef.current) return;
       if (activeManicurist) {
@@ -158,7 +122,6 @@ export const StylistAgenda: React.FC = () => {
         setProfileRole(activeManicurist.role || 'Manicurista');
       }
 
-      // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
       let apptsData: Appointment[] = [];
       let shiftData: ShiftInfo | null = null;
       let summaryData: OperationalSummary | null = null;
@@ -393,7 +356,7 @@ export const StylistAgenda: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FDFBF7] p-6 max-w-7xl mx-auto flex flex-col font-sans">
       
-      {/* HEADER CON SELECCIÓN DE MANICURISTA Y HORARIO */}
+      {/* HEADER CON HORARIO ASIGNADO */}
       <header className="flex flex-col md:flex-row md:justify-between md:items-center pb-6 border-b border-[#EADEC9]/30 gap-4 text-left">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
@@ -403,29 +366,14 @@ export const StylistAgenda: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* SELECTOR DE MANICURISTA */}
-          {manicuristList.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-[#A68F63]">Manicurista:</span>
-              <select
-                value={stylistId}
-                onChange={(e) => setStylistId(e.target.value)}
-                className="bg-white border border-[#EADEC9] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#3B0019] focus:outline-hidden"
-              >
-                {manicuristList.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* BANDEROLA DE HORARIO ASIGNADO DE LA SEMANA */}
+        {/* BANDEROLA DE HORARIO ASIGNADO DE LA SEMANA */}
+        <div className="flex flex-wrap items-center gap-2">
           <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
             <span className="text-[10px] uppercase font-bold text-[#A68F63]">Horario esta semana:</span>
             <strong className="text-[#3B0019] font-semibold">
               {assignedShift ? `${assignedShift.name} (${assignedShift.startTime} - ${assignedShift.endTime})` : 'Turno General (08:00 - 16:00)'}
             </strong>
+            {assignedShift?.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
           </div>
         </div>
       </header>
