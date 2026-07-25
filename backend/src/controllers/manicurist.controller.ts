@@ -1,6 +1,7 @@
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { getISOWeek } from "../lib/week.js";
 
 export async function getManicuristDashboard(
   req: AuthRequest,
@@ -19,9 +20,6 @@ export async function getManicuristDashboard(
       return;
     }
 
-    // requireStaff deja pasar a cualquier ADMIN/OWNER/MANICURISTA -- sin esto,
-    // una manicurista autenticada podia pasar el id de OTRA manicurista y ver
-    // su agenda completa (nombre y telefono de sus clientes incluidos).
     if (req.user?.role === "MANICURISTA" && manicuristId !== req.user.userId) {
       res.status(403).json({ error: "No autorizado para ver la agenda de otra manicurista" });
       return;
@@ -73,9 +71,119 @@ export async function getManicuristDashboard(
       return appt;
     });
 
-    res.json(mapped);
+    // Calcular el turno asignado (rotativo o con excepcion) para la semana actual
+    const targetYear = year ? Number(year) : now.getFullYear();
+    const targetMonth = month ? Number(month) : (now.getMonth() + 1);
+    const refDate = date ? new Date(date) : new Date(targetYear, targetMonth - 1, 1);
+    const { week: weekNum, year: yearNum } = getISOWeek(refDate);
+
+    const manicuristUser = await prisma.user.findUnique({
+      where: { id: manicuristId },
+      include: {
+        defaultShift: true,
+        rotationShift1: true,
+        rotationShift2: true,
+        schedules: {
+          where: { weekNumber: weekNum, year: yearNum },
+          include: { shiftTemplate: true },
+        },
+      },
+    });
+
+    let currentShift = null;
+    let isOverride = false;
+
+    if (manicuristUser) {
+      if (manicuristUser.schedules && manicuristUser.schedules.length > 0) {
+        currentShift = manicuristUser.schedules[0]?.shiftTemplate ?? null;
+        isOverride = true;
+      } else {
+        const rotType = manicuristUser.rotationType || "WEEKLY_ROTATION";
+        if (rotType === "FIXED") {
+          currentShift = manicuristUser.defaultShift;
+        } else {
+          const anchorW = manicuristUser.anchorWeek ?? 1;
+          const anchorY = manicuristUser.anchorYear ?? 2026;
+          const deltaWeeks = (yearNum - anchorY) * 52 + (weekNum - anchorW);
+          const cycleIndex = Math.abs(deltaWeeks) % 2;
+          currentShift = cycleIndex === 0 ? manicuristUser.rotationShift1 : manicuristUser.rotationShift2;
+        }
+      }
+    }
+
+    // Calcular resumen diario y mensual de citas / horas
+    const todayISO = now.toISOString().slice(0, 10);
+    const getISODateStr = (d: any) => typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10);
+    const todayAppts = mapped.filter((a) => getISODateStr(a.date) === todayISO && a.status !== "CANCELLED");
+    const todayCompleted = todayAppts.filter((a) => a.status === "COMPLETED");
+    const todayMinutes = todayCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
+
+    const monthAppts = mapped.filter((a) => a.status !== "CANCELLED");
+    const monthCompleted = monthAppts.filter((a) => a.status === "COMPLETED");
+    const monthMinutes = monthCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
+
+    res.json({
+      appointments: mapped,
+      shift: currentShift ? {
+        id: currentShift.id,
+        name: currentShift.name,
+        startTime: currentShift.startTime,
+        endTime: currentShift.endTime,
+        isOverride,
+        weekNumber: weekNum,
+        year: yearNum,
+      } : null,
+      summary: {
+        todayTotal: todayAppts.length,
+        todayCompleted: todayCompleted.length,
+        todayHours: Math.round((todayMinutes / 60) * 10) / 10,
+        monthTotal: monthAppts.length,
+        monthCompleted: monthCompleted.length,
+        monthHours: Math.round((monthMinutes / 60) * 10) / 10,
+      },
+    });
   } catch (error) {
     console.error("Error obteniendo dashboard de manicurista:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export async function startAppointment(
+  req: AuthRequest,
+  res: Response,
+): Promise<void> {
+  try {
+    const { id } = req.params as { id?: string };
+
+    if (!id) {
+      res.status(400).json({ error: "El parametro 'id' es requerido" });
+      return;
+    }
+
+    const existing = await prisma.appointment.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Cita no encontrada" });
+      return;
+    }
+
+    if (req.user?.role === "MANICURISTA" && existing.manicuristId !== req.user.userId) {
+      res.status(403).json({ error: "No autorizado para modificar una cita de otra manicurista" });
+      return;
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: { status: "IN_PROGRESS" },
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        manicurist: { select: { id: true, name: true } },
+        services: true,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error iniciando cita:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -88,7 +196,7 @@ export async function completeAppointment(
     const { id } = req.params as { id?: string };
 
     if (!id) {
-      res.status(400).json({ error: "El parámetro 'id' es requerido" });
+      res.status(400).json({ error: "El parametro 'id' es requerido" });
       return;
     }
 

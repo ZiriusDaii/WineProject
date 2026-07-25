@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 
@@ -23,15 +23,27 @@ interface Service {
   durationInMinutes?: string | number;
 }
 
+interface ShiftInfo {
+  id: string | number;
+  name: string;
+  startTime: string;
+  endTime: string;
+  isOverride?: boolean;
+}
+
+interface OperationalSummary {
+  todayTotal: number;
+  todayCompleted: number;
+  todayHours: number;
+  monthTotal: number;
+  monthCompleted: number;
+  monthHours: number;
+}
 
 export const StylistAgenda: React.FC = () => {
   // Estado Móvil: 'calendar' | 'profile'
   const [activeMobileTab, setActiveMobileTab] = useState<'calendar' | 'profile'>('calendar');
 
-  // Recuperar ID de manicurista logueada desde la sesión local.
-  // Se resuelve de forma sincrónica (lazy initializer) para evitar una carrera:
-  // si se resolviera en un useEffect aparte, un primer fetch con un id placeholder
-  // podia resolver despues del fetch con el id real y pisar los datos correctos.
   const [stylistId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('winespa_session');
@@ -45,6 +57,8 @@ export const StylistAgenda: React.FC = () => {
     return '1';
   });
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [assignedShift, setAssignedShift] = useState<ShiftInfo | null>(null);
+  const [summaryMetrics, setSummaryMetrics] = useState<OperationalSummary | null>(null);
 
   // Estados del perfil
   const [profileName, setProfileName] = useState('');
@@ -63,8 +77,6 @@ export const StylistAgenda: React.FC = () => {
   const [selectedDateDay, setSelectedDateDay] = useState<number>(today.getDate());
 
   const [loading, setLoading] = useState(true);
-  // Distingue la carga inicial (pantalla completa) de recargas posteriores
-  // (cambio de mes), que solo deben mostrar un indicador chico sin tapar la UI.
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -72,15 +84,33 @@ export const StylistAgenda: React.FC = () => {
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | number | null>(null);
 
-  const fetchAgendaData = async () => {
-    try {
-      setLoading(true);
+  const agendaRequestRef = useRef(0);
+  const cacheRef = useRef<Record<string, { appointments: Appointment[]; shift: ShiftInfo | null; summary: OperationalSummary | null }>>({});
 
-      // Cargar información de la manicurista específica (filtrada del listado, no hay endpoint por id)
+  const fetchAgendaData = async () => {
+    const requestId = ++agendaRequestRef.current;
+    const cacheKey = `${stylistId}-${selectedYear}-${selectedMonth}`;
+
+    // Híbrido: Si tenemos datos cacheados para este mes, renderizamos inmediatamente
+    if (cacheRef.current[cacheKey]) {
+      const cached = cacheRef.current[cacheKey];
+      setAppointments(cached.appointments);
+      setAssignedShift(cached.shift);
+      setSummaryMetrics(cached.summary);
+      setLoading(false);
+      setHasLoadedOnce(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      // Cargar información de la manicurista específica
       const stylistRes = await fetch(`${API_URL}/api/manicurists`);
       const activeManicurist = stylistRes.ok
         ? (await stylistRes.json()).find((m: { id: string | number }) => String(m.id) === stylistId)
         : null;
+
+      if (requestId !== agendaRequestRef.current) return;
       if (activeManicurist) {
         setProfileName(activeManicurist.name || '');
         setProfileAge(String(activeManicurist.age || 26));
@@ -88,7 +118,6 @@ export const StylistAgenda: React.FC = () => {
         setProfileAvatar(activeManicurist.avatarPath ? `${API_URL}${activeManicurist.avatarPath}` : '');
         setProfileRole(activeManicurist.role || 'Especialista');
       } else {
-        // Fallback
         setProfileName('Sofía Valenzuela');
         setProfileAge('26');
         setProfileGender('Femenino');
@@ -98,13 +127,24 @@ export const StylistAgenda: React.FC = () => {
 
       // SEGURIDAD VISUAL DE STAFF: Consumir exclusivamente las citas de la manicurista logueada
       let apptsData: Appointment[] = [];
+      let shiftData: ShiftInfo | null = null;
+      let summaryData: OperationalSummary | null = null;
+
       try {
-        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`);
+        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
+        });
         if (apptsRes.ok) {
-          apptsData = await apptsRes.json();
+          const resData = await apptsRes.json();
+          if (Array.isArray(resData)) {
+            apptsData = resData;
+          } else {
+            apptsData = resData.appointments || [];
+            shiftData = resData.shift || null;
+            summaryData = resData.summary || null;
+          }
         }
       } catch {
-        // Fallback mock respetando seguridad de personal (usa el mes actual para que sea visible por defecto)
         const mockPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
         apptsData = [
           { id: '1', appointmentId: 'WS-101', client: { name: 'Martha Cecilia Gómez' }, manicuristId: stylistId, services: [{ id: '1', name: 'Manicure Tradicional', price: 15, durationInMinutes: 45 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T09:00:00.000Z`, total: 35000, status: 'CONFIRMED' },
@@ -112,13 +152,20 @@ export const StylistAgenda: React.FC = () => {
         ];
       }
 
+      if (requestId !== agendaRequestRef.current) return;
+
+      cacheRef.current[cacheKey] = { appointments: apptsData, shift: shiftData, summary: summaryData };
       setAppointments(apptsData);
+      setAssignedShift(shiftData);
+      setSummaryMetrics(summaryData);
 
     } catch {
-      // Ignorar fallos de conexión y usar mocks de seguridad
+      // Ignorar fallos de conexión
     } finally {
-      setLoading(false);
-      setHasLoadedOnce(true);
+      if (requestId === agendaRequestRef.current) {
+        setLoading(false);
+        setHasLoadedOnce(true);
+      }
     }
   };
 
@@ -126,18 +173,37 @@ export const StylistAgenda: React.FC = () => {
     fetchAgendaData();
   }, [stylistId, selectedMonth, selectedYear]);
 
+  // Iniciar Cita
+  const handleStartAppointment = async (id: string | number) => {
+    setStatusUpdatingId(id);
+    try {
+      const res = await fetch(`${API_URL}/api/appointments/${id}/start`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
+      });
+      if (res.ok) {
+        setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'IN_PROGRESS' } : a));
+      }
+    } catch {
+      /* */
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   // Completar Cita
   const handleCompleteAppointment = async (id: string | number) => {
     setStatusUpdatingId(id);
     try {
       const res = await fetch(`${API_URL}/api/appointments/${id}/complete`, {
         method: 'PUT',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
       });
       if (res.ok) {
         setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'COMPLETED' } : a));
       }
     } catch {
-      // no hacer nada, no actualizar estado falsamente
+      /* */
     } finally {
       setStatusUpdatingId(null);
     }
@@ -201,7 +267,6 @@ export const StylistAgenda: React.FC = () => {
     }
   };
 
-  // El backend ya incluye los servicios completos en cada cita (appt.services), sin necesidad de buscarlos por id.
   const getServiceNames = (apptServices: Service[]) => {
     return apptServices.map(s => s.name).join(' + ') || 'Tratamiento Spa';
   };
@@ -217,7 +282,6 @@ export const StylistAgenda: React.FC = () => {
   const daysInSelectedMonth = new Date(selectedYear, selectedMonth, 0).getDate();
   const monthLabel = new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
 
-  // El backend devuelve `date` como ISO string (YYYY-MM-DDTHH:mm:ss.sssZ), sin campo `time` separado.
   const toDateKey = (isoDate: string) => isoDate.slice(0, 10);
   const toTimeLabel = (isoDate: string) => isoDate.slice(11, 16);
   const buildDatePattern = (day: number) => `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -256,8 +320,8 @@ export const StylistAgenda: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FDFBF7] p-6 max-w-7xl mx-auto flex flex-col font-sans">
       
-      {/* HEADER */}
-      <header className="flex flex-col md:flex-row md:justify-between md:items-end pb-6 border-b border-[#EADEC9]/30 gap-4 text-left">
+      {/* HEADER CON TURNO ASIGNADO */}
+      <header className="flex flex-col md:flex-row md:justify-between md:items-center pb-6 border-b border-[#EADEC9]/30 gap-4 text-left">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="WineSpa Logo" className="w-10 h-10 object-contain" />
           <div className="flex flex-col">
@@ -265,7 +329,44 @@ export const StylistAgenda: React.FC = () => {
             <span className="text-[9px] uppercase tracking-widest text-[#A68F63] font-semibold mt-1">Gestión de Citas Propias</span>
           </div>
         </div>
+
+        {/* BANDEROLA DE TURNO ASIGNADO DEL DÍA/SEMANA */}
+        <div className="flex flex-wrap items-center gap-2">
+          {assignedShift ? (
+            <div className="px-3.5 py-2 bg-[#F7F3EB] border border-[#EADEC9] rounded-2xl flex items-center gap-2 text-xs">
+              <span className="text-[10px] uppercase font-bold text-[#A68F63]">Turno de hoy:</span>
+              <strong className="text-[#3B0019] font-semibold">{assignedShift.name} ({assignedShift.startTime} - {assignedShift.endTime})</strong>
+              {assignedShift.isOverride && <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Excepción</span>}
+            </div>
+          ) : (
+            <div className="px-3.5 py-2 bg-[#F7F3EB]/60 border border-[#EADEC9]/40 rounded-2xl text-xs text-[#78716C]">
+              <span>Turno: Sin asignación rotativa activa</span>
+            </div>
+          )}
+        </div>
       </header>
+
+      {/* TARJETAS DE RESUMEN OPERATIVO */}
+      <div className="pt-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+          <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-4 space-y-1 shadow-2xs">
+            <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Citas Hoy</span>
+            <span className="text-2xl font-bold text-[#3B0019]">{summaryMetrics?.todayCompleted || 0} <span className="text-xs font-normal text-[#78716C]">/ {summaryMetrics?.todayTotal || 0}</span></span>
+          </div>
+          <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-4 space-y-1 shadow-2xs">
+            <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Horas Hoy</span>
+            <span className="text-2xl font-bold text-[#8E1B54]">{summaryMetrics?.todayHours || 0} <span className="text-xs font-normal text-[#78716C]">hrs</span></span>
+          </div>
+          <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-4 space-y-1 shadow-2xs">
+            <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Citas Mes</span>
+            <span className="text-2xl font-bold text-[#3B0019]">{summaryMetrics?.monthCompleted || 0} <span className="text-xs font-normal text-[#78716C]">/ {summaryMetrics?.monthTotal || 0}</span></span>
+          </div>
+          <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-4 space-y-1 shadow-2xs">
+            <span className="text-[9px] uppercase tracking-wider text-[#A68F63] font-bold block">Horas Mes</span>
+            <span className="text-2xl font-bold text-[#8E1B54]">{summaryMetrics?.monthHours || 0} <span className="text-xs font-normal text-[#78716C]">hrs</span></span>
+          </div>
+        </div>
+      </div>
 
       {/* TABS DE NAVEGACIÓN MÓVIL */}
       <div className="md:hidden flex gap-2 pt-4">
@@ -337,6 +438,7 @@ export const StylistAgenda: React.FC = () => {
 
                 return (
                   <button
+                    type="button"
                     key={day}
                     onClick={() => setSelectedDateDay(day)}
                     className={`py-3 rounded-xl transition-all relative flex flex-col items-center justify-center font-medium ${
@@ -391,22 +493,43 @@ export const StylistAgenda: React.FC = () => {
                       </div>
                     </div>
 
-                    {appt.status === 'IN_PROGRESS' && (
-                      <button
-                        onClick={() => handleCompleteAppointment(appt.id)}
-                        disabled={statusUpdatingId === appt.id}
-                        className="w-full sm:w-auto px-4 py-2 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors self-center disabled:opacity-50"
-                      >
-                        {statusUpdatingId === appt.id ? (
-                          <>
-                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            <span>Guardando...</span>
-                          </>
-                        ) : (
-                          <span>Marcar Tratamiento como Completado</span>
-                        )}
-                      </button>
-                    )}
+                    <div className="flex flex-col gap-2 w-full sm:w-auto self-center">
+                      {(appt.status === 'PENDING' || appt.status === 'CONFIRMED') && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartAppointment(appt.id)}
+                          disabled={statusUpdatingId === appt.id}
+                          className="w-full sm:w-auto px-4 py-2 bg-[#5C0632] hover:bg-[#8E1B54] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                        >
+                          {statusUpdatingId === appt.id ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Guardando...</span>
+                            </>
+                          ) : (
+                            <span>Iniciar Atención</span>
+                          )}
+                        </button>
+                      )}
+
+                      {appt.status === 'IN_PROGRESS' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteAppointment(appt.id)}
+                          disabled={statusUpdatingId === appt.id}
+                          className="w-full sm:w-auto px-4 py-2 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                        >
+                          {statusUpdatingId === appt.id ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Guardando...</span>
+                            </>
+                          ) : (
+                            <span>Marcar Tratamiento como Completado</span>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -493,3 +616,4 @@ export const StylistAgenda: React.FC = () => {
     </div>
   );
 };
+
