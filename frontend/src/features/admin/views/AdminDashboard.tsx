@@ -401,6 +401,12 @@ export const AdminDashboard: React.FC = () => {
     loadModuleOnDemand(activeTab);
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'schedule') {
+      fetchWeekSchedule();
+    }
+  }, [scheduleWeek, scheduleYear]);
+
   // Auto-refresco inteligente cada 60s: solo renueva el modulo activo y citas
   useEffect(() => {
     const interval = setInterval(() => {
@@ -724,10 +730,14 @@ export const AdminDashboard: React.FC = () => {
   const openRotationModal = (m: any) => {
     setRotationModalManicurist(m);
     const cfg = m.rotationConfig || {};
+    const defaultId = cfg.defaultShift?.id || m.defaultShift?.id || m.defaultShiftId || '';
+    const s1Id = cfg.rotationShift1?.id || m.rotationShift1?.id || m.rotationShift1Id || '';
+    const s2Id = cfg.rotationShift2?.id || m.rotationShift2?.id || m.rotationShift2Id || '';
+
     setRotType(cfg.rotationType || m.rotationType || 'WEEKLY_ROTATION');
-    setRotDefaultShiftId(cfg.defaultShift?.id || m.defaultShiftId || '');
-    setRotShift1Id(cfg.rotationShift1?.id || m.rotationShift1Id || '');
-    setRotShift2Id(cfg.rotationShift2?.id || m.rotationShift2Id || '');
+    setRotDefaultShiftId(defaultId);
+    setRotShift1Id(s1Id);
+    setRotShift2Id(s2Id);
   };
 
   const handleSaveRotationConfig = async (e: React.FormEvent) => {
@@ -749,7 +759,8 @@ export const AdminDashboard: React.FC = () => {
       if (res.ok) {
         setSuccessMsg('Regla de rotación actualizada exitosamente.');
         setRotationModalManicurist(null);
-        fetchWeekSchedule();
+        await fetchManicuristsModule();
+        await fetchWeekSchedule();
       } else {
         setErrorMsg('No se pudo guardar la rotación.');
       }
