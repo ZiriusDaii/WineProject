@@ -178,6 +178,16 @@ export async function startAppointment(
       return;
     }
 
+    const apptDate = new Date(existing.date);
+    const now = new Date();
+    const apptDayStr = apptDate.toISOString().slice(0, 10);
+    const todayStr = now.toISOString().slice(0, 10);
+
+    if (apptDayStr > todayStr) {
+      res.status(400).json({ error: "No se puede iniciar una cita programada para una fecha futura" });
+      return;
+    }
+
     const updated = await prisma.appointment.update({
       where: { id },
       data: { status: "IN_PROGRESS" },

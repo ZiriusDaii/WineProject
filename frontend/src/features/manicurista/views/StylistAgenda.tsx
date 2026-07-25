@@ -493,23 +493,34 @@ export const StylistAgenda: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 w-full sm:w-auto self-center">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto self-center">
                       {(appt.status === 'PENDING' || appt.status === 'CONFIRMED') && (
-                        <button
-                          type="button"
-                          onClick={() => handleStartAppointment(appt.id)}
-                          disabled={statusUpdatingId === appt.id}
-                          className="w-full sm:w-auto px-4 py-2 bg-[#5C0632] hover:bg-[#8E1B54] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                        >
-                          {statusUpdatingId === appt.id ? (
-                            <>
-                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Guardando...</span>
-                            </>
-                          ) : (
-                            <span>Iniciar Atención</span>
-                          )}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleStartAppointment(appt.id)}
+                            disabled={statusUpdatingId === appt.id}
+                            className="px-4 py-2 bg-[#5C0632] hover:bg-[#8E1B54] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {statusUpdatingId === appt.id ? (
+                              <>
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                <span>Guardando...</span>
+                              </>
+                            ) : (
+                              <span>Iniciar Atención</span>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteAppointment(appt.id)}
+                            disabled={statusUpdatingId === appt.id}
+                            className="px-3.5 py-2 border border-[#8E1B54] text-[#8E1B54] hover:bg-[#8E1B54]/5 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            <span>Completar Directo</span>
+                          </button>
+                        </>
                       )}
 
                       {appt.status === 'IN_PROGRESS' && (
@@ -528,6 +539,12 @@ export const StylistAgenda: React.FC = () => {
                             <span>Marcar Tratamiento como Completado</span>
                           )}
                         </button>
+                      )}
+
+                      {appt.status === 'COMPLETED' && (
+                        <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1">
+                          ✓ Completada
+                        </span>
                       )}
                     </div>
                   </div>
