@@ -325,6 +325,15 @@ export async function getAdminManicurists(
         schedules: {
           include: { shiftTemplate: true },
         },
+        rotationType: true,
+        defaultShiftId: true,
+        rotationShift1Id: true,
+        rotationShift2Id: true,
+        anchorWeek: true,
+        anchorYear: true,
+        defaultShift: true,
+        rotationShift1: true,
+        rotationShift2: true,
       },
       orderBy: { name: "asc" },
     });

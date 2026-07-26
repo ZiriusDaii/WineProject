@@ -49,6 +49,7 @@ import {
 } from "../controllers/admin.controller.js";
 import {
   getManicuristDashboard,
+  startAppointment,
   completeAppointment,
   updateManicuristProfile,
 } from "../controllers/manicurist.controller.js";
@@ -144,6 +145,7 @@ router.post(
 // Manicurist routes (require staff auth)
 router.get("/manicurist/appointments", requireStaff, getManicuristDashboard);
 router.put("/manicurist/profile", requireStaff, updateManicuristProfile);
+router.put("/appointments/:id/start", requireStaff, startAppointment);
 router.put("/appointments/:id/complete", requireStaff, completeAppointment);
 
 export default router;

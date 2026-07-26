@@ -37,26 +37,26 @@ const ConsentCheckbox: React.FC<{
   onChange: (checked: boolean) => void;
   onOpenPolicy: () => void;
 }> = ({ id, checked, onChange, onOpenPolicy }) => (
-  <div className="flex items-start gap-2 text-[10px] text-[#78716C] leading-relaxed">
+  <div className="flex items-start gap-2.5 p-3 bg-[#F7F3EB]/70 rounded-xl border border-[#EADEC9]/60 text-[11px] text-[#44403C] leading-normal">
     <input
       id={id}
       type="checkbox"
       required
       checked={checked}
       onChange={(e) => onChange(e.target.checked)}
-      className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[#8E1B54]"
+      className="mt-0.5 w-4 h-4 rounded cursor-pointer accent-[#8E1B54] shrink-0"
     />
-    <span className="cursor-pointer select-none">
+    <div className="select-none">
       <label htmlFor={id} className="cursor-pointer">He leído y acepto la </label>
       <button
         type="button"
         onClick={onOpenPolicy}
-        className="text-[#8E1B54] font-semibold hover:underline"
+        className="text-[#8E1B54] font-bold hover:underline inline-block"
       >
         Política de Privacidad
       </button>
-      <label htmlFor={id} className="cursor-pointer"> para el tratamiento de mis datos personales.</label>
-    </span>
+      <label htmlFor={id} className="cursor-pointer"> para el tratamiento de mis datos personales (Ley 1581).</label>
+    </div>
   </div>
 );
 
@@ -85,7 +85,7 @@ class StaffPanelErrorBoundary extends React.Component<
       return (
         <div className="w-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-xs text-[#78716C]">
           <p>No se pudo cargar el panel.</p>
-          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+          <button type="button" onClick={() => window.location.reload()} className="px-4 py-2 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
             Recargar
           </button>
         </div>
@@ -318,6 +318,7 @@ const HeroScrollSection: React.FC<{ heroImage: string; onBook: () => void }> = R
         </motion.p>
         <motion.div variants={heroItemVariants} className="pt-2">
           <button
+            type="button"
             onClick={onBook}
             className="px-8 py-4 bg-[#5C0632] hover:bg-[#3B0019] text-white font-medium rounded-xl text-xs tracking-wider uppercase shadow-lg transition-all"
           >
@@ -398,6 +399,7 @@ const WineSpaExperienceSection: React.FC<{ experienceImage: string; onBook: () =
 
         <div className="pt-2">
           <button
+            type="button"
             onClick={onBook}
             className="px-6 py-3 bg-[#8E1B54] hover:bg-[#5C0632] text-white text-xs font-semibold rounded-xl shadow-md transition-all hover:scale-102 active:scale-98 cursor-pointer"
           >
@@ -519,9 +521,9 @@ const ServiceSelectionGrid: React.FC<{
       </div>
       {total > PER_PAGE && (
         <div className="flex items-center justify-center gap-3 text-xs pt-2">
-          <button disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <button type="button" disabled={svcPage === 1} onClick={() => setSvcPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
           <span className="text-[#78716C]">{svcPage} / {Math.ceil(total / PER_PAGE)}</span>
-          <button disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+          <button type="button" disabled={svcPage * PER_PAGE >= total} onClick={() => setSvcPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
         </div>
       )}
     </>
@@ -581,9 +583,9 @@ const ManicuristSelectionGrid: React.FC<{
       </div>
       {total > PER_PAGE && (
         <div className="flex items-center justify-center gap-3 text-xs pt-2">
-          <button disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
+          <button type="button" disabled={manPage === 1} onClick={() => setManPage(p => p - 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">‹ Anterior</button>
           <span className="text-[#78716C]">{manPage} / {Math.ceil(total / PER_PAGE)}</span>
-          <button disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
+          <button type="button" disabled={manPage * PER_PAGE >= total} onClick={() => setManPage(p => p + 1)} className="px-3 py-1.5 border border-[#EADEC9] rounded-lg disabled:opacity-30 text-[#A68F63] font-semibold">Siguiente ›</button>
         </div>
       )}
     </>
@@ -952,7 +954,7 @@ export default function App() {
 
     const fallbackManicurists: Manicurist[] = [
       { id: '1', name: 'Sofía Valenzuela', role: 'Master Nail Artist', age: 26 },
-      { id: '2', name: 'Camila Ortega', role: 'Especialista en Pedicura', age: 29 }
+      { id: '2', name: 'Camila Ortega', role: 'Manicurista de Pedicura', age: 29 }
     ];
 
     try {
@@ -1053,12 +1055,18 @@ export default function App() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  const clientAppointmentsRequestRef = useRef(0);
+
   const fetchClientAppointments = async () => {
     if (!session || session.role !== 'cliente') return;
+    const requestId = ++clientAppointmentsRequestRef.current;
     try {
       const res = await fetch(`${API_URL}/api/appointments?clientId=${session.id}`, {
         headers: authHeader(),
       });
+      // Otro cambio de sesion disparo un fetch mas nuevo mientras este seguia
+      // en vuelo -- descartar esta respuesta vieja para no pisar la actual.
+      if (requestId !== clientAppointmentsRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
         setClientAppointments(data);
@@ -1591,7 +1599,7 @@ export default function App() {
         const message = `¡Hola WineSpa! Reserva confirmada #${appointmentId}
 • Nombre: ${name}
 • Servicios: ${serviceNames}
-• Especialista: ${specialistName}
+• Manicurista: ${specialistName}
 • Fecha: ${bookingDate} a las ${bookingTime}
 • Total: ${typeof total === 'number' ? `$${total.toLocaleString()}` : total}`;
 
@@ -1657,7 +1665,7 @@ export default function App() {
   };
 
   const getManicuristName = (id: string | number) => {
-    return manicurists.find(m => String(m.id) === String(id))?.name || 'Especialista';
+    return manicurists.find(m => String(m.id) === String(id))?.name || 'Manicurista';
   };
 
   const getServiceNames = (apptServices: Service[]) => {
@@ -1717,7 +1725,7 @@ export default function App() {
       <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-center items-center font-sans p-6 text-center space-y-4">
         <span className="serif-title text-2xl font-light text-[#3B0019]">Hubo un inconveniente</span>
         <p className="text-xs text-[#78716C] max-w-sm">{error}</p>
-        <button onClick={() => loadData()} className="px-6 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Reintentar</button>
+        <button type="button" onClick={() => loadData()} className="px-6 py-2 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl">Reintentar</button>
       </div>
     );
   }
@@ -1728,7 +1736,7 @@ export default function App() {
       <div className="w-full min-h-screen bg-[#FDFBF7]">
         <div className="bg-[#5C0632] px-6 py-2.5 flex justify-between items-center text-white text-xs">
           <span>Sesión activa: {session.name} (Administrador)</span>
-          <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
+          <button type="button" onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
         <StaffPanelErrorBoundary>
           <Suspense fallback={<PanelLoadingFallback />}>
@@ -1744,7 +1752,7 @@ export default function App() {
       <div className="w-full min-h-screen bg-[#FDFBF7]">
         <div className="bg-[#5C0632] px-6 py-2.5 flex justify-between items-center text-white text-xs">
           <span>Sesión activa: {session.name} (Manicurista)</span>
-          <button onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
+          <button type="button" onClick={handleLogout} className="underline hover:text-[#EADEC9] font-bold">Cerrar Sesión</button>
         </div>
         <StaffPanelErrorBoundary>
           <Suspense fallback={<PanelLoadingFallback />}>
@@ -1772,17 +1780,18 @@ export default function App() {
             <a href="#services" className="hover:text-[#3B0019]">Servicios</a>
             {offers.length > 0 && <a href="#promos" className="hover:text-[#3B0019]">Ofertas</a>}
             {session && session.role === 'cliente' && (
-              <button onClick={() => setView('clientPortal')} className="hover:text-[#3B0019] text-xs font-semibold">Mi Portal</button>
+              <button type="button" onClick={() => setView('clientPortal')} className="hover:text-[#3B0019] text-xs font-semibold">Mi Portal</button>
             )}
           </div>
 
           {session ? (
             <div className="flex items-center gap-3">
               <span className="text-xs text-[#3B0019] font-semibold">Hola, {session.name}</span>
-              <button onClick={handleLogout} className="px-3.5 py-1.5 rounded-full border border-[#8E1B54] text-[#8E1B54] text-xs font-semibold hover:bg-[#8E1B54]/5">Cerrar Sesión</button>
+              <button type="button" onClick={handleLogout} className="px-3.5 py-1.5 rounded-full border border-[#8E1B54] text-[#8E1B54] text-xs font-semibold hover:bg-[#8E1B54]/5">Cerrar Sesión</button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => { setAuthError(null); setShowClientRegister(false); setClientPrivacyConsent(false); setLoginMode('client'); setIsLoginOpen(true); }}
               className="px-4 py-2 rounded-full border border-[#C3AD86] hover:bg-[#EADEC9]/20 text-[#5C0632] text-xs font-semibold transition-all"
             >
@@ -1837,7 +1846,7 @@ export default function App() {
                           ) : (
                             <FallbackAvatar className="w-5 h-5" />
                           )}
-                          <p className="text-xs text-[#78716C] font-light">Especialista: {appt.manicurist?.name || getManicuristName(appt.manicuristId)}</p>
+                          <p className="text-xs text-[#78716C] font-light">Manicurista: {appt.manicurist?.name || getManicuristName(appt.manicuristId)}</p>
                         </div>
                         {renderServiceDetailWithPrices(appt.services)}
                         {appt.total && (
@@ -1855,6 +1864,7 @@ export default function App() {
                           </div>
                           <div className="flex gap-2">
                             <button
+                              type="button"
                               onClick={() => {
                                 setEditingAppointmentId(appt.id);
                                 setNewDateInput(toDateLabel(appt.date));
@@ -1864,7 +1874,7 @@ export default function App() {
                             >
                               Modificar Horario
                             </button>
-                            <button onClick={() => handleCancelAppointment(appt.id)} className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-[10px] font-semibold transition-colors">
+                            <button type="button" onClick={() => handleCancelAppointment(appt.id)} className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-[10px] font-semibold transition-colors">
                               Cancelar Cita
                             </button>
                           </div>
@@ -1902,8 +1912,8 @@ export default function App() {
                               )
                             )}
                             <div className="flex gap-2 justify-end pt-1">
-                              <button onClick={() => setEditingAppointmentId(null)} className="px-2.5 py-1 border rounded text-[10px]">Cancelar</button>
-                              <button onClick={() => handleUpdateSchedule(appt.id)} disabled={isUpdatingSchedule || !newTimeInput} className="px-2.5 py-1 bg-[#8E1B54] text-white rounded text-[10px] font-bold disabled:opacity-50">
+                              <button type="button" onClick={() => setEditingAppointmentId(null)} className="px-2.5 py-1 border rounded text-[10px]">Cancelar</button>
+                              <button type="button" onClick={() => handleUpdateSchedule(appt.id)} disabled={isUpdatingSchedule || !newTimeInput} className="px-2.5 py-1 bg-[#8E1B54] text-white rounded text-[10px] font-bold disabled:opacity-50">
                                 {isUpdatingSchedule ? 'Guardando...' : 'Confirmar'}
                               </button>
                             </div>
@@ -1953,7 +1963,7 @@ export default function App() {
 
           {/* Acción rápida */}
           <div className="text-center pt-6">
-            <button onClick={() => { resetBooking(); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
+            <button type="button" onClick={() => { resetBooking(); setView('booking'); }} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl">
               Agendar Nueva Cita
             </button>
           </div>
@@ -2040,7 +2050,7 @@ export default function App() {
                     )}
                     <div className="flex gap-2 mt-4 pointer-events-auto">
                       {landingContent.images.map((_, idx) => (
-                        <button key={idx} onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }} className={`h-2 rounded-full transition-all cursor-pointer ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
+                        <button type="button" key={idx} onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }} className={`h-2 rounded-full transition-all cursor-pointer ${activeSlide === idx ? 'bg-[#8E1B54] w-6' : 'bg-white/40 w-2'}`} />
                       ))}
                     </div>
                   </motion.div>
@@ -2098,7 +2108,7 @@ export default function App() {
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-[#EADEC9]/20">
                         <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
-                        <button onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                        <button type="button" onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3 py-1 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                       </div>
                     </div>
                   </motion.div>
@@ -2107,7 +2117,7 @@ export default function App() {
             </div>
 
             <div className="text-center">
-              <button onClick={() => setView('servicesCatalog')} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl shadow-sm">
+              <button type="button" onClick={() => setView('servicesCatalog')} className="px-6 py-3 bg-[#5C0632] hover:bg-[#3B0019] text-white text-xs font-semibold rounded-xl shadow-sm">
                 Ver Todos los Servicios →
               </button>
             </div>
@@ -2125,7 +2135,7 @@ export default function App() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <button onClick={() => setView('landing')} className="text-xs text-[#A68F63] hover:text-[#5C0632] font-semibold mb-2 inline-block">← Volver al Inicio</button>
+              <button type="button" onClick={() => setView('landing')} className="text-xs text-[#A68F63] hover:text-[#5C0632] font-semibold mb-2 inline-block">← Volver al Inicio</button>
               <h1 className="serif-title text-3xl text-[#3B0019]">Carta de Rituales</h1>
               <p className="text-xs text-[#78716C] mt-1">Explora todos nuestros servicios premium de cuidado de uñas.</p>
             </div>
@@ -2178,7 +2188,7 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#EADEC9]/20">
                       <span className="text-sm font-bold text-[#8E1B54]">{formatPrice(s.price)}</span>
-                      <button onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
+                      <button type="button" onClick={() => { resetBooking(); setBookingGenderFilter(s.gender === 'HOMBRE' || s.gender === 'MUJER' || s.gender === 'NINOS' ? s.gender : 'TODOS'); setBookingCategoryFilter(s.category || ''); setSelectedServiceIds([String(s.id)]); setView('booking'); }} className="px-3.5 py-1.5 bg-[#5C0632]/5 text-[#5C0632] hover:bg-[#8E1B54] hover:text-white rounded-lg text-[10px] font-bold transition-all">Reservar</button>
                     </div>
                   </div>
                 </motion.div>
@@ -2197,7 +2207,7 @@ export default function App() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <aside className="hidden md:flex md:flex-col md:col-span-4 bg-[#5C0632]/5 border-r border-[#EADEC9]/30 md:p-8 md:sticky md:top-0 md:h-screen md:overflow-y-auto pt-8">
-            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
+            <button type="button" onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="mb-6 bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit">
               ← Volver
             </button>
             <div className="space-y-4 mb-6">
@@ -2221,8 +2231,8 @@ export default function App() {
                   )}
                   <div>
                     <h4 className="text-xs font-bold text-[#3B0019]">{activeSpecialistDetails.name}</h4>
-                    <p className="text-[10px] text-[#78716C]">{activeSpecialistDetails.age ? `${activeSpecialistDetails.age} años` : 'Especialista'}</p>
-                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Especialista'}</p>
+                    <p className="text-[10px] text-[#78716C]">{activeSpecialistDetails.age ? `${activeSpecialistDetails.age} años` : 'Manicurista'}</p>
+                    <p className="text-[9px] text-[#A68F63] font-medium">{activeSpecialistDetails.role || 'Manicurista'}</p>
                   </div>
                 </div>
               </div>
@@ -2285,10 +2295,10 @@ export default function App() {
                       {discountValidating ? '...' : 'Aplicar'}
                     </button>
                   </div>
-                  <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                  <button type="button" onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
                 </div>
               ) : (
-                <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline text-left">
+                <button type="button" onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline text-left">
                   ¿Tienes un codigo de descuento?
                 </button>
               )}
@@ -2305,14 +2315,14 @@ export default function App() {
                   <p className="font-bold text-base">Cita Agendada</p>
                   <p className="text-[#78716C]">Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
                   {!session && (
-                    <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                    <button type="button" onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
                       Ver mi cita
                     </button>
                   )}
                 </div>
               ) : selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime ? (
                 <p className="text-[10px] text-[#78716C] text-center py-3 border border-dashed border-[#EADEC9] rounded-xl bg-neutral-50/50">
-                  Completa servicios, especialista y fecha para continuar.
+                  Completa servicios, manicurista y fecha para continuar.
                 </p>
               ) : (
                 <div className="space-y-3">
@@ -2321,6 +2331,7 @@ export default function App() {
                       <p className="text-[10px] text-[#78716C]">Sesión activa: <strong>{session.name}</strong> ({session.phone})</p>
                       {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
                       <button
+                        type="button"
                         onClick={handleConfirmLoggedInBooking}
                         disabled={isSubmitting}
                         className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60"
@@ -2371,7 +2382,7 @@ export default function App() {
           </aside>
 
           <main className="md:col-span-8 p-6 md:p-12 space-y-10 pt-16 pb-24 md:pb-10">
-            <button onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
+            <button type="button" onClick={() => { resetBooking(); setView(session && session.role === 'cliente' ? 'clientPortal' : 'landing'); }} className="md:hidden bg-white border border-[#EADEC9]/50 px-4 py-2 rounded-xl text-xs font-semibold text-[#5C0632] shadow-sm hover:bg-[#5C0632]/5 transition-colors w-fit mb-4">
               ← Volver
             </button>
             {bookingStep === 'success' ? (
@@ -2436,7 +2447,7 @@ export default function App() {
               />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-end">
-                <button onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                <button type="button" onClick={() => setBookingWizardStep(2)} disabled={selectedServiceIds.length === 0} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
                   Siguiente: Fecha →
                 </button>
               </div>
@@ -2453,10 +2464,10 @@ export default function App() {
               />
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
-                <button onClick={() => setBookingWizardStep(1)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
+                <button type="button" onClick={() => setBookingWizardStep(1)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
                   ← Anterior
                 </button>
-                <button onClick={() => setBookingWizardStep(3)} disabled={!bookingDate} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                <button type="button" onClick={() => setBookingWizardStep(3)} disabled={!bookingDate} className="px-6 py-2.5 bg-[#5C0632] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
                   Siguiente: Manicurista →
                 </button>
               </div>
@@ -2510,10 +2521,10 @@ export default function App() {
               )}
               {/* Navegación wizard — mobile only */}
               <div className="md:hidden pt-4 flex justify-between">
-                <button onClick={() => setBookingWizardStep(2)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
+                <button type="button" onClick={() => setBookingWizardStep(2)} className="px-5 py-2.5 bg-white border border-[#EADEC9] text-[#5C0632] text-xs font-semibold rounded-xl">
                   ← Anterior
                 </button>
-                <button onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }} disabled={selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime} className="px-6 py-2.5 bg-[#8E1B54] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
+                <button type="button" onClick={() => { if (selectedServiceIds.length > 0) { setBookingStep('selection'); setIsBookingOpen(true); } }} disabled={selectedServiceIds.length === 0 || !selectedSpecialist || !bookingDate || !bookingTime} className="px-6 py-2.5 bg-[#8E1B54] disabled:bg-neutral-300 text-white text-xs font-semibold rounded-xl">
                   Revisar y Confirmar
                 </button>
               </div>
@@ -2526,8 +2537,8 @@ export default function App() {
           {/* Zoom avatar modal */}
           {zoomedAvatar && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setZoomedAvatar(null)}>
-              <img src={zoomedAvatar} alt="Especialista" className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
-              <button onClick={() => setZoomedAvatar(null)} className="absolute top-4 right-4 text-white text-2xl font-bold">✕</button>
+              <img src={zoomedAvatar} alt="Manicurista" className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl" />
+              <button type="button" onClick={() => setZoomedAvatar(null)} className="absolute top-4 right-4 text-white text-2xl font-bold">✕</button>
             </div>
           )}
 
@@ -2623,10 +2634,10 @@ export default function App() {
                           <input type="text" placeholder="Codigo de descuento" value={discountCode} onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPercent(null); setDiscountTitle(null); setDiscountError(null); }} className="flex-1 p-2.5 border rounded-xl text-xs uppercase" />
                           <button type="button" onClick={handleValidateDiscount} disabled={discountValidating || !discountCode.trim()} className="px-3 py-2.5 bg-[#A68F63] text-white text-xs font-semibold rounded-xl disabled:opacity-50">{discountValidating ? '...' : 'Aplicar'}</button>
                         </div>
-                        <button onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
+                        <button type="button" onClick={() => setShowDiscount(false)} className="text-[9px] text-[#A68F63] underline">Cancelar</button>
                       </div>
                     ) : (
-                      <button onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                      <button type="button" onClick={() => setShowDiscount(true)} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
                         ¿Tienes un codigo de descuento?
                       </button>
                     )}
@@ -2639,7 +2650,7 @@ export default function App() {
                     <div className="space-y-3 text-xs">
                       <p>Sesión activa: <strong>{session.name}</strong></p>
                       {submitError && <p className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">{submitError}</p>}
-                      <button onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
+                      <button type="button" onClick={handleConfirmLoggedInBooking} disabled={isSubmitting} className="w-full py-3 bg-[#8E1B54] text-white text-xs font-semibold rounded-xl disabled:opacity-60">
                         {isSubmitting ? 'Procesando...' : 'Confirmar Reserva'}
                       </button>
                     </div>
@@ -2676,7 +2687,7 @@ export default function App() {
                     <p className="font-bold text-base">¡Cita Agendada!</p>
                     <p>Reserva #{createdAppointment?.appointmentId || createdAppointment?.id} creada. Redirigiendo a WhatsApp...</p>
                     {!session && (
-                      <button onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
+                      <button type="button" onClick={handleViewMyAppointment} className="text-[10px] text-[#A68F63] hover:text-[#8E1B54] font-semibold underline">
                         Ver mi cita
                       </button>
                     )}
@@ -2775,6 +2786,7 @@ export default function App() {
 
             <div className="pt-3 border-t border-[#EADEC9]/20 text-center">
               <button
+                type="button"
                 onClick={() => {
                   setAuthError(null);
                   setLoginMode(loginMode === 'client' ? 'staff' : 'client');
@@ -2818,9 +2830,9 @@ export default function App() {
         <p className="text-[10px] text-[#78716C]">Lunes a Viernes: 9:00 AM - 8:00 PM • Sábado y Domingo: 9:00 AM - 7:00 PM</p>
         <a href="https://www.instagram.com/wine.spa" target="_blank" rel="noopener noreferrer" className="inline-block text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">@wine.spa</a>
         <div className="flex justify-center gap-4 pt-1">
-          <button onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
-          <button onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
-          <button onClick={() => setView('cancellation')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Cancelación</button>
+          <button type="button" onClick={() => setView('terms')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Términos y Condiciones</button>
+          <button type="button" onClick={() => setView('privacy')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Privacidad</button>
+          <button type="button" onClick={() => setView('cancellation')} className="text-[10px] text-[#A68F63] hover:text-[#5C0632] hover:underline">Política de Cancelación</button>
         </div>
         <p className="text-[10px] text-[#78716C]/80 max-w-md mx-auto pt-1">
           Tus datos personales son tratados por WineSpa SAS conforme a la Ley 1581 de 2012, únicamente para gestionar tu cuenta y tus citas.

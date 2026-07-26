@@ -7,7 +7,7 @@ interface LegalSection {
 
 const LegalPageLayout: React.FC<{ title: string; updated: string; sections: LegalSection[]; onBack: () => void }> = ({ title, updated, sections, onBack }) => (
   <div className="max-w-3xl mx-auto px-6 py-12 flex-1 w-full animate-fade-in text-left">
-    <button onClick={onBack} className="mb-8 text-xs font-semibold text-[#8E1B54] hover:underline">‹ Volver</button>
+    <button type="button" onClick={onBack} className="mb-8 text-xs font-semibold text-[#8E1B54] hover:underline">‹ Volver</button>
     <h1 className="serif-title text-3xl text-[#3B0019] mb-1">{title}</h1>
     <p className="text-[10px] text-[#A68F63] uppercase tracking-wider font-semibold mb-8">Ultima actualizacion: {updated}</p>
     <div className="space-y-8">
@@ -20,7 +20,6 @@ const LegalPageLayout: React.FC<{ title: string; updated: string; sections: Lega
     </div>
   </div>
 );
-
 export const TerminosCondiciones: React.FC<{ onBack: () => void }> = ({ onBack }) => (
   <LegalPageLayout
     title="Terminos y Condiciones"
@@ -31,7 +30,7 @@ export const TerminosCondiciones: React.FC<{ onBack: () => void }> = ({ onBack }
         heading: '1. Objeto y Alcance',
         body: `Los presentes Terminos y Condiciones regulan el acceso y uso de la plataforma digital WineSpa (en adelante, "la Plataforma"), operada por WineSpa SAS, con domicilio principal en la ciudad de Medellin, Colombia.
 
-La Plataforma tiene como finalidad permitir a los usuarios (en adelante, "Clientes") consultar el catalogo de servicios de manicura, pedicura y nail art ofrecidos por profesionales independientes (en adelante, "Especialistas") que prestan sus servicios en el local de WineSpa, asi como agendar, reprogramar y cancelar citas de manera autogestionada.
+La Plataforma tiene como finalidad permitir a los usuarios (en adelante, "Clientes") consultar el catalogo de servicios de manicura, pedicura y nail art ofrecidos por profesionales independientes (en adelante, "Manicuristas") que prestan sus servicios en el local de WineSpa, asi como agendar, reprogramar y cancelar citas de manera autogestionada.
 
 El acceso y uso de la Plataforma implica la aceptacion integra e incondicional de estos Terminos y Condiciones. Si el Cliente no esta de acuerdo con los mismos, debera abstenerse de utilizar la Plataforma.`
       },
@@ -49,7 +48,7 @@ WineSpa se reserva el derecho de suspender o cancelar la cuenta de cualquier Cli
       },
       {
         heading: '3. Servicios, Precios y Pagos',
-        body: `Los servicios ofrecidos a traves de la Plataforma son prestados por Especialistas en las instalaciones fisicas del local de WineSpa. Los precios publicados en el catalogo estan expresados en pesos colombianos (COP) e incluyen todos los impuestos aplicables, salvo indicacion expresa en contrario.
+        body: `Los servicios ofrecidos a traves de la Plataforma son prestados por Manicuristas en las instalaciones fisicas del local de WineSpa. Los precios publicados en el catalogo estan expresados en pesos colombianos (COP) e incluyen todos los impuestos aplicables, salvo indicacion expresa en contrario.
 
 WineSpa se reserva el derecho de modificar los precios, descripciones y disponibilidad de los servicios en cualquier momento sin previo aviso. Los cambios no afectaran las citas ya confirmadas.
 
@@ -59,11 +58,11 @@ Los codigos de descuento y ofertas especiales tienen vigencia limitada, estan su
       },
       {
         heading: '4. Responsabilidad y Garantias',
-        body: `WineSpa actua como intermediario tecnologico entre el Cliente y las Especialistas, facilitando el agendamiento de citas. Los servicios de manicura, pedicura y nail art son ejecutados directamente por las Especialistas, quienes son responsables de la calidad y seguridad de los mismos.
+        body: `WineSpa actua como intermediario tecnologico entre el Cliente y las Manicuristas, facilitando el agendamiento de citas. Los servicios de manicura, pedicura y nail art son ejecutados directamente por las Manicuristas, quienes son responsables de la calidad y seguridad de los mismos.
 
 WineSpa no garantiza la disponibilidad ininterrumpida de la Plataforma y no sera responsable por interrupciones temporales del servicio derivadas de mantenimiento, fallas tecnicas, caso fortuito o fuerza mayor.
 
-El Cliente reconoce que los resultados de los tratamientos de uñas pueden variar segun factores individuales como el estado de la uña natural, el cuidado posterior y los habitos del Cliente. WineSpa y sus Especialistas no garantizan una duracion especifica del esmaltado o tratamiento.
+El Cliente reconoce que los resultados de los tratamientos de uñas pueden variar segun factores individuales como el estado de la uña natural, el cuidado posterior y los habitos del Cliente. WineSpa y sus Manicuristas no garantizan una duracion especifica del esmaltado o tratamiento.
 
 La responsabilidad de WineSpa frente a cualquier reclamacion se limitara, en todos los casos, al valor del servicio contratado.`
       },
@@ -178,7 +177,7 @@ La cancelacion de una cita no genera derecho a reembolso de servicios ya prestad
         heading: '2. Reprogramacion de Citas',
         body: `El Cliente podra reprogramar su cita sin costo adicional siempre que lo haga con una antelacion minima de cuatro (4) horas respecto a la hora originalmente programada y exista disponibilidad en el nuevo horario solicitado.
 
-La reprogramacion esta sujeta a la disponibilidad de la Especialista seleccionada. Si la Especialista original no esta disponible en el nuevo horario, el Cliente podra elegir otra Especialista disponible, conservando los mismos servicios contratados.
+La reprogramacion esta sujeta a la disponibilidad de la Manicurista seleccionada. Si la Manicurista original no esta disponible en el nuevo horario, el Cliente podra elegir otra Manicurista disponible, conservando los mismos servicios contratados.
 
 En caso de que el Cliente desee reprogramar con menos de cuatro (4) horas de antelacion, la solicitud estara sujeta a la politica de cancelacion tardia descrita en el punto anterior y se requerira contacto directo con el local.`
       },
@@ -186,7 +185,7 @@ En caso de que el Cliente desee reprogramar con menos de cuatro (4) horas de ant
         heading: '3. Cancelacion o Reprogramacion por Parte de WineSpa',
         body: `WineSpa se reserva el derecho de cancelar o reprogramar una cita en las siguientes circunstancias:
 
-- Ausencia imprevista de la Especialista asignada por enfermedad, calamidad domestica o fuerza mayor.
+- Ausencia imprevista de la Manicurista asignada por enfermedad, calamidad domestica o fuerza mayor.
 - Cierre temporal o emergencia en el local.
 - Fallas en los servicios publicos esenciales que impidan la prestacion adecuada del servicio (agua, energia electrica).
 - Identificacion de un error en el sistema de agendamiento que haya generado una sobreventa de cupos.
@@ -203,7 +202,7 @@ Los Clientes que incurran en no-show podran estar sujetos a las siguientes medid
 - Segunda ocurrencia: penalidad del cincuenta por ciento (50%) del valor del servicio contratado.
 - Tercera ocurrencia: restriccion temporal de la cuenta para nuevos agendamientos, sujeta a revision.
 
-En cuanto a los retrasos, se concede una tolerancia maxima de diez (10) minutos sobre la hora programada. Transcurrido este margen sin que el Cliente se haya presentado, la cita se considerara no-show y la Especialista podra ser asignada a otro Cliente en espera. Si el Cliente llega con retraso dentro del margen de tolerancia, el servicio se prestara por el tiempo restante de la sesion, sin que ello implique una reduccion en el precio del servicio.`
+En cuanto a los retrasos, se concede una tolerancia maxima de diez (10) minutos sobre la hora programada. Transcurrido este margen sin que el Cliente se haya presentado, la cita se considerara no-show y la Manicurista podra ser asignada a otro Cliente en espera. Si el Cliente llega con retraso dentro del margen de tolerancia, el servicio se prestara por el tiempo restante de la sesion, sin que ello implique una reduccion en el precio del servicio.`
       },
       {
         heading: '5. Reembolsos',
