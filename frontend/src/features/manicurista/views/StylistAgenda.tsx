@@ -40,6 +40,8 @@ interface OperationalSummary {
   monthHours: number;
 }
 
+const DEFAULT_SHIFT: ShiftInfo = { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
+
 export const StylistAgenda: React.FC = () => {
   // Estado Móvil: 'calendar' | 'profile'
   const [activeMobileTab, setActiveMobileTab] = useState<'calendar' | 'profile'>('calendar');
@@ -96,6 +98,9 @@ export const StylistAgenda: React.FC = () => {
       delete cacheRef.current[cacheKey];
     }
 
+    // Stale-while-revalidate a proposito: un hit de cache pinta al toque
+    // (sin flicker de loading) pero igual sigue abajo y refresca en la red,
+    // no corta con un return temprano.
     if (!forceRefresh && cacheRef.current[cacheKey]) {
       const cached = cacheRef.current[cacheKey];
       setAppointments(cached.appointments);
@@ -135,7 +140,7 @@ export const StylistAgenda: React.FC = () => {
           apptsData = resData;
         } else {
           apptsData = resData.appointments || [];
-          shiftData = resData.shift || { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
+          shiftData = resData.shift || DEFAULT_SHIFT;
           summaryData = resData.summary || null;
         }
       } else {
@@ -143,7 +148,7 @@ export const StylistAgenda: React.FC = () => {
       }
 
       if (!shiftData) {
-        shiftData = { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
+        shiftData = DEFAULT_SHIFT;
       }
 
       // CÓMPUTO DINÁMICO GARANTIZADO DE MÉTRICAS OPERATIVAS
@@ -406,6 +411,7 @@ export const StylistAgenda: React.FC = () => {
           return (
             <motion.button
               key={t.id}
+              type="button"
               onClick={() => setActiveMobileTab(t.id as 'calendar' | 'profile')}
               className={`relative isolate flex-1 py-3 text-xs font-semibold rounded-xl transition-colors duration-250 cursor-pointer ${
                 isActive ? 'text-white' : 'text-[#78716C]'

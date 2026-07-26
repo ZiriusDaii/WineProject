@@ -79,19 +79,41 @@ export async function getManicuristDashboard(
       return;
     }
 
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        manicuristId: effectiveManicuristId,
-        date: dateFilter,
-      },
-      include: {
-        client: { select: { id: true, name: true, phone: true } },
-        services: true,
-      },
-      orderBy: { date: "asc" },
-    });
-
     const now = new Date();
+
+    // Calcular el turno asignado (rotativo o con excepcion) para la semana actual
+    const targetYear = year ? Number(year) : now.getFullYear();
+    const targetMonth = month ? Number(month) : (now.getMonth() + 1);
+    const refDate = date ? new Date(date) : new Date(targetYear, targetMonth - 1, 1);
+    const { week: weekNum, year: yearNum } = getISOWeek(refDate);
+
+    // Las citas y el turno de la manicurista no dependen entre si -- se piden
+    // en paralelo para no pagar la latencia de ambas en serie.
+    const [appointments, manicuristUser] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          manicuristId: effectiveManicuristId,
+          date: dateFilter,
+        },
+        include: {
+          client: { select: { id: true, name: true, phone: true } },
+          services: true,
+        },
+        orderBy: { date: "asc" },
+      }),
+      prisma.user.findUnique({
+        where: { id: effectiveManicuristId },
+        include: {
+          defaultShift: true,
+          rotationShift1: true,
+          rotationShift2: true,
+          schedules: {
+            where: { weekNumber: weekNum, year: yearNum },
+            include: { shiftTemplate: true },
+          },
+        },
+      }),
+    ]);
 
     const mapped = appointments.map((appt) => {
       const appointmentDate = new Date(appt.date);
@@ -104,25 +126,6 @@ export async function getManicuristDashboard(
       }
 
       return appt;
-    });
-
-    // Calcular el turno asignado (rotativo o con excepcion) para la semana actual
-    const targetYear = year ? Number(year) : now.getFullYear();
-    const targetMonth = month ? Number(month) : (now.getMonth() + 1);
-    const refDate = date ? new Date(date) : new Date(targetYear, targetMonth - 1, 1);
-    const { week: weekNum, year: yearNum } = getISOWeek(refDate);
-
-    const manicuristUser = await prisma.user.findUnique({
-      where: { id: effectiveManicuristId },
-      include: {
-        defaultShift: true,
-        rotationShift1: true,
-        rotationShift2: true,
-        schedules: {
-          where: { weekNumber: weekNum, year: yearNum },
-          include: { shiftTemplate: true },
-        },
-      },
     });
 
     let currentShift = null;
