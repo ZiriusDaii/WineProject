@@ -79,6 +79,7 @@ export const StylistAgenda: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [agendaError, setAgendaError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -87,7 +88,6 @@ export const StylistAgenda: React.FC = () => {
 
   const agendaRequestRef = useRef(0);
   const cacheRef = useRef<Record<string, { appointments: Appointment[]; shift: ShiftInfo | null; summary: OperationalSummary | null }>>({});
-
   const fetchAgendaData = async (forceRefresh = false) => {
     const requestId = ++agendaRequestRef.current;
     const cacheKey = `${stylistId}-${selectedYear}-${selectedMonth}`;
@@ -103,7 +103,7 @@ export const StylistAgenda: React.FC = () => {
       setSummaryMetrics(cached.summary);
       setLoading(false);
       setHasLoadedOnce(true);
-    } else if (!hasLoadedOnce) {
+    } else {
       setLoading(true);
     }
 
@@ -126,27 +126,20 @@ export const StylistAgenda: React.FC = () => {
       let shiftData: ShiftInfo | null = null;
       let summaryData: OperationalSummary | null = null;
 
-      try {
-        const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
-        });
-        if (apptsRes.ok) {
-          const resData = await apptsRes.json();
-          if (Array.isArray(resData)) {
-            apptsData = resData;
-          } else {
-            apptsData = resData.appointments || [];
-            shiftData = resData.shift || { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
-            summaryData = resData.summary || null;
-          }
+      const apptsRes = await fetch(`${API_URL}/api/manicurist/appointments?manicuristId=${stylistId}&month=${selectedMonth}&year=${selectedYear}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('winespa_token')}` },
+      });
+      if (apptsRes.ok) {
+        const resData = await apptsRes.json();
+        if (Array.isArray(resData)) {
+          apptsData = resData;
+        } else {
+          apptsData = resData.appointments || [];
+          shiftData = resData.shift || { id: 'default', name: 'Turno General', startTime: '08:00', endTime: '16:00' };
+          summaryData = resData.summary || null;
         }
-      } catch {
-        const mockPrefix = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-        apptsData = [
-          { id: '1', appointmentId: 'WS-101', client: { name: 'Martha Cecilia Gómez' }, manicuristId: stylistId, services: [{ id: '1', name: 'Manicure Tradicional', price: 15, durationInMinutes: 45 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T09:00:00.000Z`, total: 35000, status: 'CONFIRMED' },
-          { id: '2', appointmentId: 'WS-102', client: { name: 'Diana Uribe' }, manicuristId: stylistId, services: [{ id: '2', name: 'Manicure Semipermanente', price: 25, durationInMinutes: 60 }], date: `${mockPrefix}-${today.getDate().toString().padStart(2, '0')}T11:00:00.000Z`, total: 45000, status: 'IN_PROGRESS' },
-        ];
-        shiftData = { id: '1', name: 'Turno Mañana', startTime: '08:00', endTime: '16:00' };
+      } else {
+        throw new Error('No se pudieron cargar las citas.');
       }
 
       if (!shiftData) {
@@ -157,8 +150,8 @@ export const StylistAgenda: React.FC = () => {
       const todayISO = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
       const activeAppts = apptsData.filter(a => a.status !== 'CANCELLED');
       const todayAppts = activeAppts.filter(a => a.date.slice(0, 10) === todayISO);
-      
-      const isFulfilled = (a: Appointment) => a.status === 'COMPLETED' || a.status === 'IN_PROGRESS' || new Date(a.date) <= new Date();
+
+      const isFulfilled = (a: Appointment) => a.status === 'COMPLETED';
 
       const todayCompletedAppts = todayAppts.filter(isFulfilled);
       const todayMinutes = todayCompletedAppts.reduce((sum, a) => {
@@ -192,9 +185,12 @@ export const StylistAgenda: React.FC = () => {
       setAppointments(apptsData);
       setAssignedShift(shiftData);
       setSummaryMetrics(finalSummary);
+      setAgendaError(null);
 
     } catch {
-      // Ignorar fallos de conexión
+      if (requestId === agendaRequestRef.current) {
+        setAgendaError('No se pudieron cargar tus citas. Intenta de nuevo en unos segundos.');
+      }
     } finally {
       if (requestId === agendaRequestRef.current) {
         setLoading(false);
@@ -440,6 +436,9 @@ export const StylistAgenda: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
+          {agendaError && (
+            <p className="text-[10px] text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-150">{agendaError}</p>
+          )}
           <div className="bg-white border border-[#EADEC9]/40 rounded-2xl p-6 shadow-xs text-left">
             <div className="flex items-center justify-between border-b border-[#EADEC9]/25 pb-2 mb-4">
               <button type="button" onClick={goToPreviousMonth} disabled={loading} className="w-7 h-7 rounded-full bg-[#EADEC9]/20 text-[#5C0632] text-xs hover:bg-[#EADEC9]/40 disabled:opacity-40">‹</button>

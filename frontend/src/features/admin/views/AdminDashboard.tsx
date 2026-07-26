@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FallbackAvatar } from '../../../App';
 import { DatePicker } from '../../../components/DatePicker';
@@ -717,12 +717,18 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // --- Turnos ---
+  const scheduleRequestRef = useRef(0);
   const fetchWeekSchedule = async () => {
+    // Varios disparadores independientes (cambio de semana, intervalo de 60s,
+    // guardados) pueden pisarse entre si si una respuesta vieja llega despues
+    // de una mas nueva -- se descarta si ya no es la ultima solicitada.
+    const requestId = ++scheduleRequestRef.current;
     try {
       const res = await fetch(`${API}/api/admin/manicurist-schedule?week=${scheduleWeek}&year=${scheduleYear}`, { headers: authHeaders() });
+      if (requestId !== scheduleRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
-        setWeekSchedule(data || []);
+        if (requestId === scheduleRequestRef.current) setWeekSchedule(data || []);
       }
     } catch { /* */ }
   };

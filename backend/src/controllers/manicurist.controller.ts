@@ -1,7 +1,17 @@
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
-import { getISOWeek } from "../lib/week.js";
+import { getISOWeek, isoWeekStart } from "../lib/week.js";
+
+// toISOString()/slice(0,10) es siempre UTC; Colombia es UTC-5 sin horario de
+// verano, asi que despues de las 7pm local la fecha UTC ya cayo en "manana".
+// Se compara por componentes locales para no perder citas de la noche.
+function toLocalDateStr(value: Date | string): string {
+  const d = value instanceof Date ? value : new Date(value);
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 
 export async function getManicuristDashboard(
   req: AuthRequest,
@@ -13,34 +23,44 @@ export async function getManicuristDashboard(
       year?: string;
       date?: string;
     };
-    
-    let effectiveManicuristId: string | undefined = undefined;
+
+    let effectiveManicuristId: string;
 
     if (req.user?.role === "MANICURISTA") {
       effectiveManicuristId = req.user.userId;
     } else {
-      effectiveManicuristId = (req.query.manicuristId as string);
-    }
+      const requested = req.query.manicuristId;
+      if (typeof requested !== "string" || !requested.trim()) {
+        res.status(400).json({ error: "El parametro 'manicuristId' es requerido" });
+        return;
+      }
+      effectiveManicuristId = requested.trim();
 
-    if (!effectiveManicuristId || effectiveManicuristId === "1" || effectiveManicuristId === "undefined") {
-      const firstManicurist = await prisma.user.findFirst({ where: { role: "MANICURISTA" } });
-      if (firstManicurist) {
-        effectiveManicuristId = firstManicurist.id;
+      const target = await prisma.user.findFirst({
+        where: { id: effectiveManicuristId, role: "MANICURISTA" },
+        select: { id: true },
+      });
+      if (!target) {
+        res.status(404).json({ error: "Manicurista no encontrada" });
+        return;
       }
     }
 
-    if (!effectiveManicuristId) {
-      res.status(400).json({ error: "El parametro 'manicuristId' es requerido" });
-      return;
-    }
-
     let dateFilter: { gte: Date; lte: Date };
+    // Solo se llena en modo 'date': el rango de dateFilter es un solo dia, asi
+    // que las metricas "monthXxx" necesitan su propia consulta con alcance real
+    // de mes (si no, "monthTotal" terminaba siendo igual a "todayTotal").
+    let monthDateFilterForDateMode: { gte: Date; lte: Date } | null = null;
 
     if (date) {
       const d = new Date(date as string);
       const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
       dateFilter = { gte: startOfDay, lte: endOfDay };
+      monthDateFilterForDateMode = {
+        gte: new Date(d.getFullYear(), d.getMonth(), 1),
+        lte: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
     } else if (month && year) {
       const m = Number(month);
       const y = Number(year);
@@ -113,7 +133,12 @@ export async function getManicuristDashboard(
         } else {
           const anchorW = manicuristUser.anchorWeek ?? 1;
           const anchorY = manicuristUser.anchorYear ?? 2026;
-          const deltaWeeks = (yearNum - anchorY) * 52 + (weekNum - anchorW);
+          // Diferencia en semanas reales entre fechas (no *52), para no perder
+          // la paridad de la rotacion en anios ISO de 53 semanas (ej. 2026).
+          const deltaWeeks = Math.round(
+            (isoWeekStart(yearNum, weekNum).getTime() - isoWeekStart(anchorY, anchorW).getTime()) /
+              (7 * 24 * 60 * 60 * 1000),
+          );
           const cycleIndex = Math.abs(deltaWeeks) % 2;
           currentShift = cycleIndex === 0 ? manicuristUser.rotationShift1 : manicuristUser.rotationShift2;
         }
@@ -130,8 +155,8 @@ export async function getManicuristDashboard(
     }
 
     // Calcular resumen diario y mensual de citas / horas
-    const todayISO = now.toISOString().slice(0, 10);
-    const getISODateStr = (d: any) => typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10);
+    const todayISO = toLocalDateStr(now);
+    const getISODateStr = toLocalDateStr;
 
     const isCompletedOrPast = (a: any) => {
       if (a.status === "CANCELLED") return false;
@@ -144,7 +169,12 @@ export async function getManicuristDashboard(
     const todayCompleted = todayAppts.filter(isCompletedOrPast);
     const todayMinutes = todayCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
 
-    const monthAppts = mapped.filter((a) => a.status !== "CANCELLED");
+    const monthSource = monthDateFilterForDateMode
+      ? await prisma.appointment.findMany({
+          where: { manicuristId: effectiveManicuristId, date: monthDateFilterForDateMode },
+        })
+      : appointments;
+    const monthAppts = monthSource.filter((a) => a.status !== "CANCELLED");
     const monthCompleted = monthAppts.filter(isCompletedOrPast);
     const monthMinutes = monthCompleted.reduce((acc, a) => acc + (a.totalDuration || 60), 0);
 
@@ -197,19 +227,34 @@ export async function startAppointment(
       return;
     }
 
-    const apptDate = new Date(existing.date);
-    const now = new Date();
-    const apptDayStr = apptDate.toISOString().slice(0, 10);
-    const todayStr = now.toISOString().slice(0, 10);
+    if (existing.status === "COMPLETED" || existing.status === "CANCELLED") {
+      res.status(409).json({ error: "La cita ya fue finalizada o cancelada" });
+      return;
+    }
+
+    const apptDayStr = toLocalDateStr(existing.date);
+    const todayStr = toLocalDateStr(new Date());
 
     if (apptDayStr > todayStr) {
       res.status(400).json({ error: "No se puede iniciar una cita programada para una fecha futura" });
       return;
     }
 
-    const updated = await prisma.appointment.update({
-      where: { id },
+    // updateMany con filtro de estado en el where: si otra request concurrente
+    // ya movio la cita a COMPLETED/CANCELLED entre el findUnique y aca, esta
+    // no la reabre.
+    const { count } = await prisma.appointment.updateMany({
+      where: { id, status: { in: ["PENDING", "IN_PROGRESS"] } },
       data: { status: "IN_PROGRESS" },
+    });
+
+    if (count === 0) {
+      res.status(409).json({ error: "La cita ya fue finalizada o cancelada" });
+      return;
+    }
+
+    const updated = await prisma.appointment.findUnique({
+      where: { id },
       include: {
         client: { select: { id: true, name: true, phone: true } },
         manicurist: { select: { id: true, name: true } },
