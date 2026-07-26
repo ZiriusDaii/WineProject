@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
-import { getISOWeek } from "../lib/week.js";
+import { getISOWeek, isoWeekStart } from "../lib/week.js";
 import { normalizePhone, isValidPhone, phoneIsTaken } from "./client.controller.js";
 
 const ALLOWED_SERVICE_GENDERS = ["MUJER", "HOMBRE", "NINOS", "UNISEX"];
@@ -1102,7 +1102,13 @@ export async function getManicuristScheduleWeek(
       } else {
         const anchorW = m.anchorWeek ?? 1;
         const anchorY = m.anchorYear ?? 2026;
-        const deltaWeeks = (year - anchorY) * 52 + (week - anchorW);
+        // Misma formula que getManicuristDashboard (manicurist.controller.ts):
+        // semanas reales entre fechas, no *52, para no perder la paridad de la
+        // rotacion en anios ISO de 53 semanas (ej. 2026).
+        const deltaWeeks = Math.round(
+          (isoWeekStart(year, week).getTime() - isoWeekStart(anchorY, anchorW).getTime()) /
+            (7 * 24 * 60 * 60 * 1000),
+        );
         const cycleIndex = Math.abs(deltaWeeks) % 2;
         computedShift = cycleIndex === 0 ? m.rotationShift1 : m.rotationShift2;
       }

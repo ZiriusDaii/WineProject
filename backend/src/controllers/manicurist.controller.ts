@@ -53,13 +53,19 @@ export async function getManicuristDashboard(
     let monthDateFilterForDateMode: { gte: Date; lte: Date } | null = null;
 
     if (date) {
-      const d = new Date(date as string);
-      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      // "YYYY-MM-DD" se parsea como medianoche UTC; leer los componentes con
+      // getters locales (como antes) corria el dia hacia atras en UTC-5. Se
+      // parsean los numeros directo del string, sin pasar por Date primero.
+      const [dyRaw, dmRaw, ddRaw] = (date as string).split("-").map(Number);
+      const dy = dyRaw ?? 1970;
+      const dm = dmRaw ?? 1;
+      const dd = ddRaw ?? 1;
+      const startOfDay = new Date(dy, dm - 1, dd);
+      const endOfDay = new Date(dy, dm - 1, dd, 23, 59, 59, 999);
       dateFilter = { gte: startOfDay, lte: endOfDay };
       monthDateFilterForDateMode = {
-        gte: new Date(d.getFullYear(), d.getMonth(), 1),
-        lte: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
+        gte: new Date(dy, dm - 1, 1),
+        lte: new Date(dy, dm, 0, 23, 59, 59, 999),
       };
     } else if (month && year) {
       const m = Number(month);

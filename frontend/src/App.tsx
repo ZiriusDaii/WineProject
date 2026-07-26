@@ -1592,7 +1592,7 @@ export default function App() {
 
         const appointmentId = apptData.appointmentId || apptData.id || 'WS-TEMP';
         const total = apptData.total || apptData.price || calculateManualTotal();
-        const specialistName = manicurists.find(m => String(m.id) === String(selectedSpecialist))?.name || 'Profesional';
+        const specialistName = manicurists.find(m => String(m.id) === String(selectedSpecialist))?.name || 'Manicurista';
         const serviceNames = services
           .filter(s => selectedServiceIds.includes(String(s.id)))
           .map(s => s.name)

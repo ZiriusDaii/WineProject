@@ -429,7 +429,7 @@ export const AdminDashboard: React.FC = () => {
       else if (activeTab === 'schedule') fetchShiftModule();
     }, 60000);
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, [activeTab, scheduleWeek, scheduleYear]);
 
   useEffect(() => {
     if (activeTab === 'metrics') {
@@ -1039,7 +1039,7 @@ export const AdminDashboard: React.FC = () => {
     }
     const maxPage = Math.max(1, Math.ceil(total / itemsPerPage));
     if (currentPage > maxPage) setCurrentPage(maxPage);
-  }, [activeTab, filteredApps, clients, offers, manicurists, servicesCatalog, searchQuery, currentPage]);
+  }, [activeTab, filteredApps, clients, offers, manicurists, servicesCatalog, weekSchedule, searchQuery, currentPage]);
   const priceFmt = (val: any) => {
     if (val === undefined || val === null || val === '') return '$0';
     const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
