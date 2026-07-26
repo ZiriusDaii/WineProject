@@ -1069,6 +1069,7 @@ export default function App() {
       if (requestId !== clientAppointmentsRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== clientAppointmentsRequestRef.current) return;
         setClientAppointments(data);
       } else if (res.status === 401) {
         // Token vencido/invalido: la sesion quedaba "activa" en pantalla pero
@@ -1076,6 +1077,7 @@ export default function App() {
         handleLogout();
       }
     } catch {
+      if (requestId !== clientAppointmentsRequestRef.current) return;
       setClientAppointments([]);
     }
   };
