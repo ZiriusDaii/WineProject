@@ -71,11 +71,21 @@ async function seedUser(
 ) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.upsert({
-    where: { phone },
-    update: { name, role: { set: role }, username, password: hashedPassword },
-    create: { phone, name, role, username, password: hashedPassword },
+  const existing = await prisma.user.findFirst({
+    where: { OR: [{ username }, { phone }] },
   });
+
+  let user;
+  if (existing) {
+    user = await prisma.user.update({
+      where: { id: existing.id },
+      data: { phone, name, role: { set: role }, username, password: hashedPassword },
+    });
+  } else {
+    user = await prisma.user.create({
+      data: { phone, name, role, username, password: hashedPassword },
+    });
+  }
 
   console.log(`  User upserted: ${name} - ${username} (${role})`);
   return user;

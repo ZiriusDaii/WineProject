@@ -27,8 +27,13 @@ export async function loginStaff(
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username },
+          { phone: username },
+        ],
+      },
       select: {
         id: true,
         username: true,
