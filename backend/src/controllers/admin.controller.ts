@@ -872,6 +872,28 @@ export async function getServiceCategories(
   res: Response,
 ): Promise<void> {
   try {
+    const services = await prisma.service.findMany({
+      where: { category: { not: null } },
+      select: { category: true },
+    });
+    const categoryNamesInServices = Array.from(
+      new Set(
+        services
+          .map((s) => s.category?.trim())
+          .filter((cat): cat is string => Boolean(cat))
+      )
+    );
+
+    for (const name of categoryNamesInServices) {
+      if (name) {
+        await prisma.serviceCategory.upsert({
+          where: { name },
+          update: {},
+          create: { name },
+        });
+      }
+    }
+
     const categories = await prisma.serviceCategory.findMany({
       orderBy: { name: "asc" },
     });
@@ -920,8 +942,14 @@ export async function updateServiceCategory(
       res.status(400).json({ error: "El campo name es requerido" });
       return;
     }
+    const existing = await prisma.serviceCategory.findUnique({ where: { id: id! } });
+    if (!existing) {
+      res.status(404).json({ error: "Categoria no encontrada" });
+      return;
+    }
+    const newName = name.trim();
     const dup = await prisma.serviceCategory.findFirst({
-      where: { name: name.trim(), id: { not: id! } },
+      where: { name: newName, id: { not: id! } },
     });
     if (dup) {
       res.status(409).json({ error: "Ya existe una categoria con ese nombre" });
@@ -929,7 +957,11 @@ export async function updateServiceCategory(
     }
     const updated = await prisma.serviceCategory.update({
       where: { id: id! },
-      data: { name: name.trim() },
+      data: { name: newName },
+    });
+    await prisma.service.updateMany({
+      where: { category: existing.name },
+      data: { category: newName },
     });
     res.json(updated);
   } catch (error) {
@@ -950,6 +982,10 @@ export async function deleteServiceCategory(
       return;
     }
     await prisma.serviceCategory.delete({ where: { id: id! } });
+    await prisma.service.updateMany({
+      where: { category: cat.name },
+      data: { category: null },
+    });
     res.json({ ok: true });
   } catch (error) {
     console.error("Error eliminando categoria:", error);

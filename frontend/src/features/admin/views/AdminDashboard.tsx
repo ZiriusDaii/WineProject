@@ -2046,7 +2046,9 @@ export const AdminDashboard: React.FC = () => {
                       <label className="text-[10px] uppercase text-[#A68F63] font-bold block">Categoria</label>
                       <select value={svcCat} onChange={e => setSvcCat(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white">
                         <option value="">Sin categoria</option>
-                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        {Array.from(new Set([...categories.map(c => c.name), ...servicesCatalog.map(s => s.category).filter(Boolean) as string[], ...(svcCat ? [svcCat] : [])])).sort().map(catName => (
+                          <option key={catName} value={catName}>{catName}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -2104,7 +2106,12 @@ export const AdminDashboard: React.FC = () => {
                     if (svcGenderFilter === 'MUJER') return s.gender === 'MUJER' || s.gender === 'UNISEX' || !s.gender;
                     return s.gender === svcGenderFilter;
                   };
-                  const availableCats = [...new Set(servicesCatalog.filter(genderMatches).map(s => s.category).filter(Boolean))].sort() as string[];
+                  const availableCats = Array.from(
+                    new Set([
+                      ...categories.map(c => c.name),
+                      ...servicesCatalog.filter(genderMatches).map(s => s.category).filter(Boolean) as string[]
+                    ])
+                  ).sort();
                   if (availableCats.length === 0) return null;
                   return (
                     <select
